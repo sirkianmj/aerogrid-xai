@@ -10,7 +10,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 app = FastAPI(
     title="AeroGrid-XAI API",
     version="0.1.0",
-    description="Physics-aware, formally verified platform for space-to-air wireless energy transfer.",
+    description="Physics-aware, formally verified wireless energy platform.",
 )
 
 

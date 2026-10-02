@@ -7,9 +7,10 @@ requires-python = ">=3.12"
 testpaths = ["tests"]
 pythonpath = ["."]
 
-[tool.flake8]
-max-line-length = 100
-
 [tool.mypy]
 python_version = "3.12"
 strict = true
+mypy_path = "."
+explicit_package_bases = true
+warn_unused_ignores = true
+warn_redundant_casts = true
