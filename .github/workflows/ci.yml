@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Miniforge
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: environment.yml
+          activate-environment: aerogrid
+          miniforge-version: latest
+      - name: Lint with flake8
+        run: |
+          cd backend
+          flake8 .
+        shell: bash -el {0}
+      - name: Type check with mypy
+        run: |
+          cd backend
+          mypy .
+        shell: bash -el {0}
+      - name: Test with pytest
+        run: |
+          cd backend
+          pytest --cov=api --cov-report=xml
+        shell: bash -el {0}
+
+  formal-verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Miniforge
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: environment.yml
+          activate-environment: aerogrid
+          miniforge-version: latest
+      - name: Run Z3 sanity check
+        run: |
+          python -c "from z3 import *; x = Int('x'); s = Solver(); s.add(x > 2); s.add(x < 1); assert s.check() == unsat; print('Z3 sanity check passed')"
+        shell: bash -el {0}

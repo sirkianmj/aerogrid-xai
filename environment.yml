@@ -1,0 +1,39 @@
+name: aerogrid
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - nodejs=20
+  - postgresql=16
+  - redis-server
+  - numpy
+  - scipy
+  - pandas
+  - skyfield
+  - z3-solver
+  - psycopg2
+  - cmake
+  - pkgconf
+  - make
+  - git
+  - curl
+  - wget
+  - pytest
+  - pytest-cov
+  - httpx
+  - flake8
+  - mypy
+  - mkdocs
+  - mkdocs-material
+  - pip:
+    - fastapi==0.115.0
+    - uvicorn[standard]==0.32.0
+    - pydantic==2.9.2
+    - pydantic-settings==2.5.2
+    - sqlalchemy==2.0.35
+    - alembic==1.13.3
+    - redis==5.0.8
+    - celery==5.4.0
+    - prometheus-fastapi-instrumentator==7.0.0
+    - structlog==24.4.0
