@@ -1,0 +1,45 @@
+# Miniforge / Conda
+.conda/
+pkgs/
+envs/
+.mamba/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.env
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+
+# Node
+node_modules/
+.env.local
+.vite/
+
+# Native service data (never commit)
+data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Lean
+.lake/
+lake-packages/
+
+# Secrets
+*.pem
+*.key
+.secrets/
+.env.*
