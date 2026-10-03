@@ -12,16 +12,15 @@ SGP4/SDP4 propagator over the TLE.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
-from skyfield.api import EarthSatellite, load, wgs84
-from skyfield.timelib import Time
+from skyfield.api import EarthSatellite, load, wgs84  # type: ignore[import-untyped]
+from skyfield.timelib import Time  # type: ignore[import-untyped]
 
 _TS = load.timescale()
 
-# Altitude band thresholds used by classify_orbit.
 LEO_MAX_ALT_KM = 2_000.0
 GEO_ALT_KM = 35_786.0
 GEO_TOLERANCE_KM = 500.0
@@ -76,18 +75,11 @@ class Satellite:
         self._earth_sat = EarthSatellite(line1, line2, name, _TS)
 
     @classmethod
-    def from_tle_file(cls, path: Path | str) -> "Satellite":
+    def from_tle_file(cls, path: Path | str) -> Satellite:
         """Load the first TLE from a local file (name, line1, line2)."""
-        lines = [
-            ln.strip()
-            for ln in Path(path).read_text().splitlines()
-            if ln.strip()
-        ]
+        lines = [ln.strip() for ln in Path(path).read_text().splitlines() if ln.strip()]
         if len(lines) < 3:
-            raise ValueError(
-                f"TLE file must contain at least 3 non-empty lines; "
-                f"got {len(lines)}"
-            )
+            raise ValueError(f"TLE file must contain at least 3 non-empty lines; got {len(lines)}")
         return cls(lines[0], lines[1], lines[2])
 
     @property
@@ -98,7 +90,6 @@ class Satellite:
     @property
     def mean_motion_rev_per_day(self) -> float:
         """Mean motion from the TLE, in revolutions per day."""
-        # Skyfield stores no_kozai in radians per minute.
         return float(self._earth_sat.model.no_kozai * 1440.0 / (2.0 * np.pi))
 
     @property
@@ -122,5 +113,5 @@ class Satellite:
     def at_utc(self, dt: datetime) -> StateVector:
         """Propagate to a UTC datetime and return the geodetic state."""
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         return self.at(_TS.from_datetime(dt))

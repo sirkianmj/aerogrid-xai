@@ -10,14 +10,14 @@ validate physical plausibility (altitude, speed, period) and time-variation
 rather than comparing against a hard-coded position, which would be brittle.
 """
 
-from datetime import timedelta
+from dataclasses import FrozenInstanceError
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 
 from app.physics.orbital import (
     GEO_ALT_KM,
-    LEO_MAX_ALT_KM,
     Satellite,
     StateVector,
     classify_orbit,
@@ -33,6 +33,7 @@ def iss() -> Satellite:
 
 # --- Orbit classification ---------------------------------------------------
 
+
 def test_classify_orbit_bands() -> None:
     assert classify_orbit(400.0) == "LEO"
     assert classify_orbit(20_000.0) == "MEO"
@@ -46,6 +47,7 @@ def test_classify_orbit_rejects_negative() -> None:
 
 
 # --- TLE ingestion (s1-2) ---------------------------------------------------
+
 
 def test_load_iss_tle(iss: Satellite) -> None:
     assert iss.name == "ISS (ZARYA)"
@@ -75,6 +77,7 @@ def test_mean_motion_and_period(iss: Satellite) -> None:
 
 # --- SGP4 propagation (s1-1) ------------------------------------------------
 
+
 def test_iss_epoch_altitude_in_leo_range(iss: Satellite) -> None:
     sv = iss.at_utc(iss.epoch_utc)
     assert 300_000.0 < sv.alt_m < 500_000.0, f"ISS altitude {sv.alt_m} m out of LEO band"
@@ -88,13 +91,13 @@ def test_iss_epoch_speed(iss: Satellite) -> None:
 
 def test_state_vector_is_frozen() -> None:
     sv = StateVector(
-        time_utc=__import__("datetime").datetime(2024, 1, 1, tzinfo=__import__("datetime").timezone.utc),
+        time_utc=datetime(2024, 1, 1, tzinfo=UTC),
         lat_deg=0.0,
         lon_deg=0.0,
         alt_m=400_000.0,
         speed_km_s=7.66,
     )
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         sv.alt_m = 500_000.0  # type: ignore[misc]
 
 
@@ -111,8 +114,7 @@ def test_satellite_moves_over_time(iss: Satellite) -> None:
     delta_lat = abs(sv0.lat_deg - sv1.lat_deg)
     delta_lon = abs(sv0.lon_deg - sv1.lon_deg)
     assert delta_lat + delta_lon > 5.0, (
-        f"Position barely changed over 15 min: dlat={delta_lat:.2f}, "
-        f"dlon={delta_lon:.2f}"
+        f"Position barely changed over 15 min: dlat={delta_lat:.2f}, dlon={delta_lon:.2f}"
     )
 
 
@@ -137,8 +139,7 @@ def test_satellite_returns_near_same_latitude_after_one_period(iss: Satellite) -
         360.0 - abs(sv0.lon_deg - sv1.lon_deg),
     )
     assert abs(delta_lon - expected_lon_drift) < 5.0, (
-        f"Longitude drift {delta_lon:.2f} differs from expected "
-        f"{expected_lon_drift:.2f}"
+        f"Longitude drift {delta_lon:.2f} differs from expected {expected_lon_drift:.2f}"
     )
 
 
