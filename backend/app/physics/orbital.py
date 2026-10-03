@@ -14,6 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 from skyfield.api import EarthSatellite, load, wgs84  # type: ignore[import-untyped]
@@ -85,7 +86,7 @@ class Satellite:
     @property
     def epoch_utc(self) -> datetime:
         """The TLE epoch as a timezone-aware UTC datetime."""
-        return self._earth_sat.epoch.utc_datetime()
+        return cast("datetime", self._earth_sat.epoch.utc_datetime())
 
     @property
     def mean_motion_rev_per_day(self) -> float:
