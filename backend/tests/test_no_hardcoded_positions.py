@@ -34,6 +34,26 @@ def _attribute_name(target: ast.expr) -> str | None:
     return None
 
 
+def _const_value(node: ast.expr) -> float | int | None:
+    """Return the numeric value of a Constant, unwrapping a leading
+    unary minus if present.
+
+    Python parses ``-122.0`` as ``UnaryOp(USub, Constant(122.0))``, not as
+    ``Constant(-122.0)``. Without this helper, the audit silently misses
+    every negative longitude, which is a real correctness gap.
+    """
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+        return node.value
+    if (
+        isinstance(node, ast.UnaryOp)
+        and isinstance(node.op, ast.USub)
+        and isinstance(node.operand, ast.Constant)
+        and isinstance(node.operand.value, (int, float))
+    ):
+        return -node.operand.value
+    return None
+
+
 def _collect_hardcoded_state(source: str) -> list[tuple[int, str, object]]:
     """Return (lineno, attribute, value) for any hardcoded numeric
     assignment to lat_deg, lon_deg, or alt_m on an attribute."""
@@ -55,15 +75,14 @@ def _collect_hardcoded_state(source: str) -> list[tuple[int, str, object]]:
 
         if value is None:
             continue
-        if not isinstance(value, ast.Constant):
-            continue
-        if not isinstance(value.value, (int, float)):
+        const_val = _const_value(value)
+        if const_val is None:
             continue
 
         for target in targets:
             name = _attribute_name(target)
             if name in ("lat_deg", "lon_deg", "alt_m"):
-                suspicious.append((node.lineno, name, value.value))
+                suspicious.append((node.lineno, name, const_val))
 
     return suspicious
 
