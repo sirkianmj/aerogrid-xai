@@ -25,8 +25,8 @@ from app.physics.link_budget import (
     build_canonical_link_budget,
 )
 
-
 # --- Per-stage isolated unit tests -----------------------------------------
+
 
 def test_transmitter_stage_isolated() -> None:
     """Stage 1: electrical-to-optical or electrical-to-RF conversion."""
@@ -74,6 +74,7 @@ def test_battery_stage_isolated() -> None:
 
 # --- Canonical cascade order ------------------------------------------------
 
+
 def test_canonical_stages_constant() -> None:
     """The canonical cascade order is fixed by Section 8.4."""
     assert CANONICAL_STAGES == ("transmitter", "beam", "receiver", "battery")
@@ -92,6 +93,7 @@ def test_canonical_link_budget_stage_order() -> None:
 
 
 # --- Formal product-of-stages test ------------------------------------------
+
 
 @pytest.mark.parametrize(
     "tx,beam,rx,batt",
@@ -142,6 +144,7 @@ def test_canonical_builder_prevents_collapse() -> None:
 
 
 # --- Dual-reporting invariant (Section 6) -----------------------------------
+
 
 def test_dual_report_construction_valid() -> None:
     r = DualEfficiencyReport(

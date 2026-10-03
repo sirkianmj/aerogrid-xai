@@ -122,13 +122,9 @@ class DualEfficiencyReport:
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.unfavorable_value <= 1.0:
-            raise ValueError(
-                f"Unfavorable value must be in [0, 1]; got {self.unfavorable_value}"
-            )
+            raise ValueError(f"Unfavorable value must be in [0, 1]; got {self.unfavorable_value}")
         if not 0.0 <= self.favorable_value <= 1.0:
-            raise ValueError(
-                f"Favorable value must be in [0, 1]; got {self.favorable_value}"
-            )
+            raise ValueError(f"Favorable value must be in [0, 1]; got {self.favorable_value}")
         if self.favorable_value < self.unfavorable_value:
             raise ValueError(
                 "Favorable value must be >= unfavorable value; "
