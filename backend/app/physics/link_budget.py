@@ -92,3 +92,89 @@ def atmospheric_transmission(
     if extinction_coeff_per_m < 0:
         raise ValueError(f"Extinction coefficient must be >= 0; got {extinction_coeff_per_m}")
     return float(np.exp(-extinction_coeff_per_m * path_length_m))
+
+
+# --- Section 8.4 canonical cascade and dual-reporting invariant -------------
+
+CANONICAL_STAGES: tuple[str, ...] = (
+    "transmitter",
+    "beam",
+    "receiver",
+    "battery",
+)
+
+
+@dataclass(frozen=True)
+class DualEfficiencyReport:
+    """A pair of efficiency figures that must always be reported together.
+
+    Enforces the Section 6 dual-reporting invariant: the favorable stage
+    efficiency and the unfavorable end-to-end efficiency must both be
+    reported. Reporting the favorable figure alone is a specification
+    violation.
+    """
+
+    favorable_label: str
+    favorable_value: float
+    unfavorable_label: str
+    unfavorable_value: float
+    source: str
+
+    def __post_init__(self) -> None:
+        if not 0.0 <= self.unfavorable_value <= 1.0:
+            raise ValueError(
+                f"Unfavorable value must be in [0, 1]; got {self.unfavorable_value}"
+            )
+        if not 0.0 <= self.favorable_value <= 1.0:
+            raise ValueError(
+                f"Favorable value must be in [0, 1]; got {self.favorable_value}"
+            )
+        if self.favorable_value < self.unfavorable_value:
+            raise ValueError(
+                "Favorable value must be >= unfavorable value; "
+                f"got favorable={self.favorable_value}, "
+                f"unfavorable={self.unfavorable_value}"
+            )
+
+    def summary(self) -> str:
+        return (
+            f"{self.favorable_label}: {self.favorable_value * 100:.2f}% | "
+            f"{self.unfavorable_label}: {self.unfavorable_value * 100:.2f}% | "
+            f"source: {self.source}"
+        )
+
+
+XIDIAN_DUAL_REPORT = DualEfficiencyReport(
+    favorable_label="on-target DC-to-DC",
+    favorable_value=0.208,
+    unfavorable_label="end-to-end wall-plug-to-battery (midpoint)",
+    unfavorable_value=0.04,
+    source="Xidian University (spec Section 6)",
+)
+
+
+def build_canonical_link_budget(
+    input_power_w: float,
+    transmitter_eff: float,
+    beam_eff: float,
+    receiver_eff: float,
+    battery_eff: float,
+    *,
+    notes: str = "",
+) -> LinkBudget:
+    """Build a LinkBudget with the four canonical stages in the order
+    required by Section 8.4: transmitter, beam, receiver, battery.
+
+    This is the only sanctioned constructor for a full link budget. It
+    enforces the cascade order and that every stage is explicitly named.
+    """
+    return LinkBudget(
+        input_power_w=input_power_w,
+        stages=(
+            Stage("transmitter", transmitter_eff, source="Section 8.4 stage 1"),
+            Stage("beam", beam_eff, source="Section 8.4 stage 2"),
+            Stage("receiver", receiver_eff, source="Section 8.4 stage 3"),
+            Stage("battery", battery_eff, source="Section 8.4 stage 4"),
+        ),
+        notes=notes,
+    )
