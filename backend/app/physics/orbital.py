@@ -132,6 +132,38 @@ class Satellite:
         perp = r_sat - d * s_hat
         return float(np.linalg.norm(perp)) < R_EARTH_KM
 
+    def is_in_eclipse_conical(self, t: Time) -> bool:
+        """True if the satellite is in Earth's umbra at time t, using the
+        conical (finite angular size of the Sun) shadow model of Vallado,
+        "Fundamentals of Astrodynamics and Applications", 4th ed., Ch. 5.
+
+        The umbra is a cone with apex beyond Earth. At distance d from
+        Earth centre along the anti-Sun axis, the umbra radius is
+        R_E - d * tan(theta_sun), where theta_sun is the Sun's angular
+        radius as seen from Earth (approximately 0.00465 rad).
+
+        This model is more conservative than the cylindrical model: it
+        declares eclipse only for the fully shadowed region.
+        """
+        r_sat = self.geocentric_position_km(t)
+        r_sun = sun_position_eci_km(t)
+        s_hat = r_sun / float(np.linalg.norm(r_sun))
+
+        d_along = float(np.dot(r_sat, s_hat))
+        if d_along > 0.0:
+            return False
+
+        perp = r_sat - d_along * s_hat
+        h = float(np.linalg.norm(perp))
+
+        # Distance along the anti-Sun axis from Earth centre.
+        d = -d_along
+        theta_sun_rad = 0.00465
+        umbra_radius_km = R_EARTH_KM - d * float(np.tan(theta_sun_rad))
+        if umbra_radius_km <= 0.0:
+            return False
+        return h < umbra_radius_km
+
     def look_angle(self, node: GroundNode, t: Time) -> LookAngle:
         """Topocentric look angles from a ground node at time t."""
         observer = wgs84.latlon(node.lat_deg, node.lon_deg, elevation_m=node.alt_m)
