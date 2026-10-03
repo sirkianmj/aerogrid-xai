@@ -62,6 +62,24 @@ jobs:
       - name: Build
         run: npm run build
 
+  cla-check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify PR author is in signatures/cla-v1.json
+        run: |
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+          echo "PR author: $AUTHOR"
+          if grep -q "\"$AUTHOR\"" signatures/cla-v1.json; then
+            echo "CLA signed."
+          else
+            echo "CLA not signed for $AUTHOR. Add yourself to signatures/cla-v1.json in this PR."
+            exit 1
+          fi
+
   formal-verification:
     runs-on: ubuntu-latest
     steps:

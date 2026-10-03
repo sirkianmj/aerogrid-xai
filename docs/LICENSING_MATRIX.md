@@ -47,3 +47,13 @@ NOTES
    feature attribution) is published here as defensive prior art. No
    patent has been filed. Reimplementation is permitted; attribution is
    requested.
+
+## Maintainer Note on External Legal Review
+
+The roadmap lists "Legal review by external counsel" as a gate for
+LICENSE-COMMERCIAL. This review was not performed. The maintainer elected
+to defer it on cost grounds. The Commercial License is provided as-is.
+If a commercial licensee requires a jurisdiction-specific warranty, that
+will be negotiated on a per-license basis at signing time.
+
+This is a documented deviation, not an oversight.

@@ -1,4 +1,4 @@
-.PHONY: help setup env-update test lint format dev-backend clean
+.PHONY: help setup env-update test lint format dev-backend clean services-start services-stop services-status
 
 help:
 	@echo "AeroGrid-XAI -- available targets:"
@@ -31,3 +31,13 @@ dev-backend:
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	rm -rf backend/.pytest_cache backend/.mypy_cache backend/.ruff_cache backend/.coverage backend/coverage.xml
+
+
+services-start:
+	bash scripts/start_services.sh
+
+services-stop:
+	bash scripts/stop_services.sh
+
+services-status:
+	bash scripts/status_services.sh
