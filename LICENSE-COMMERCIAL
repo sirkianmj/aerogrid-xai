@@ -1,0 +1,50 @@
+AeroGrid-XAI — Commercial License
+
+Version 0.1.0
+Copyright (c) 2026 Kian M.J. All rights reserved.
+
+This Commercial License governs use of AeroGrid-XAI by any entity that
+does not wish to be bound by the terms of the GNU Affero General Public
+License version 3 (AGPL-3.0), a copy of which is provided in the file
+LICENSE-OPEN-SOURCE.
+
+1. SCOPE
+
+   This license applies to the software, source code, documentation,
+   models, and any associated artifacts distributed by the copyright
+   holder under the AeroGrid-XAI name (collectively, "the Software").
+
+2. GRANT
+
+   Subject to payment of applicable fees and execution of a separate
+   written agreement, the copyright holder grants the licensee a
+   non-exclusive, non-transferable, worldwide license to use, modify,
+   and distribute the Software for commercial purposes, including
+   incorporation into proprietary products and provision as a hosted
+   service, without the source-disclosure obligations of the AGPL-3.0.
+
+3. RESTRICTIONS
+
+   Absent a separate written agreement, the licensee may not:
+   (a) remove or alter any copyright, patent, or attribution notices;
+   (b) sublicense the Software to third parties outside the licensee's
+       organization;
+   (c) use the Software in any application subject to export control
+       restrictions that prohibit such use.
+
+4. ATTRIBUTION
+
+   The Software implements methods originally published by the copyright
+   holder under the CLEAR-D name. Commercial use does not require a
+   patent license, as no patent has been filed. Attribution to the
+   original author is required in derivative works.
+
+5. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED.
+
+6. CONTACT
+
+   Commercial licensing inquiries: [contact placeholder - to be set
+   before public release]
