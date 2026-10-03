@@ -17,10 +17,15 @@ jobs:
           environment-file: environment.yml
           activate-environment: aerogrid
           miniforge-version: latest
-      - name: Lint with flake8
+      - name: Lint with ruff
         run: |
           cd backend
-          flake8 .
+          ruff check .
+        shell: bash -el {0}
+      - name: Format check with ruff
+        run: |
+          cd backend
+          ruff format --check .
         shell: bash -el {0}
       - name: Type check with mypy
         run: |
@@ -30,7 +35,7 @@ jobs:
       - name: Test with pytest
         run: |
           cd backend
-          pytest --cov=api --cov-report=xml
+          pytest --cov=app --cov-report=xml
         shell: bash -el {0}
 
   formal-verification:
