@@ -15,6 +15,14 @@ explicit_package_bases = true
 warn_unused_ignores = true
 warn_redundant_casts = true
 
+# scipy is installed from conda-forge without PEP 561 type markers. Under
+# strict mode mypy refuses to analyse the imports by default. This override
+# tells mypy to trust scipy's runtime behaviour without static checking;
+# the code paths that use scipy are covered by pytest tests.
+[[tool.mypy.overrides]]
+module = ["scipy.*"]
+ignore_missing_imports = true
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"

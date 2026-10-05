@@ -194,10 +194,18 @@ def eta_te(
     given (T_hot, T_cold) pair.
     """
     p = params or TEParams()
-    if t_hot_k <= t_cold_k:
-        raise ValueError(f"Hot side ({t_hot_k} K) must be warmer than cold side ({t_cold_k} K)")
     if t_cold_k < 0.0:
         raise ValueError(f"Temperature must be non-negative; got {t_cold_k}")
+    if t_hot_k <= t_cold_k:
+        # No usable temperature gradient for a thermoelectric generator:
+        # either the temperature difference is exactly zero (a legitimate
+        # boundary at the start of an ODE integration from ambient), or
+        # it is negative (a heat-pump configuration, which does not
+        # correspond to a generator efficiency). In both cases the
+        # Seebeck conversion efficiency is zero. This must not raise,
+        # because the adaptive-step ODE integrator may transiently
+        # evaluate eta_te with t_hot < t_cold during stage evaluations.
+        return 0.0
 
     zt = zt_avg_bi2te3(t_hot_k, p)
     numerator = (t_hot_k - t_cold_k) / t_hot_k
