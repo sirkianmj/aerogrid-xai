@@ -84,11 +84,20 @@ def test_eta_te_positive_for_hot_side_warmer() -> None:
     assert 0.0 < eff < 0.20, f"eta_TE = {eff} outside plausible range"
 
 
-def test_eta_te_requires_hot_warmer_than_cold() -> None:
-    with pytest.raises(ValueError):
-        eta_te(t_hot_k=300.0, t_cold_k=400.0)
-    with pytest.raises(ValueError):
-        eta_te(t_hot_k=300.0, t_cold_k=300.0)
+def test_eta_te_is_zero_when_hot_side_is_not_warmer() -> None:
+    """When t_hot <= t_cold there is no usable temperature gradient for
+    a thermoelectric generator. The Seebeck conversion efficiency is
+    therefore zero: at exactly equal temperatures because there is no
+    gradient, and at strictly colder t_hot because the device would be
+    operating as a heat pump, which is not a generator configuration.
+
+    This case arises transiently during ODE integration (the two thermal
+    nodes start at the same ambient temperature and the adaptive-step
+    integrator may propose intermediate states with T_plc < T_te), so
+    the function must return 0.0 rather than raise.
+    """
+    assert eta_te(t_hot_k=300.0, t_cold_k=300.0) == 0.0
+    assert eta_te(t_hot_k=300.0, t_cold_k=400.0) == 0.0
 
 
 def test_eta_te_rejects_negative_cold_side() -> None:
