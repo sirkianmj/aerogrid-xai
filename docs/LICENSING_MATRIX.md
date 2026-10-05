@@ -5,20 +5,20 @@ the repository. Every file added to the repository must fall under one
 of the categories below. If a new category is needed, this file must be
 updated in the same pull request.
 
-| Component                        | Path                                  | License                        |
-|----------------------------------|---------------------------------------|--------------------------------|
-| Backend (application code)       | backend/                              | AGPL-3.0 (open source)         |
-| Backend (commercial deployments) | backend/                              | Commercial License (see below) |
-| CLEAR-D method implementation    | backend/app/discovery/                | AGPL-3.0 + Commercial          |
-| Formal verification (Z3)         | backend/app/verification/             | AGPL-3.0                       |
-| Frontend (web application)       | frontend/                             | AGPL-3.0                       |
-| SaaS deployment layer            | saas/                                 | Proprietary (Commercial only)  |
-| Infrastructure (IaC, deployment) | infrastructure/                       | AGPL-3.0                       |
-| Jupyter notebooks (research)     | notebooks/                            | MIT                            |
-| Documentation                    | docs/                                 | CC BY-NC 4.0                   |
-| Tests                            | backend/tests/, frontend/tests/       | AGPL-3.0                       |
-| CI/CD configuration              | .github/                              | AGPL-3.0                       |
-| Root-level project files         | README, CHANGELOG, CONTRIBUTING, etc. | CC BY-NC 4.0                   |
+| Component                        | Path                                    | License                        |
+|----------------------------------|-----------------------------------------|--------------------------------|
+| Backend (application code)       | backend/                                | AGPL-3.0 (open source)         |
+| Backend (commercial deployments) | backend/                                | Commercial License (see below) |
+| CLEAR-D method implementation    | backend/app/discovery/                  | AGPL-3.0 + Commercial          |
+| Formal verification (Z3)         | backend/app/verification/               | AGPL-3.0                       |
+| Frontend (web application)       | frontend/                               | AGPL-3.0                       |
+| SaaS deployment layer            | saas/                                   | Proprietary (Commercial only)  |
+| Infrastructure (IaC, deployment) | infrastructure/                         | AGPL-3.0                       |
+| Jupyter notebooks (research)     | notebooks/                              | MIT                            |
+| Documentation                    | docs/                                   | CC BY-NC 4.0                   |
+| Tests                            | backend/tests/, frontend/src/*.test.tsx | AGPL-3.0                       |
+| CI/CD configuration              | .github/                                | AGPL-3.0                       |
+| Root-level project files         | README, CHANGELOG, CONTRIBUTING, etc.   | CC BY-NC 4.0                   |
 
 NOTES
 
@@ -43,10 +43,11 @@ NOTES
    retain copyright and grant the Project a sublicensable license
    compatible with both the AGPL-3.0 and the Commercial License.
 
-6. Defensive publication. The CLEAR-D method (unsat-core-to-grammar-
-   feature attribution) is published here as defensive prior art. No
-   patent has been filed. Reimplementation is permitted; attribution is
-   requested.
+5a. Future directories. The saas/ and infrastructure/ directories
+    referenced above are roadmap deliverables (Sprint 8 and Sprint 11
+    respectively) and do not yet exist on disk. Their license rows
+    declare the intended terms for when they are created; no code in
+    them is currently shipped.
 
 ## Maintainer Note on External Legal Review
 
