@@ -20,7 +20,7 @@ warn_redundant_casts = true
 # tells mypy to trust scipy's runtime behaviour without static checking;
 # the code paths that use scipy are covered by pytest tests.
 [[tool.mypy.overrides]]
-module = ["scipy.*"]
+module = ["scipy.*", "z3.*"]
 ignore_missing_imports = true
 
 [tool.ruff]
