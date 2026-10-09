@@ -119,15 +119,29 @@ theta_history = [belief.mean]
 for _ in range(N_OBS):
     y_true = f_true(X_PROBE)
     y_obs = y_true + float(rng.normal(0.0, NOISE_STD))
-    f_at_mean = f_model(belief.mean, X_PROBE)
-    sensitivity = -X_PROBE * f_at_mean
+    # Linearize g(theta) = exp(-theta * x) at the current prior mean.
+    # The correct Kalman innovation is y - g(mu), not y - h * mu.
+    # recursive_bayes_update internally computes observation - h * mu,
+    # so we pass a pseudo-observation y' = y - g(mu) + h * mu so that
+    # y' - h * mu = y - g(mu).
+    g_mu = f_model(belief.mean, X_PROBE)
+    sensitivity = -X_PROBE * g_mu
+    pseudo_obs = y_obs - g_mu + sensitivity * belief.mean
     belief = recursive_bayes_update(
         belief,
-        observation=y_obs,
+        observation=pseudo_obs,
         observation_noise_variance=NOISE_STD ** 2,
         sensitivity=sensitivity,
     )
     theta_history.append(belief.mean)
+
+# Verify the Phase 1 result actually converged to theta_true. If the
+# estimate lands outside a 0.05 band, the linearization is wrong and
+# the notebook must fail rather than silently produce a bad theta.
+assert abs(belief.mean - THETA_TRUE) < 0.05, (
+    f"Phase 1 did not converge: theta_converged = {belief.mean:.4f}, "
+    f"theta_true = {THETA_TRUE:.4f}"
+)
 
 theta_converged = belief.mean
 theta_std = belief.std
