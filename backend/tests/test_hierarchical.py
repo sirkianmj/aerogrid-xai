@@ -16,6 +16,7 @@ from app.verification.hierarchical import (
     ConstraintEntry,
     HierarchicalModel,
     HierarchicalResult,
+    _rollup_status,
 )
 from app.verification.pwl import pwl_approximate
 
@@ -319,3 +320,50 @@ def test_multi_variable_within_cluster() -> None:
     )
     result = m.check()
     assert result.status == "sat"
+
+
+# -- P10: UNKNOWN must not be reported as UNSAT ----------------------------
+
+
+@pytest.mark.parametrize(
+    ("cluster_statuses", "flow_status", "expected"),
+    [
+        ((), "sat", "sat"),
+        (("sat",), "sat", "sat"),
+        (("sat", "sat"), "sat", "sat"),
+        (("unsat",), "sat", "unsat"),
+        (("sat", "unsat"), "sat", "unsat"),
+        (("unsat", "unknown"), "sat", "unsat"),
+        (("sat",), "unsat", "unsat"),
+        (("unknown",), "unsat", "unsat"),
+        (("unsat",), "unknown", "unsat"),
+        (("unsat",), "unsat", "unsat"),
+        (("unknown",), "sat", "unknown"),
+        (("sat", "unknown"), "sat", "unknown"),
+        (("sat",), "unknown", "unknown"),
+        (("unknown",), "unknown", "unknown"),
+        (("unknown", "unknown"), "unknown", "unknown"),
+    ],
+)
+def test_rollup_status_never_conflates_unknown_with_unsat(
+    cluster_statuses: tuple[str, ...],
+    flow_status: str,
+    expected: str,
+) -> None:
+    """The rollup must distinguish UNKNOWN from UNSAT.
+
+    A subproblem that returned UNKNOWN means the solver could not
+    decide. Reporting the system as UNSAT would fabricate a negative
+    result: the caller (Stage C discovery) uses UNSAT to mark
+    features conflict-prone, and a spurious UNSAT would inject
+    non-conflicting features into the ConflictProneTable.
+    """
+    assert _rollup_status(cluster_statuses, flow_status) == expected
+
+
+def test_rollup_status_sat_cluster_plus_unknown_cluster_is_unknown() -> None:
+    assert _rollup_status(("sat", "unknown"), "sat") == "unknown"
+
+
+def test_rollup_status_unsat_overrides_unknown() -> None:
+    assert _rollup_status(("unsat", "unknown"), "sat") == "unsat"
