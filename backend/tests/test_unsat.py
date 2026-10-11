@@ -300,3 +300,64 @@ def test_core_result_defaults() -> None:
     assert r.core_names == ()
     assert r.all_family_names == ()
     assert r.core_size == 0
+
+
+def test_check_minimizes_redundant_core_by_default() -> None:
+    """A system with two independent redundancies must return a core
+    that contains only the two genuinely conflicting families."""
+    x = z3.Real("x_min_default")
+    ext = UnsatCoreExtractor()
+    ext.add(NamedConstraint("lo", x >= 10))
+    ext.add(NamedConstraint("hi", x <= 5))
+    ext.add(NamedConstraint("eq3", x == 3))
+    ext.add(NamedConstraint("neq7", x != 7))
+    result = ext.check()
+    assert result.status == "unsat"
+    assert set(result.core_names) == {"lo", "hi"}, (
+        f"core should be exactly {{lo, hi}}; got {result.core_names}"
+    )
+    assert verify_core_minimality_removal(ext.constraints, result.core_names)
+
+
+def test_deletion_minimize_drops_redundant_family() -> None:
+    """Directly exercise the deletion-based minimizer on a known
+    non-minimal core, bypassing Z3's core output entirely."""
+    x = z3.Real("x_del_min")
+    ext = UnsatCoreExtractor()
+    ext.add(NamedConstraint("lo", x >= 10))
+    ext.add(NamedConstraint("hi", x <= 5))
+    ext.add(NamedConstraint("redundant", x <= 100))
+    minimized = ext._deletion_minimize(("hi", "lo", "redundant"))
+    assert set(minimized) == {"hi", "lo"}, (
+        f"deletion minimizer should drop 'redundant'; got {minimized}"
+    )
+
+
+def test_minimize_core_false_returns_raw_core() -> None:
+    """When minimize_core=False the raw Z3 core is returned without
+    the deletion pass. The core must still be UNSAT and must contain
+    the two genuinely conflicting families."""
+    x = z3.Real("x_raw_min")
+    ext = UnsatCoreExtractor(minimize_core=False)
+    ext.add(NamedConstraint("lo", x >= 10))
+    ext.add(NamedConstraint("hi", x <= 5))
+    result = ext.check()
+    assert result.status == "unsat"
+    assert {"lo", "hi"} <= set(result.core_names)
+
+
+def test_check_minimized_core_is_minimal_across_systems() -> None:
+    """For several deterministic systems with known redundancies, the
+    returned core must pass verify_core_minimality_removal."""
+    for lo, hi in [(10, 5), (15, 8), (20, 3), (25, 12), (30, 7)]:
+        x = z3.Real(f"x_rand_{lo}_{hi}")
+        ext = UnsatCoreExtractor()
+        ext.add(NamedConstraint("lo", x >= lo))
+        ext.add(NamedConstraint("hi", x <= hi))
+        for k in range(3):
+            ext.add(NamedConstraint(f"redundant_{k}", x <= 1000 + k))
+        result = ext.check()
+        assert result.status == "unsat"
+        assert verify_core_minimality_removal(ext.constraints, result.core_names), (
+            f"({lo},{hi}): returned core {result.core_names} is not minimal"
+        )
