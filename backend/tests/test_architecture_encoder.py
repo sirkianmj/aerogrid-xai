@@ -16,7 +16,8 @@ from app.discovery.generator import (
 from app.discovery.grammar import Architecture, LinkInstance, NodeInstance, Terminal
 from app.discovery.unsat import UnsatCoreExtractor
 from app.verification.architecture_encoder import (
-    UAV_ASSUMED_TRANSMIT_W,
+    DEFAULT_ENCODER_CONFIG,
+    EncoderConfig,
     _nearest_laser_wavelength_nm,
     _peak_intensity_w_per_m2,
     _transmit_power_w,
@@ -84,7 +85,7 @@ def test_transmit_power_uses_source_param_when_present() -> None:
         {"wavelength_nm": 1064.0, "aperture_m": 0.5, "capacity_factor": 1.0},
         source_power_w=250.0,
     )
-    assert _transmit_power_w(arch, arch.links[0]) == 250.0
+    assert _transmit_power_w(arch, arch.links[0], DEFAULT_ENCODER_CONFIG) == 250.0
 
 
 def test_transmit_power_falls_back_for_uav_source() -> None:
@@ -119,7 +120,10 @@ def test_transmit_power_falls_back_for_uav_source() -> None:
         params={"wavelength_nm": 1064.0, "aperture_m": 0.5, "capacity_factor": 1.0},
     )
     arch = Architecture(nodes=(uav, other), links=(link,))
-    assert _transmit_power_w(arch, link) == UAV_ASSUMED_TRANSMIT_W
+    assert (
+        _transmit_power_w(arch, link, DEFAULT_ENCODER_CONFIG)
+        == DEFAULT_ENCODER_CONFIG.uav_assumed_transmit_w
+    )
 
 
 def test_encoder_emits_constraints_for_valid_architecture() -> None:
@@ -249,3 +253,134 @@ def test_encoder_flow_variables_are_present() -> None:
     flow_names = {c.family_name for c in constraints if "flow" in c.family_name}
     assert flow_names, "expected flow constraints"
     assert any(isinstance(c.expression, z3.BoolRef) for c in constraints)
+
+
+# -- P14: EncoderConfig ----------------------------------------------------
+
+
+def test_encoder_config_default_values() -> None:
+    cfg = EncoderConfig()
+    assert cfg.uav_assumed_transmit_w == 20.0
+    assert cfg.node_default_demand_w == 15.0
+    assert DEFAULT_ENCODER_CONFIG.uav_assumed_transmit_w == 20.0
+    assert DEFAULT_ENCODER_CONFIG.node_default_demand_w == 15.0
+
+
+def test_encoder_config_rejects_nonpositive_values() -> None:
+    import pytest
+
+    with pytest.raises(ValueError, match="uav_assumed_transmit_w"):
+        EncoderConfig(uav_assumed_transmit_w=0.0)
+    with pytest.raises(ValueError, match="uav_assumed_transmit_w"):
+        EncoderConfig(uav_assumed_transmit_w=-1.0)
+    with pytest.raises(ValueError, match="node_default_demand_w"):
+        EncoderConfig(node_default_demand_w=0.0)
+    with pytest.raises(ValueError, match="node_default_demand_w"):
+        EncoderConfig(node_default_demand_w=-1.0)
+
+
+def test_encoder_config_is_frozen() -> None:
+    import dataclasses
+
+    import pytest
+
+    cfg = EncoderConfig()
+    assert dataclasses.is_dataclass(cfg)
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        cfg.uav_assumed_transmit_w = 100.0  # type: ignore[misc]
+
+
+def test_encoder_config_overrides_uav_transmit_power() -> None:
+    uav = NodeInstance(
+        node_id="n0",
+        kind=Terminal.UAV_ENERGY,
+        params={
+            "role": 0.0,
+            "battery_pct": 50.0,
+            "lat_deg": 0.0,
+            "lon_deg": 0.0,
+            "altitude_m": 100.0,
+        },
+    )
+    other = NodeInstance(
+        node_id="n1",
+        kind=Terminal.UAV_COMPUTE,
+        params={
+            "role": 0.0,
+            "battery_pct": 50.0,
+            "cpu_cores": 8.0,
+            "lat_deg": 0.0,
+            "lon_deg": 0.0,
+            "altitude_m": 100.0,
+        },
+    )
+    link = LinkInstance(
+        link_id="l0",
+        kind=Terminal.LASER_LINK,
+        source_id="n0",
+        target_id="n1",
+        params={"wavelength_nm": 1064.0, "aperture_m": 0.5, "capacity_factor": 1.0},
+    )
+    arch = Architecture(nodes=(uav, other), links=(link,))
+    cfg = EncoderConfig(uav_assumed_transmit_w=42.0)
+    assert _transmit_power_w(arch, link, cfg) == 42.0
+
+
+def test_encoder_config_demand_override_changes_satisfiability() -> None:
+    arch = _make_arch_with_link(
+        Terminal.MICROWAVE_LINK,
+        {"frequency_ghz": 2.45, "aperture_m": 1.0, "capacity_factor": 1.0},
+        source_power_w=5.0,
+    )
+    ext_default = UnsatCoreExtractor()
+    for c in encode_architecture(arch):
+        ext_default.add(c.to_named())
+    assert ext_default.check().status == "unsat"
+
+    small_demand = EncoderConfig(node_default_demand_w=2.0)
+    ext_small = UnsatCoreExtractor()
+    for c in encode_architecture(arch, small_demand):
+        ext_small.add(c.to_named())
+    assert ext_small.check().status == "sat"
+
+
+# -- P15: Hybrid_Link conservative MPE -------------------------------------
+
+
+def test_hybrid_link_emits_both_mpe_constraints() -> None:
+    arch = _make_arch_with_link(
+        Terminal.HYBRID_LINK,
+        {
+            "wavelength_nm": 1064.0,
+            "frequency_ghz": 2.45,
+            "aperture_m": 1.0,
+            "capacity_factor": 1.0,
+        },
+        source_power_w=5.0,
+    )
+    names = {c.family_name for c in encode_architecture(arch)}
+    assert "l0_hybrid_laser_mpe" in names
+    assert "l0_hybrid_rf_mpe" in names
+
+
+def test_hybrid_link_unsat_when_rf_mpe_violated() -> None:
+    """15 W through a 0.5 m radius aperture gives 19.1 W/m^2.
+    Laser MPE at 1064 nm is 25.5 W/m^2 (satisfied); RF MPE is
+    10.0 W/m^2 (violated). The minimal core must name only RF."""
+    arch = _make_arch_with_link(
+        Terminal.HYBRID_LINK,
+        {
+            "wavelength_nm": 1064.0,
+            "frequency_ghz": 2.45,
+            "aperture_m": 0.5,
+            "capacity_factor": 1.0,
+        },
+        source_power_w=15.0,
+    )
+    ext = UnsatCoreExtractor()
+    for c in encode_architecture(arch):
+        ext.add(c.to_named())
+    result = ext.check()
+    assert result.status == "unsat"
+    assert "l0_hybrid_rf_mpe" in result.core_names
+    assert "l0_hybrid_laser_mpe" not in result.core_names

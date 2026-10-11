@@ -38,18 +38,24 @@ because s4-2 is about generating candidates, not about filtering
 them. Filtering is the job of Stage B (the encoder), which is
 exercised by the gate test.
 
-Encoder placeholder
--------------------
+Encoder placeholder (SUPERSEDED)
+------------------------------
 
-encode_architecture_to_z3 produces a minimal Z3 solver in which
+``encode_architecture_to_z3`` produces a minimal Z3 solver in which
 every node is a real state variable in [0, 100] and every link is a
 real flow variable bounded by the source's state and by the link
-modality's capacity. This is a placeholder: the real Stage B
-encoding lives in backend/app/verification/. The placeholder exists
-here so that s4-2's gate ("every generated architecture encodes to
-Z3 without error") can be exercised. When s4-4 lands and wires the
-discovery loop to the real encoder, this function will be replaced
-by a call into the verification package.
+modality's capacity. It is retained here only so that the s4-2 gate
+test ("every generated architecture encodes to Z3 without error") can
+be exercised against a self-contained function within this module.
+
+It is superseded by ``app.verification.architecture_encoder.encode_architecture``,
+which emits constraints backed by actual physics (ANSI Z136.1 laser
+MPE, FCC Part 1.1310 RF limit, flow-balance constraints over source
+supply and UAV demand) and tags every constraint with the grammar
+features of its originating node or link so that unsat cores attribute
+cleanly. New code must use ``encode_architecture``, not this
+placeholder. The CLEAR-D closed loop
+(``app.discovery.loop.run_clear_d_loop``) uses the real encoder.
 
 The placeholder encoder validates parameters. A parameter that is
 missing or out of range raises ValueError. The generator is written
