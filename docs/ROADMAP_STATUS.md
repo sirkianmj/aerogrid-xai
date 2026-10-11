@@ -147,6 +147,98 @@ the PWL direction from f_hat <= f to f_hat >= f. That is a localized
 change to the sampling loop in pwl.py and would require re-running
 every downstream test.
 
-## Sprints 4–12
+## Sprint 4 — Stage C: Generative Discovery with UNSAT-Core Feedback
 
-Not yet started. See the Master Engineering Roadmap (Rev. 2).
+| ID | Task | Status |
+|----|------|--------|
+| s4-1 | Architecture grammar (context-free) | COMPLETE (PR #18) |
+| s4-2 | Candidate generation (random derivations + parameter attachment) | COMPLETE (PR #18) |
+| s4-3 | UNSAT-core extraction (z3.get_unsat_core()) | COMPLETE (PR #18); minimal-core guarantee added in PR #41 |
+| s4-4 | UNSAT-core-to-grammar-feature attribution (inventive core) | COMPLETE (PR #19) |
+| s4-5 | Conflict-directed mutation | COMPLETE (PR #19) |
+| s4-6 | NSGA-II integration (Pareto over C,R,E,N,T,U) | COMPLETE (PR #20); closed-loop composition with real Stage B encoder added in PR #43 |
+| s4-7 | Notebook 06 — Unsat-core feedback ablation | COMPLETE (PR #21); uses synthetic 2-constraint fixture; upgrade to real encoder is open |
+| s4-8 | Scientific gate: attribution deterministic and reproducible | COMPLETE (PR #21) |
+
+### s4-6 composition note
+
+Until PR #43, `run_nsga2` called `mutate_random` unconditionally and never
+invoked Z3, extracted a core, or built a `ConflictProneTable`. The
+attribution → conflict-directed-mutation mechanism existed and was tested
+in isolation (`test_h9_convergence.py`, Notebook 06), but was not composed
+into the production discovery loop.
+
+PR #43 adds:
+
+- `backend/app/verification/architecture_encoder.py` — real Stage B encoder
+  emitting flow-balance, supply-cap, demand-floor, and regulatory (ANSI
+  Z136.1 / FCC 1.1310) constraints, each tagged with originating grammar
+  features.
+- `backend/app/discovery/loop.py` — `run_clear_d_loop` composes
+  encode → check → attribute → mutate (by rule) → NSGA-II select across
+  generations.
+
+`nsga2.py` is unchanged; its existing tests still pass.
+
+## Sprint 5 — Stage D: Two-Tier XAI Controller
+
+| ID | Task | Status |
+|----|------|--------|
+| s5-1 | Tier 1 rule list / GAM / bounded tree | COMPLETE (PR #22) |
+| s5-2 | Tier 2 surrogate — atmospheric loss | COMPLETE (PR #23) |
+| s5-3 | Tier 2 surrogate — trajectory prediction | COMPLETE (PR #24) |
+| s5-4 | Static analyzer: Tier 2 never reaches action interface | COMPLETE (PR #25) |
+| s5-5 | Explanation generator (literal trace output) | COMPLETE (PR #25) |
+| s5-6 | Notebook 07 — Explanation fidelity test | COMPLETE (PR #26) |
+| s5-7 | Scientific gate: hard invariant statically verified | COMPLETE (PR #25) |
+
+## Sprint 6 — Stage E: Closed-Loop Refinement
+
+| ID | Task | Status |
+|----|------|--------|
+| s6-1 | Bayesian parameter update | COMPLETE (PR #35) |
+| s6-2 | PWL tightening/relaxing based on SAT/UNSAT vs observed | COMPLETE (PR #36) |
+| s6-3 | Digital Twin state comparison | COMPLETE (PR #37) |
+| s6-4 | Notebook 08 — Closed-loop convergence | COMPLETE (PR #38); Kalman linearization fix in PR #40 |
+| s6-5 | Scientific gate: loop is causal | COMPLETE (PR #39) |
+
+## Sprint 7 — React Mission-Control UI
+
+Not yet started. `frontend/` currently holds the Sprint-0 scaffold only:
+App.tsx with a `/health` fetch, App.test.tsx with three passing tests,
+React 19.2 / Vite 8.3 / TypeScript 6.0 / Vitest 4, Vite proxy `/api`
+→ `http://127.0.0.1:8000`.
+
+## Sprint 8+ — not started
+
+See the Master Engineering Roadmap (Rev. 2). Notable items:
+
+- Sprint 8 introduces MinIO (per D3), tenant isolation via PostgreSQL RLS,
+  Stripe billing.
+- Sprint 9 builds the master test harness and
+  `notebooks/10_clear_d_end_to_end.ipynb`. The composition that notebook
+  was scheduled to produce is already in place as of PR #43; the notebook
+  will wrap `run_clear_d_loop` with the full physics pipeline and produce
+  publication-quality results.
+
+## Documentation drift resolved
+
+- `docs/HANDOFF.md` written from the verified state at commit `e50529a`.
+- `CHANGELOG.md` updated through Sprint 7.
+- This file's prior "Sprints 4–12 not started" statement is corrected above.
+
+## Outstanding
+
+- **P5** — Han et al. citation in `physics/benchmarks.py` lacks DOI or
+  volume; paper existence unverified. Requires a browser check.
+- **s3-8** — tracker says PENDING; `test_fuzz_soundness.py` exists and
+  tests the sound direction (UNSAT definitive) rather than the literal
+  Rev. 2 wording. Status decision needed.
+- **P14** — `UAV_ASSUMED_TRANSMIT_W = 20.0` and
+  `NODE_DEFAULT_DEMAND_W = 15.0` in the new encoder are `[ESTIMATED]`.
+- **P15** — `Hybrid_Link` emits both laser-MPE and RF-MPE constraints
+  simultaneously (modelling simplification).
+- **P16** — `generator.encode_architecture_to_z3` placeholder superseded
+  but not removed.
+- **P17** — Notebook 06 could be upgraded to use the real encoder.
+- **P20** — upstream anyio `BlockingPortal` DeprecationWarning.
