@@ -121,6 +121,36 @@ class HierarchicalResult:
         return chr(10).join(lines)
 
 
+def _rollup_status(cluster_statuses: tuple[str, ...], flow_status: str) -> str:
+    """Combine per-cluster and inter-cluster flow statuses into one.
+
+    Rules, in priority order:
+
+    1. ``unsat`` wins. If any cluster or the flow subproblem is
+       UNSAT, the overall system is UNSAT. This is the definitive
+       direction: an empty cluster region or an infeasible flow
+       cannot be repaired by another subproblem.
+    2. ``unknown`` propagates. If no subproblem is UNSAT but at least
+       one is UNKNOWN, the overall status is UNKNOWN. The solver could
+       not decide; the correct verdict is "undetermined", not
+       "infeasible".
+    3. Otherwise the system is SAT.
+
+    The distinction between rules 1 and 2 is load-bearing. Conflating
+    UNKNOWN with UNSAT fabricates a negative result: a caller that
+    consumes the UNSAT verdict to mark features conflict-prone would
+    populate the ConflictProneTable with features that are not
+    actually in conflict. This helper is a pure function so every
+    combination of subproblem statuses is testable without needing
+    Z3 to actually return UNKNOWN.
+    """
+    if "unsat" in cluster_statuses or flow_status == "unsat":
+        return "unsat"
+    if "unknown" in cluster_statuses or flow_status == "unknown":
+        return "unknown"
+    return "sat"
+
+
 class HierarchicalModel:
     """Partition-based hierarchical SMT model.
 
@@ -250,7 +280,7 @@ class HierarchicalModel:
         """
         cluster_results: list[ClusterResult] = []
         unsat_clusters: list[str] = []
-        any_unsat = False
+        cluster_statuses: list[str] = []
 
         for cluster in self._clusters.values():
             entries = [e for e in self._intra if e.variables <= cluster.variables]
@@ -264,13 +294,14 @@ class HierarchicalModel:
                         model=self._extract_model(solver, var_refs),
                     )
                 )
+                cluster_statuses.append("sat")
             elif status == z3.unsat:
                 cluster_results.append(ClusterResult(cluster_name=cluster.name, status="unsat"))
                 unsat_clusters.append(cluster.name)
-                any_unsat = True
+                cluster_statuses.append("unsat")
             else:
                 cluster_results.append(ClusterResult(cluster_name=cluster.name, status="unknown"))
-                any_unsat = True
+                cluster_statuses.append("unknown")
 
         flow_solver, _ = self._build_solver(self._inter)
         flow_status_z3 = flow_solver.check()
@@ -281,10 +312,7 @@ class HierarchicalModel:
         else:
             flow_status = "unknown"
 
-        if any_unsat or flow_status != "sat":
-            overall = "unsat" if (any_unsat or flow_status == "unsat") else "unknown"
-        else:
-            overall = "sat"
+        overall = _rollup_status(tuple(cluster_statuses), flow_status)
 
         reports = self._tracker.reports()
         epsilons = tuple((r.family_name, r.epsilon) for r in reports)
