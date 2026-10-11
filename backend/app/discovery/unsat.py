@@ -19,7 +19,13 @@ A named-constraint wrapper around z3.Solver that:
   3. On UNSAT, extracts the Z3 unsat core (the subset of the
      tracked names that Z3 identifies as sufficient for
      unsatisfiability).
-  4. Provides two independent minimality verifications:
+  4. Minimizes that core by default. Z3's own core.minimize flag is
+     set, and a deletion-based pass re-solves the system once per core
+     member to guarantee the result is minimal: no proper subset is
+     UNSAT. Set minimize_core=False to obtain Z3's raw best-effort
+     core without the deletion pass.
+  5. Provides two independent minimality verifications for callers
+     who want to double-check a core:
      - verify_core_minimality_removal: the operational definition.
        Remove each single clause from the core and check that the
        remainder is SAT. Equivalent to "no proper subset is UNSAT".
@@ -136,9 +142,17 @@ class UnsatCoreExtractor:
     returns names rather than indices.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, minimize_core: bool = True) -> None:
         self._solver = z3.Solver()
         self._solver.set(unsat_core=True)
+        # Ask Z3 to minimize the core it returns. Z3 documents this as
+        # best-effort: "By default solvers do not return minimal
+        # cores" (Programming Z3, "Cores and Satisfying Subsets"),
+        # and the flag may not take effect when the solver is built
+        # from a tactic sequence. The deletion-based pass in
+        # _deletion_minimize is the guarantee and runs regardless.
+        self._solver.set("core.minimize", True)
+        self._minimize_core = minimize_core
         self._constraints: list[NamedConstraint] = []
         self._seen: set[str] = set()
 
@@ -161,9 +175,42 @@ class UnsatCoreExtractor:
         self._constraints.append(constraint)
         self._seen.add(constraint.family_name)
 
+    def _deletion_minimize(self, names: tuple[str, ...]) -> tuple[str, ...]:
+        """Deletion-based core minimization.
+
+        Iteratively attempts to remove each constraint from the core
+        and re-solves. A constraint is removed only if the remainder
+        is still UNSAT. The result is guaranteed minimal: no proper
+        subset is UNSAT.
+
+        Cost is one SMT call per constraint in the input core. For the
+        small cores this project produces (typically 2-6 families) the
+        cost is negligible.
+
+        Z3's own core.minimize flag is best-effort; this method is the
+        guarantee, not the flag.
+        """
+        family_map = {c.family_name: c for c in self._constraints}
+        result = list(names)
+        for name in list(names):
+            candidate = [n for n in result if n != name]
+            if not candidate:
+                continue
+            solver = z3.Solver()
+            for n in candidate:
+                solver.add(family_map[n].expression)
+            if solver.check() == z3.unsat:
+                result = candidate
+        return tuple(sorted(result))
+
     def check(self) -> CoreResult:
         """Solve the conjunction and return the status and (if UNSAT)
-        the core as a sorted tuple of family names."""
+        the core as a sorted tuple of family names.
+
+        When minimize_core is True (the default), the raw core from
+        Z3 is passed through a deletion-based minimizer so the returned
+        core is guaranteed minimal. When False, the raw Z3 core is
+        returned as-is (fast, best-effort only)."""
         status = self._solver.check()
         if status == z3.sat:
             return CoreResult(
@@ -174,6 +221,8 @@ class UnsatCoreExtractor:
         if status == z3.unsat:
             core = self._solver.unsat_core()
             names = tuple(sorted(str(c) for c in core))
+            if self._minimize_core and len(names) > 1:
+                names = self._deletion_minimize(names)
             return CoreResult(
                 status="unsat",
                 core_names=names,
