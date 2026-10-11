@@ -1,12 +1,12 @@
 """Real Stage B encoder: architecture -> FeatureConstraint tuple.
 
 Unlike the placeholder ``encode_architecture_to_z3`` in
-``app.discovery.generator``, this module emits constraints that
-reference actual physics: ANSI Z136.1 laser MPE, FCC Part 1.1310 RF
-power-density limit, and linear flow-balance constraints over Z3 real
-variables. Each emitted constraint is tagged with the grammar features
-of the nodes and links that generated it, so the unsat core can be
-attributed back to specific grammar elements via
+``app.discovery.generator`` (now marked SUPERSEDED there), this module
+emits constraints that reference actual physics: ANSI Z136.1 laser MPE,
+FCC Part 1.1310 RF power-density limit, and linear flow-balance
+constraints over Z3 real variables. Each emitted constraint is tagged
+with the grammar features of the nodes and links that generated it, so
+the unsat core can be attributed back to specific grammar elements via
 ``app.discovery.attribution``.
 
 Constraint families emitted
@@ -20,7 +20,7 @@ Constraint families emitted
    - ``<source_id>_supply``: sum of outgoing flows <= source supply_w.
 
 3. Per-UAV demand floor:
-   - ``<uav_id>_demand``: sum of incoming flows >= NODE_DEFAULT_DEMAND_W.
+   - ``<uav_id>_demand``: sum of incoming flows >= config.node_default_demand_w.
    - If the UAV has no incoming links, emits ``<uav_id>_demand_unmet``
      as a constant FALSE constraint, which is a minimal UNSAT core of
      size 1 attributable to that UAV's features.
@@ -28,20 +28,37 @@ Constraint families emitted
 4. Per-link regulatory MPE:
    - ``<link_id>_laser_mpe`` for Laser_Link.
    - ``<link_id>_rf_mpe`` for Microwave_Link.
-   - Both families for Hybrid_Link.
-   Intensity is P / (pi * aperture^2) W/m^2. MPE is from
-   app.verification.regulatory. A laser link whose intensity exceeds
-   MPE is UNSAT with a singleton core naming that link.
+   - BOTH ``<link_id>_hybrid_laser_mpe`` and ``<link_id>_hybrid_rf_mpe``
+     for Hybrid_Link. This is deliberately conservative: a hybrid link
+     may switch modality at any time, so it must satisfy both safety
+     limits simultaneously. A hybrid link that is laser-safe but
+     RF-unsafe is UNSAT, with a minimal core containing only the
+     violated family.
 
 5. UAV-presence structural constraint:
    - ``requires_uav``: FALSE if the architecture contains no UAV node.
-     Prevents the discovery loop from converging on source-only
-     degenerate architectures.
+
+Configuration
+-------------
+
+Two encoder constants are engineering estimates and are exposed through
+``EncoderConfig`` so that parameter studies can vary them without
+editing source:
+
+    uav_assumed_transmit_w  [ESTIMATED] fallback transmit power for
+                            a link whose source node has no power_w
+    node_default_demand_w   [ESTIMATED] demand floor applied to every
+                            UAV node
+
+Both are marked ``[ESTIMATED]`` in ``EncoderConfig``'s docstring. They
+are not sourced. Any commercial or publication use that depends on
+their specific values must source them first.
 """
 
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 
 import z3
 
@@ -62,14 +79,44 @@ from app.verification.regulatory import (
     laser_mpe,
 )
 
-UAV_ASSUMED_TRANSMIT_W = 20.0
-"""Assumed transmit power for a link whose source is a UAV. UAV node
-kinds do not carry a ``power_w`` parameter in the current generator;
-20 W is a first-order estimate for a small airborne transmitter."""
 
-NODE_DEFAULT_DEMAND_W = 15.0
-"""Assumed minimum power demand of each UAV node per unit time. Used
-as the demand floor in the flow-balance constraints."""
+@dataclass(frozen=True)
+class EncoderConfig:
+    """Configuration for ``encode_architecture``.
+
+    Both fields are engineering estimates marked ``[ESTIMATED]``; they
+    are not measured values and are not sourced from a specific
+    published reference. They exist as tunable defaults so that
+    parameter studies can vary them by construction rather than by
+    editing source.
+
+    Attributes:
+        uav_assumed_transmit_w: Transmit power assigned to a link whose
+            source is a UAV. [ESTIMATED] UAV node kinds in the current
+            generator do not carry a ``power_w`` parameter, so this
+            value is used as a fallback. 20 W is a first-order estimate
+            for a small airborne transmitter.
+        node_default_demand_w: Minimum power demand of each UAV node
+            per unit time, used as the demand floor in flow-balance
+            constraints. [ESTIMATED] 15 W is a first-order estimate.
+    """
+
+    uav_assumed_transmit_w: float = 20.0
+    node_default_demand_w: float = 15.0
+
+    def __post_init__(self) -> None:
+        if self.uav_assumed_transmit_w <= 0.0:
+            raise ValueError(
+                f"uav_assumed_transmit_w must be > 0; got {self.uav_assumed_transmit_w}"
+            )
+        if self.node_default_demand_w <= 0.0:
+            raise ValueError(f"node_default_demand_w must be > 0; got {self.node_default_demand_w}")
+
+
+DEFAULT_ENCODER_CONFIG = EncoderConfig()
+"""Default configuration. Both values are [ESTIMATED]; callers running
+parameter studies should construct their own EncoderConfig."""
+
 
 _LASER_MPE_BOUNDARY_NM = 792.0
 """Midpoint between the two MPE table wavelengths (520 nm and 1064 nm).
@@ -81,16 +128,20 @@ def _nearest_laser_wavelength_nm(wavelength_nm: float) -> float:
     return 520.0 if wavelength_nm < _LASER_MPE_BOUNDARY_NM else 1064.0
 
 
-def _transmit_power_w(arch: Architecture, link: LinkInstance) -> float:
+def _transmit_power_w(
+    arch: Architecture,
+    link: LinkInstance,
+    config: EncoderConfig,
+) -> float:
     """Return the transmit power assigned to a link.
 
     Uses the source node's ``power_w`` when present; falls back to
-    ``UAV_ASSUMED_TRANSMIT_W`` otherwise.
+    ``config.uav_assumed_transmit_w`` otherwise.
     """
     source = next((n for n in arch.nodes if n.node_id == link.source_id), None)
     if source is not None and "power_w" in source.params:
         return float(source.params["power_w"])
-    return UAV_ASSUMED_TRANSMIT_W
+    return config.uav_assumed_transmit_w
 
 
 def _peak_intensity_w_per_m2(power_w: float, aperture_m: float) -> float:
@@ -120,10 +171,16 @@ def _z3_sum(terms: list[z3.ArithRef]) -> z3.ArithRef:
 def _regulatory_constraints(
     arch: Architecture,
     link: LinkInstance,
+    config: EncoderConfig,
 ) -> list[FeatureConstraint]:
-    """Return the MPE constraint(s) for one link."""
+    """Return the MPE constraint(s) for one link.
+
+    For a Hybrid_Link both a laser and an RF MPE constraint are
+    emitted. This is conservative: a hybrid link may switch modality
+    at any time, so both limits must hold simultaneously.
+    """
     out: list[FeatureConstraint] = []
-    p_tx = _transmit_power_w(arch, link)
+    p_tx = _transmit_power_w(arch, link, config)
     aperture = float(link.params["aperture_m"])
     intensity = _peak_intensity_w_per_m2(p_tx, aperture)
     features = features_of_link(link)
@@ -168,14 +225,23 @@ def _regulatory_constraints(
     return out
 
 
-def encode_architecture(arch: Architecture) -> tuple[FeatureConstraint, ...]:
+def encode_architecture(
+    arch: Architecture,
+    config: EncoderConfig | None = None,
+) -> tuple[FeatureConstraint, ...]:
     """Encode an architecture as a tuple of real Stage B constraints.
 
     Returns a tuple of ``FeatureConstraint`` objects. Asserting them
     all into an ``UnsatCoreExtractor`` and calling ``check()`` yields
     SAT or UNSAT. On UNSAT, the returned core names map to grammar
     features via ``app.discovery.attribution.attribute_core``.
+
+    Args:
+        arch: The architecture to encode.
+        config: Optional encoder configuration. Defaults to
+            ``DEFAULT_ENCODER_CONFIG``.
     """
+    cfg = config if config is not None else DEFAULT_ENCODER_CONFIG
     out: list[FeatureConstraint] = []
 
     uav_kinds = (Terminal.UAV_ENERGY, Terminal.UAV_COMPUTE)
@@ -213,13 +279,13 @@ def encode_architecture(arch: Architecture) -> tuple[FeatureConstraint, ...]:
                 features=features,
             )
         )
-        out.extend(_regulatory_constraints(arch, link))
+        out.extend(_regulatory_constraints(arch, link, cfg))
 
     for source in arch.nodes:
         outgoing = [ln for ln in arch.links if ln.source_id == source.node_id]
         if not outgoing:
             continue
-        supply = float(source.params.get("power_w", UAV_ASSUMED_TRANSMIT_W))
+        supply = float(source.params.get("power_w", cfg.uav_assumed_transmit_w))
         flows = [z3.Real(f"{ln.link_id}_flow") for ln in outgoing]
         total = _z3_sum(flows)
         out.append(
@@ -259,7 +325,7 @@ def encode_architecture(arch: Architecture) -> tuple[FeatureConstraint, ...]:
         out.append(
             FeatureConstraint(
                 family_name=f"{node.node_id}_demand",
-                expression=total >= z3.RealVal(repr(NODE_DEFAULT_DEMAND_W)),
+                expression=total >= z3.RealVal(repr(cfg.node_default_demand_w)),
                 features=node_features,
             )
         )
