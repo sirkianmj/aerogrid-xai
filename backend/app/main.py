@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.control.api import router as control_router
+from app.physics.api import router as physics_router
 
 app = FastAPI(
     title="AeroGrid-XAI API",
@@ -24,5 +25,6 @@ async def health() -> dict[str, str]:
 
 
 app.include_router(control_router)
+app.include_router(physics_router)
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
