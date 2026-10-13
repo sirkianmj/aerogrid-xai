@@ -152,6 +152,14 @@ distinction in the type system.
     receiver_te_hot_temperature_k: float = 320.0 [ESTIMATED]
     receiver_te_cold_temperature_k: float = 298.15 [ESTIMATED]
     battery_efficiency: float = 0.92    [ESTIMATED] Li-ion typical
+    transmitter_waist_radius_m: float = 0.02 [ESTIMATED] typical laser/RF
+                                       transmitter waist; the link's own
+                                       aperture_m is the receiver aperture
+    rf_transmittance: float = 0.98      [ESTIMATED] scalar microwave-link
+                                       transmittance; a full RF atmospheric
+                                       model is deferred (physics/atmosphere
+                                       is a laser-wavelength model, valid
+                                       for 400-1550 nm)
 
 All `[ESTIMATED]` fields carry the standard warning: replace with
 sourced values before any publication or commercial use. Every field
@@ -254,6 +262,26 @@ rectenna heating affects efficiency, which affects power delivered,
 which affects heating), a fixed-point solve would be required. The
 current model has no such feedback and does not need one.
 
+**Override for the laser receiver.** During implementation the
+`receiver.eta_total` model at the reference temperatures was found to
+return approximately 0.15 percent efficiency (the PLC contribution is
+`eta_plc` ~ 15 percent, the TE contribution is ~ 1 percent at a
+20 K hot-cold differential; their product is ~ 0.15 percent). This is
+far below the 38.49 percent champion figure the specification quotes
+for the Han et al. receiver (Section 6), because the tandem model is
+an acknowledged first-order lumped approximation (see `receiver.py`
+and spec Section 33.2).
+
+Rather than resolve this discrepancy in the encoder (which would
+require re-parameterizing the tandem model, a separate task),
+`SceneConfig` gains a `receiver_conversion_efficiency: float | None`
+field. When `None` (the default) the physics model is used, and the
+resulting low efficiency is disclosed. When a float is given, it
+overrides the model for laser chains. Callers running parameter
+studies, or using a datasheet value for a specific receiver, set it
+explicitly. The default is `None` so that no hidden number is
+substituted for the model.
+
 ### Decision 5 — Replace flow-cap, or add alongside?
 
 **Question.** The current `_flow_cap` uses `LINK_BASE_CAPACITY[kind] *
@@ -329,6 +357,59 @@ violate the physical chain or line of sight. The measurement must be
 re-run and re-reported. This is expected and is the correct scientific
 response — the mechanism is unchanged, the population it operates on
 is.
+
+### Decision 7 — The atmosphere is a finite-thickness shell
+
+**Question.** The atmospheric transmittance model is Beer-Lambert over
+a path length. For a terrestrial link of a few km, the entire path is
+in atmosphere and the model applies directly. For a satellite link of
+hundreds of kilometres, only a thin shell near the ground contains air.
+What is the correct treatment?
+
+**Options.**
+
+- (a) Apply the atmospheric model over the full geometric path length.
+- (b) Apply it over the length of the segment that lies inside a shell
+  of thickness `H_ATMOSPHERE_M` near the surface; the rest of the path
+  is vacuum, transmittance 1.
+
+**Chosen: (b).**
+
+**Reasoning.**
+
+Option (a) is what the initial implementation did, and it is
+physically wrong. The extinction coefficient returned by
+physics/atmosphere is a ground-level value for the aerosol and
+molecular terms. Over a 500 km path the Beer-Lambert exponent
+`-alpha * L` underflows IEEE 754 double precision to exactly 0.0,
+declaring the link unpowerable by construction for reasons unrelated
+to the actual physics. A LEO satellite at 500 km altitude is in
+vacuum; the beam crosses approximately 20 km of atmosphere near the
+ground.
+
+**Shell thickness.** `H_ATMOSPHERE_M = 20_000.0` metres. [ESTIMATED]
+The atmosphere has no sharp boundary; 20 km is a first-order choice
+covering the troposphere plus the low stratosphere where most
+extinction occurs. A more accurate treatment would integrate a
+density-dependent extinction profile against altitude (the exponential
+scale height of water vapour is about 2 km, of aerosols about 1 km).
+The single-slab model over-estimates slightly, which is the safe
+direction for a physics-envelope constraint.
+
+**Integration.** The atmospheric path length is computed
+geometrically: find the point along the segment at which the radial
+distance from the Earth's centre first exceeds `R + H_ATMOSPHERE_M`,
+and use the distance from the source to that point. When both
+endpoints are inside the shell, the full range is used. When both are
+outside, no atmospheric loss is applied (transmittance 1).
+
+**RF links.** RF (2.45 / 5.8 GHz) propagation is not modelled by
+physics/atmosphere (which is a 400-1550 nm laser model). RF links use
+the scalar `rf_transmittance` field of `SceneConfig`, marked
+[ESTIMATED]. The same shell reasoning applies physically, but at
+these frequencies atmospheric transmittance is essentially unity over
+the whole path in clear air, so the scalar is a placeholder for a
+fuller RF atmospheric model that is deferred.
 
 ## 3. What this design does NOT change
 
