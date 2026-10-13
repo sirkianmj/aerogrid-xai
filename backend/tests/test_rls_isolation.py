@@ -219,3 +219,20 @@ def test_cascade_delete_on_tenant_removes_missions(
     assert rows == []
     # Tenant B's missions must remain; confirm via tenant-scoped session.
     assert len(_all_mission_ids(b)) == 1
+
+
+def test_app_role_cannot_read_tenants(
+    two_tenants: tuple[uuid.UUID, uuid.UUID],
+) -> None:
+    """The tenants table is not tenant-scoped and has no RLS policy.
+
+    Isolation of tenants relies on the fact that no tenant-scoped code
+    path queries it. This test makes that property explicit: a session
+    that has switched to aerogrid_app cannot read from tenants at all,
+    so a future code path that accidentally queries it under a tenant
+    session fails loudly with InsufficientPrivilege instead of silently
+    returning every tenant row. See docs/ISOLATION_AUDIT.md finding F-1.
+    """
+    a, _ = two_tenants
+    with pytest.raises(DatabaseError), tenant_session(a) as s:
+        s.execute(text("SELECT id FROM tenants")).all()
