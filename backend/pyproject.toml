@@ -23,6 +23,15 @@ warn_redundant_casts = true
 module = ["scipy.*", "z3.*"]
 ignore_missing_imports = true
 
+# tests/master_test.py lives outside this package (backend/); mypy_path
+# is "." so it cannot resolve the module. The harness is validated by
+# its own unit tests (backend/tests/test_master_test_harness.py) and by
+# the CI master-test job; static typing of the module import is not
+# part of the gate.
+[[tool.mypy.overrides]]
+module = ["master_test"]
+ignore_missing_imports = true
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"
