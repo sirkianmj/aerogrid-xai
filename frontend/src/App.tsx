@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { EpistemicBadge } from "./components/EpistemicBadge/EpistemicBadge"
 import { ALL_TAGS, EPISTEMIC_TAGS } from "./components/EpistemicBadge/epistemic"
 import { XAITrace } from "./features/XAITrace/XAITrace"
+import { Globe } from "./features/Globe/Globe"
 
 type HealthState =
   | { status: "loading" }
@@ -47,6 +48,8 @@ function App() {
           <p style={{ color: "var(--color-accent-amber)" }}>Error: {health.message}</p>
         )}
       </section>
+
+      <Globe />
 
       <XAITrace />
 
