@@ -5,7 +5,46 @@ This project adheres to Semantic Versioning.
 
 ## [Unreleased]
 
-### Added (Sprint 10 - PR #47)
+### Added (Phase 2 - PR #57, previously labelled Sprint 10)
+- Generator physics-aware link kind sampling. Link kinds are sampled
+  from the set that is physically viable at the final placed geometry,
+  not uniformly over all three kinds. Algorithm order fixed: kinds,
+  then base positions, then topology without link kinds, then UAV
+  placement inside anchor caps, then link kind selection. Measured
+  effect on the 30-seed characterization: 0/30 SAT before, 20/30 SAT
+  after.
+- `SATELLITE_GEO` removed from the generator's source-kind pool.
+  Documented: a 2 cm beam at 35,800 km spreads to a 600 m radius; a
+  metre-scale receiver captures 1e-4 of the beam, five orders of
+  magnitude below viability. Terminal remains in the grammar.
+- `visible_cap_fraction: float = 0.10` on `GeneratorConfig`. Places
+  UAVs close enough to their anchor source that the physical chain
+  closes at the placement geometry.
+
+### Added (Phase 2 - PR #56)
+- Generator LOS-compliant placement: source-kind nodes uniformly on
+  the sphere, UAVs inside their anchor's visible cap. `require_line_of_sight`
+  flag enables the historical wide-placement ablation.
+- Pole-corrected latitude sampling: `sin(lat)` uniform instead of
+  `lat` uniform. Measured E[|lat|] now matches 32.70 degrees.
+- `LEO` power range corrected from (50, 1000) to (1000, 20000) W.
+- Receiver aperture ranges for all three link kinds corrected from
+  centimetres to metres.
+- `physics/geometry.py` extracted; `sample_direction_in_visible_cap`
+  and `visible_cap_half_angle_rad` available to discovery modules.
+
+### Added (Phase 2 - PRs #47 through #54)
+- `physics/atmosphere.py`: Kruse-Kim extinction with Beer-Lambert
+  transmittance and 32 tests.
+- `physics/beam.py`: Gaussian beam geometry and pointing loss.
+- `physics/rectenna.py`: peaked RF-to-DC efficiency with McSpadden
+  peak values.
+- `build_physical_link_budget`: cascaded link budget from geometry.
+- `tier2.py` rewire to `physics/atmosphere`.
+- `encode_architecture_with_physics`: additive physics extension.
+- `docs/ENCODER_PHYSICS_INTEGRATION.md`: seven design decisions.
+
+### Added (Phase 2 - PR #47, previously labelled Sprint 10)
 - `physics/atmosphere.py`: atmospheric extinction and transmittance.
   Kruse (1962) aerosol model with Kim et al. (2001) low-visibility
   refinement; Beer-Lambert transmittance. Coefficients carry explicit
