@@ -57,12 +57,23 @@ EncoderFn = Callable[[Architecture], tuple[FeatureConstraint, ...]]
 
 @dataclass(frozen=True)
 class ClearDLoopConfig:
-    """Configuration for one CLEAR-D loop run."""
+    """Configuration for one CLEAR-D loop run.
+
+    Attributes:
+        use_conflict_directed: If True (the default), infeasible
+            individuals are mutated with conflict-directed mutation
+            weighted by the accumulated ConflictProneTable. If False,
+            they are mutated with uniform random mutation, giving a
+            proper control arm for the H9 hypothesis (closed-loop
+            CLEAR-D discovers feasible architectures at a higher rate
+            than random search at equal budget).
+    """
 
     population_size: int = 20
     n_generations: int = 20
     mutation_config: MutationConfig = field(default_factory=MutationConfig)
     nsga2_config: NSGA2Config = field(default_factory=NSGA2Config)
+    use_conflict_directed: bool = True
 
     def __post_init__(self) -> None:
         if self.population_size < 2:
@@ -98,22 +109,67 @@ def _classify(
     population: list[Individual],
     encoder: EncoderFn,
     table: ConflictProneTable,
-) -> tuple[list[Individual], list[Individual]]:
+) -> tuple[list[Individual], list[Individual], set[int]]:
     """Encode, check, and attribute every individual.
 
-    Returns (feasible, infeasible). The table is updated in place for
-    every UNSAT result.
+    Returns (feasible, infeasible, feasible_ids). The table is updated
+    in place for every UNSAT result. ``feasible_ids`` contains the
+    ``id()`` of every individual in ``feasible`` so that a caller can
+    test membership without object equality on Architecture.
     """
     feasible: list[Individual] = []
     infeasible: list[Individual] = []
+    feasible_ids: set[int] = set()
     for ind in population:
         constraints = encoder(ind.architecture)
         attribution = attribute_and_mark(constraints, table)
         if attribution.status == "sat":
             feasible.append(ind)
+            feasible_ids.add(id(ind))
         else:
             infeasible.append(ind)
-    return feasible, infeasible
+    return feasible, infeasible, feasible_ids
+
+
+def _constrained_select(
+    population: list[Individual],
+    feasible_ids: set[int],
+    n: int,
+) -> list[Individual]:
+    """NSGA-II selection with the constrained-domination principle.
+
+    Feasible individuals always dominate infeasible ones, regardless
+    of objective values. This prevents the selection step from
+    discarding a feasible architecture in favour of an infeasible
+    architecture with a more attractive objective vector.
+
+    Within the feasible subset, ordinary Pareto dominance (via
+    nsga2_select) orders the individuals. Within the infeasible
+    subset, the same ordering is applied; infeasible individuals are
+    used only to fill slots the feasible subset does not occupy.
+
+    Args:
+        population: Every candidate individual.
+        feasible_ids: ``id()`` values of the individuals classified
+            as feasible. ``id`` is used rather than the Individual
+            object itself because Individual is a frozen dataclass
+            with a heavy equality check on Architecture.
+        n: Number of individuals to return.
+
+    Returns:
+        A list of at most n individuals, feasible ones first.
+    """
+    feasible = [ind for ind in population if id(ind) in feasible_ids]
+    infeasible = [ind for ind in population if id(ind) not in feasible_ids]
+
+    if len(feasible) >= n:
+        return nsga2_select(feasible, n)
+
+    selected = list(feasible)
+    remaining = n - len(selected)
+    if remaining > 0 and infeasible:
+        selected.extend(nsga2_select(infeasible, remaining))
+    return selected
 
 
 def run_clear_d_loop(
@@ -127,6 +183,13 @@ def run_clear_d_loop(
     hypervolume_samples: int = 2048,
 ) -> ClearDLoopResult:
     """Run the CLEAR-D closed loop.
+
+    Classification discipline: every individual is classified exactly
+    once, either as part of the initial population, or when generated
+    as offspring. Feasibility of the surviving population is derived
+    from the feasibility of the combined parent-and-offspring pool,
+    which is already known from those two classification passes. The
+    loop does not re-classify individuals that survive selection.
 
     Args:
         initial_population: Seed architectures from the generator.
@@ -161,9 +224,12 @@ def run_clear_d_loop(
     hypervolume_history: list[float] = []
     ref = reference_point
 
-    for gen in range(cfg.n_generations):
-        feasible, infeasible = _classify(population, encoder, table)
+    # Initial classification of the seed population. This is the only
+    # classification of these individuals; later classifications are
+    # reserved for offspring.
+    feasible, infeasible, feasible_ids = _classify(population, encoder, table)
 
+    for gen in range(cfg.n_generations):
         birth_gens = [ind.generation for ind in feasible]
         mean_birth = sum(birth_gens) / len(birth_gens) if birth_gens else float("nan")
         stats.append(
@@ -201,7 +267,12 @@ def run_clear_d_loop(
                 )
             )
         for ind in infeasible:
-            child_arch = mutate_conflict_directed(ind.architecture, table, rng, cfg.mutation_config)
+            if cfg.use_conflict_directed:
+                child_arch = mutate_conflict_directed(
+                    ind.architecture, table, rng, cfg.mutation_config
+                )
+            else:
+                child_arch = mutate_random(ind.architecture, rng, cfg.mutation_config)
             offspring.append(
                 Individual(
                     architecture=child_arch,
@@ -210,15 +281,28 @@ def run_clear_d_loop(
                 )
             )
 
-        combined = population + offspring
-        population = nsga2_select(combined, cfg.population_size)
+        # Classify offspring exactly once. This is the only pass that
+        # updates the ConflictProneTable for offspring contributions.
+        _, _, offspring_feasible_ids = _classify(offspring, encoder, table)
 
-    final_feasible, final_infeasible = _classify(population, encoder, table)
+        # Constrained selection over parents plus offspring. Feasibility
+        # for the combined pool is the union of the two known sets, so
+        # no re-classification is needed.
+        combined = population + offspring
+        combined_feasible_ids = feasible_ids | offspring_feasible_ids
+        selected = _constrained_select(combined, combined_feasible_ids, cfg.population_size)
+
+        # Derive the surviving population's feasibility from the known
+        # combined set, not from a fresh classification.
+        feasible = [ind for ind in selected if id(ind) in combined_feasible_ids]
+        infeasible = [ind for ind in selected if id(ind) not in combined_feasible_ids]
+        feasible_ids = {id(ind) for ind in feasible}
+        population = selected
 
     return ClearDLoopResult(
         final_population=tuple(population),
-        feasible_architectures=tuple(ind.architecture for ind in final_feasible),
-        infeasible_architectures=tuple(ind.architecture for ind in final_infeasible),
+        feasible_architectures=tuple(ind.architecture for ind in feasible),
+        infeasible_architectures=tuple(ind.architecture for ind in infeasible),
         conflict_prone_table=table,
         generation_stats=tuple(stats),
         hypervolume_history=tuple(hypervolume_history),

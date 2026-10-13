@@ -84,11 +84,11 @@ from app.verification.regulatory import (
 class EncoderConfig:
     """Configuration for ``encode_architecture``.
 
-    Both fields are engineering estimates marked ``[ESTIMATED]``; they
-    are not measured values and are not sourced from a specific
-    published reference. They exist as tunable defaults so that
-    parameter studies can vary them by construction rather than by
-    editing source.
+    uav_assumed_transmit_w and node_default_demand_w are engineering
+    estimates marked ``[ESTIMATED]``; they are not measured values and
+    are not sourced from a specific published reference. They exist as
+    tunable defaults so that parameter studies can vary them by
+    construction rather than by editing source.
 
     Attributes:
         uav_assumed_transmit_w: Transmit power assigned to a link whose
@@ -99,10 +99,36 @@ class EncoderConfig:
         node_default_demand_w: Minimum power demand of each UAV node
             per unit time, used as the demand floor in flow-balance
             constraints. [ESTIMATED] 15 W is a first-order estimate.
+        human_accessible_kinds: Node kinds treated as human-accessible
+            for MPE purposes. MPE constraints are emitted only for
+            links whose target node kind is in this set. Default is
+            {GROUND_STATION}: in the current node-kind set that is the
+            only location where an unshielded person may be present
+            at the beam target.
+
+            IMPORTANT — this is a first-order simplification, not a
+            complete safety model. A ground-launched or satellite-
+            launched beam passes through human-accessible altitude near
+            the transmitter and near the target; the air column above
+            both endpoints is not human-accessible, but the terminal
+            segments are. A complete model would additionally constrain
+            the beam path where it crosses regions in which people may
+            be present. That extension is deferred; see Section 16 of
+            the specification. The current model treats only the
+            target node kind as the discriminator.
+
+            WARNING — configuring this set too narrowly (omitting
+            GROUND_STATION, for example) causes the encoder to declare
+            unsafe architectures SAT. UNSAT is the definitive verdict
+            in Stage B; a false SAT is a soundness failure. Every
+            caller that overrides this field must justify the override
+            and, where applicable, add an MPE constraint family for the
+            omitted case.
     """
 
     uav_assumed_transmit_w: float = 20.0
     node_default_demand_w: float = 15.0
+    human_accessible_kinds: frozenset[Terminal] = frozenset({Terminal.GROUND_STATION})
 
     def __post_init__(self) -> None:
         if self.uav_assumed_transmit_w <= 0.0:
@@ -111,6 +137,8 @@ class EncoderConfig:
             )
         if self.node_default_demand_w <= 0.0:
             raise ValueError(f"node_default_demand_w must be > 0; got {self.node_default_demand_w}")
+        if not self.human_accessible_kinds:
+            raise ValueError("human_accessible_kinds must be non-empty")
 
 
 DEFAULT_ENCODER_CONFIG = EncoderConfig()
@@ -175,10 +203,26 @@ def _regulatory_constraints(
 ) -> list[FeatureConstraint]:
     """Return the MPE constraint(s) for one link.
 
-    For a Hybrid_Link both a laser and an RF MPE constraint are
-    emitted. This is conservative: a hybrid link may switch modality
-    at any time, so both limits must hold simultaneously.
+    MPE is emitted only when the link's target node kind is in
+    ``config.human_accessible_kinds``. MPE governs human exposure;
+    a beam terminating on a UAV in flight or a satellite is not
+    subject to MPE at the target.
+
+    This is a first-order simplification. It does not model beam-path
+    exposure near the transmitter or near the target, where the beam
+    passes through airspace that may contain people. That extension
+    is deferred (see specification Section 16 and the note on
+    ``EncoderConfig.human_accessible_kinds``).
+
+    For a Hybrid_Link to a human-accessible target, both a laser and
+    an RF MPE constraint are emitted. This is conservative: a hybrid
+    link may switch modality at any time, so both limits must hold
+    simultaneously.
     """
+    target = next((n for n in arch.nodes if n.node_id == link.target_id), None)
+    if target is None or target.kind not in config.human_accessible_kinds:
+        return []
+
     out: list[FeatureConstraint] = []
     p_tx = _transmit_power_w(arch, link, config)
     aperture = float(link.params["aperture_m"])
