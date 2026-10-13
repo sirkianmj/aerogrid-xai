@@ -5,6 +5,43 @@ This project adheres to Semantic Versioning.
 
 ## [Unreleased]
 
+### Added (Sprint 10 - PR #47)
+- `physics/atmosphere.py`: atmospheric extinction and transmittance.
+  Kruse (1962) aerosol model with Kim et al. (2001) low-visibility
+  refinement; Beer-Lambert transmittance. Coefficients carry explicit
+  [SOURCED] / [ESTIMATED] tags. Range of validity enforced (400-1550 nm,
+  0.05-100 km visibility); out-of-range inputs raise ValueError rather
+  than silently extrapolating. 32 tests.
+
+### Added / Fixed (Sprint 9 - PR #46)
+- MPE gating by target-node kind. `EncoderConfig.human_accessible_kinds`
+  (default `{GROUND_STATION}`); MPE fires only when the link target is
+  human-accessible. Canary test verifies the false-positive failure mode
+  is real when the set is misconfigured.
+- Generator connectivity guarantee: `generate_architecture` now emits
+  one source->UAV repair link per UAV node before generating extra
+  random links, so no UAV is structurally unpowerable. Measured effect
+  on a fixed 30-seed audit: 0/30 sat -> 24/30 sat.
+- Constrained selection in `run_clear_d_loop`: feasible individuals
+  always dominate infeasible ones; NSGA-II orders within each subset.
+  `nsga2.py` unchanged.
+- `ClearDLoopConfig.use_conflict_directed` flag (default True) for the
+  H9 control arm.
+- `notebooks/10_clear_d_end_to_end.ipynb`: CLEAR-D repair mechanism
+  demonstration on real Stage B physics. Conflict-directed arm repaired
+  391/500 infeasible architectures (78.2%); random arm 119/500 (23.8%);
+  ratio 3.29x. Gate is strict inequality with a 1.5x minimum margin and
+  an explicit vacuous-gate guard.
+
+### Added (Sprint 7 - PR #45)
+- `EncoderConfig` in `architecture_encoder.py`: `uav_assumed_transmit_w`,
+  `node_default_demand_w`, `human_accessible_kinds` all tunable by
+  construction. Both [ESTIMATED] values carry explicit docstring flags.
+- Hybrid MPE conservatism documented: a Hybrid_Link must satisfy both
+  laser and RF MPE limits because it may switch modality at any time.
+- `generator.encode_architecture_to_z3` docstring marked SUPERSEDED,
+  pointing at `architecture_encoder.encode_architecture`.
+
 ### Added (Sprint 7 - PR #43)
 - Real Stage B encoder (backend/app/verification/architecture_encoder.py):
   flow-balance, supply-cap, demand-floor, and regulatory (ANSI Z136.1 laser

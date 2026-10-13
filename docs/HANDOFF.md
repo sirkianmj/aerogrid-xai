@@ -1,8 +1,8 @@
 # Handoff Document — AeroGrid-XAI (next AI agent)
 
-**Written:** 2026-10-11
-**Repository state:** `main` at commit `e50529a`
-**Supersedes:** the prior handoff document describing commit `a937cdf`
+**Written:** 2026-10-13
+**Repository state:** `main` at commit `aab8a42`
+**Supersedes:** the prior handoff document describing commit `e50529a`
 **Platform:** AeroGrid-XAI
 **Method:** CLEAR-D (Coupled-Loop Epistemic Architecture Reasoning and Discovery)
 **Owner:** sirkianmj (GitHub), single maintainer
@@ -11,7 +11,7 @@
 **License:** AGPL-3.0 (community) + Proprietary Commercial EULA
 **Correct URL spelling:** `sirkianmj` — older documents that say `sirikianmi` or `sirkanim` are wrong.
 
-This document is grounded in what was verified on disk at commit `e50529a`,
+This document is grounded in what was verified on disk at commit `aab8a42`,
 not in prior handoff claims. Where a claim has not been verified, the
 text says so explicitly.
 
@@ -43,7 +43,7 @@ Activate the correct conda environment before anything else.
 If the shell prompt shows `(base)`, the environment is wrong and
 `ruff`/`mypy`/`pytest` will not resolve to the correct binaries.
 
-Verified versions at `e50529a`:
+Verified versions at `aab8a42`:
 
     Python      3.12.14
     Node        v20.20.2
@@ -71,7 +71,7 @@ Local gate command (from `backend/`):
     mypy .
     pytest --cov=app --cov-report=term-missing -q
 
-State at `e50529a`: 654 passed, 95% coverage, 7 s wall time.
+State at `aab8a42`: 696 passed, 96% coverage, 7 s wall time.
 
 CI: `.github/workflows/ci.yml` defines exactly four jobs, matching the
 branch protection required contexts:
@@ -158,6 +158,44 @@ and its docstring says so, but it remains in the tree.
 
 ---
 
+## 4b. Work merged since the previous handoff (`e50529a` -> `aab8a42`)
+
+Six PRs merged in this session. Thematically they close the gap
+between the CLEAR-D module set and the physics the modules claim to
+operate on.
+
+| PR | Commit | Summary |
+|----|--------|---------|
+| #45 | `b83c843` | `EncoderConfig` extracted with `human_accessible_kinds`; hybrid MPE conservatism documented; `generator.encode_architecture_to_z3` marked SUPERSEDED |
+| #46 | `b4f7f6a` | MPE gated by target-node kind (only Ground_Station links trigger laser/RF MPE); generator connectivity guarantee (every UAV gets an incoming link at construction); constrained selection in `run_clear_d_loop`; `use_conflict_directed` flag on `ClearDLoopConfig`; Notebook 10 rewritten to demonstrate the CLEAR-D repair mechanism at 3.29x |
+| #47 | `aab8a42` | New `physics/atmosphere.py`: Kruse (1962) / Kim et al. (2001) aerosol extinction, Beer-Lambert transmittance, sourced coefficients, 32 tests |
+
+### Notebook 10 result (measured, PR #46)
+
+Given 5 infeasible seed architectures (deterministic seeds 10000..10199),
+100 trials per arm per architecture, 10-step budget, identical RNG streams:
+
+    conflict-directed:  391/500 repaired  (78.2%)
+    random:             119/500 repaired  (23.8%)
+    ratio:              3.29x
+
+Gate assertions: `conflict_rate > random_rate` AND `conflict_rate >= 1.5 * random_rate` AND `total_conflict > 0`.
+Strict inequality. A tie fails.
+
+At the loop level (population of 12, 6 generations, 6 seed architectures)
+the two arms tie, because the seed population is ~80% feasible after the
+generator connectivity fix and, once saturated, both arms are literally
+the same algorithm (feasible parents always receive random mutation in
+both). This is reported in the notebook as honest context, not hidden.
+
+### Seed feasibility audit (30 seeds, min_nodes=4, max_nodes=8, max_links=6)
+
+    before encoder MPE fix:    0/30 sat
+    after encoder MPE fix:     4/30 sat
+    after generator repair:   24/30 sat
+
+Remaining 6/30 UNSAT are all genuine MPE violations.
+
 ## 5. Known discrepancies (documented, not fixed)
 
 1. **s3-8 encoding direction.** Spec §34.2 writes `f_hat(x) ≤ f(x)` and
@@ -198,6 +236,11 @@ and its docstring says so, but it remains in the tree.
 | P18 | `ROADMAP_STATUS.md` previously said "Sprints 4–12 not started" — now corrected in the same PR as this handoff. | Closed by docs PR |
 | P19 | `CHANGELOG.md` ended at Sprint 2b — now updated through Sprint 7. | Closed by docs PR |
 | P20 | Upstream `anyio` `BlockingPortal` DeprecationWarning from `fastapi`/`starlette`. Not our code. | Watch upstream |
+| P21 | `physics/atmosphere.py` coefficients for the Kruse-Kim model are sourced by citation only; the exact branch values were not verified against the source PDFs in-session. | Browser check by maintainer |
+| P22 | `tier2.py` still uses its own unsourced atmospheric coefficients instead of `physics/atmosphere.py`. A follow-up PR should rewire it to call the new module. | Next Phase 2 PR |
+| P23 | The cascaded link budget (`build_canonical_link_budget`) takes four bare floats; spec Section 8.4 mandates thirteen physical inputs. Phase 2 work in progress. | Phase 2 |
+| P24 | No rectenna model exists; only the PV-TE tandem receiver. Spec Section 8.2 requires an RF-to-DC chain. | Phase 2 |
+| P25 | `architecture_encoder.py` does not invoke `physics/link_budget`, `physics/atmosphere`, or `physics/receiver`. Encoder feasibility is currently driven only by flow balance and MPE. | Phase 2 |
 
 ---
 
@@ -313,7 +356,7 @@ Bi₂Te₃ parameters, never Sb₂Se₃ conductivity.
 
 ## 12. End of handoff
 
-Verified at commit `e50529a`, working tree clean, all four CI checks
+Verified at commit `aab8a42`, working tree clean, all four CI checks
 green on the three most recent merge commits (#41, #42, #43).
 
 If a claim in this document does not match the code you find on disk,
