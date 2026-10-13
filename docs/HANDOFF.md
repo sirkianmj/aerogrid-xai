@@ -1,8 +1,8 @@
 # Handoff Document — AeroGrid-XAI (next AI agent)
 
-**Written:** 2026-10-13 (revised)
-**Repository state:** `main` at commit `ef428bf`
-**Supersedes:** the prior handoff document describing commit `aab8a42`
+**Written:** 2026-10-13 (revised for Sprint 7)
+**Repository state:** `main` at commit `33d94f9`
+**Supersedes:** the prior handoff document describing commit `ef428bf`
 **Platform:** AeroGrid-XAI
 **Method:** CLEAR-D (Coupled-Loop Epistemic Architecture Reasoning and Discovery)
 **Owner:** sirkianmj (GitHub), single maintainer
@@ -11,7 +11,7 @@
 **License:** AGPL-3.0 (community) + Proprietary Commercial EULA
 **Correct URL spelling:** `sirkianmj` — older documents that say `sirikianmi` or `sirkanim` are wrong.
 
-This document is grounded in what was verified on disk at commit `ef428bf`,
+This document is grounded in what was verified on disk at commit `33d94f9`,
 not in prior handoff claims. Where a claim has not been verified, the
 text says so explicitly.
 
@@ -43,7 +43,7 @@ Activate the correct conda environment before anything else.
 If the shell prompt shows `(base)`, the environment is wrong and
 `ruff`/`mypy`/`pytest` will not resolve to the correct binaries.
 
-Verified versions at `ef428bf`:
+Verified versions at `33d94f9`:
 
     Python      3.12.14
     Node        v20.20.2
@@ -71,7 +71,7 @@ Local gate command (from `backend/`):
     mypy .
     pytest --cov=app --cov-report=term-missing -q
 
-State at `ef428bf`: 813 passed, 95% coverage, 8 s wall time.
+State at `33d94f9`: backend 881 passed, 95% coverage; frontend 153 passed; all four CI checks green on every Sprint 7 merge.
 
 CI: `.github/workflows/ci.yml` defines exactly four jobs, matching the
 branch protection required contexts:
@@ -239,6 +239,57 @@ metre-scale UAV receiver captures about 1e-4 of the beam, and the chain
 is five orders of magnitude below viability. The GEO terminal remains
 in the grammar for hand-built architectures.
 
+## 4d. Sprint 7 — React mission-control UI (PRs #59 through #69)
+
+Sprint 7 is complete. Six feature tasks landed across eleven PRs. The
+React application now renders six panels wired to real backend endpoints,
+each output tagged per Section 21.
+
+| Task | PRs | Content |
+|------|-----|---------|
+| s7-1 | #59 | Tailwind 4, design tokens, WCAG 2.1 AA contrast test, EpistemicHierarchyBadge with all seven Section 21 categories |
+| s7-2 | #62, #63 | Backend orbital endpoints (`/orbital/satellites`, `/orbital/track`, `/orbital/visibility`) and a Three.js Globe scene |
+| s7-3 | #66, #67 | WebSocket telemetry stream (`WS /telemetry/stream`) and a live panel with a bounded client-side ring buffer |
+| s7-4 | #60, #61 | Tier 1 decisions endpoint (`POST /decisions/charge`) and the Section 15.5 XAI Trace Panel |
+| s7-5 | #64, #65 | Digital Twin endpoints (`/digital-twin/state`, `/trajectory`, `/discrepancy`) and a panel with an inline SVG thermal transient chart |
+| s7-6 | #68, #69 | NSGA-II Trade Space endpoint (`POST /tradespace/run`) and a parallel-coordinates Pareto explorer |
+
+### New backend packages
+
+- `app/physics/api.py` (orbital endpoints)
+- `app/telemetry/api.py` (WebSocket stream)
+- `app/digital_twin/api.py` (thermal state, trajectory, discrepancy)
+- `app/tradespace/api.py` (NSGA-II)
+
+`app/main.py` registers all of these plus the existing `app/control/api.py`.
+Five routers, twelve HTTP routes and one WebSocket route.
+
+### Frontend layout
+
+    frontend/src/
+      components/EpistemicBadge/       seven-category badge + TaggedOutput wrapper
+      features/Globe/                  geodetic.ts, orbitalApi.ts, GlobeScene.tsx, Globe.tsx
+      features/Telemetry/              telemetrySocket.ts, fakeWebSocket.ts, Telemetry.tsx
+      features/DigitalTwin/            digitalTwinApi.ts, TrajectoryChart.tsx, DigitalTwin.tsx
+      features/TradeSpace/             tradeSpaceApi.ts, ParallelCoordinates.tsx, TradeSpace.tsx
+      features/XAITrace/               xaiTraceApi.ts, XAITrace.tsx
+      lib/contrast.ts                  WCAG 2.1 luminance and contrast-ratio formulas
+      styles/tokens.ts, tokens.css     design tokens
+
+### Test counts
+
+- Backend: 881 tests, 95% coverage (was 813 at ef428bf).
+- Frontend: 153 tests (was 0 beyond the Sprint 0 scaffold at ef428bf).
+
+### Known issues carried forward
+
+- Frontend bundle is 1.20 MB (330 KB gzipped), dominated by Three.js.
+  Code-splitting the Globe into a lazy-loaded chunk is a follow-up.
+- The mocked R3F Canvas in Globe.test.tsx logs element-casing warnings
+  for R3F intrinsics under jsdom. Cosmetic; the real app is unaffected.
+- React logs an act() warning when the fake WebSocket in the Telemetry
+  test pushes messages outside React's normal event flow. Tests pass.
+
 ## 5. Known discrepancies (documented, not fixed)
 
 1. **s3-8 encoding direction.** Spec §34.2 writes `f_hat(x) ≤ f(x)` and
@@ -404,7 +455,7 @@ Bi₂Te₃ parameters, never Sb₂Se₃ conductivity.
 
 ## 12. End of handoff
 
-Verified at commit `ef428bf`, working tree clean, all four CI checks
+Verified at commit `33d94f9`, working tree clean, all four CI checks
 green on the three most recent merge commits (#41, #42, #43).
 
 If a claim in this document does not match the code you find on disk,
