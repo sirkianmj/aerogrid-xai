@@ -1,8 +1,8 @@
 # Handoff Document — AeroGrid-XAI (next AI agent)
 
-**Written:** 2026-10-13
-**Repository state:** `main` at commit `aab8a42`
-**Supersedes:** the prior handoff document describing commit `e50529a`
+**Written:** 2026-10-13 (revised)
+**Repository state:** `main` at commit `ef428bf`
+**Supersedes:** the prior handoff document describing commit `aab8a42`
 **Platform:** AeroGrid-XAI
 **Method:** CLEAR-D (Coupled-Loop Epistemic Architecture Reasoning and Discovery)
 **Owner:** sirkianmj (GitHub), single maintainer
@@ -11,7 +11,7 @@
 **License:** AGPL-3.0 (community) + Proprietary Commercial EULA
 **Correct URL spelling:** `sirkianmj` — older documents that say `sirikianmi` or `sirkanim` are wrong.
 
-This document is grounded in what was verified on disk at commit `aab8a42`,
+This document is grounded in what was verified on disk at commit `ef428bf`,
 not in prior handoff claims. Where a claim has not been verified, the
 text says so explicitly.
 
@@ -43,7 +43,7 @@ Activate the correct conda environment before anything else.
 If the shell prompt shows `(base)`, the environment is wrong and
 `ruff`/`mypy`/`pytest` will not resolve to the correct binaries.
 
-Verified versions at `aab8a42`:
+Verified versions at `ef428bf`:
 
     Python      3.12.14
     Node        v20.20.2
@@ -71,7 +71,7 @@ Local gate command (from `backend/`):
     mypy .
     pytest --cov=app --cov-report=term-missing -q
 
-State at `aab8a42`: 696 passed, 96% coverage, 7 s wall time.
+State at `ef428bf`: 813 passed, 95% coverage, 8 s wall time.
 
 CI: `.github/workflows/ci.yml` defines exactly four jobs, matching the
 branch protection required contexts:
@@ -196,6 +196,49 @@ both). This is reported in the notebook as honest context, not hidden.
 
 Remaining 6/30 UNSAT are all genuine MPE violations.
 
+## 4c. Phase 2 physics work (PRs #47 through #57)
+
+The specification's Development Phases (Section 25) list the Multi-Modal
+Wireless Power Model as Phase 2. In the PR titles this work was labelled
+"Sprint 10", which collides with the roadmap Rev. 2's Sprint 10 (Q1
+article, DARPA DID docs). The label is a documentation error, not a
+roadmap change. Future references should call this "Phase 2" or
+"Sprint 2d".
+
+| PR | Commit | Summary |
+|----|--------|---------|
+| #47 | `aab8a42` | physics/atmosphere.py: Kruse-Kim aerosol extinction, Beer-Lambert transmittance, 32 tests |
+| #49 | `9873389` | physics/beam.py + build_physical_link_budget: Gaussian beam geometry and pointing loss |
+| #50 | `87c8e99` | tier2.py rewired to physics/atmosphere as single source of truth |
+| #51 | `b229bfc` | physics/rectenna.py: peaked RF-to-DC conversion efficiency |
+| #52 | `6e8431b` | docs/ENCODER_PHYSICS_INTEGRATION.md: seven design decisions before code |
+| #53 | `9ed3012` | encode_architecture_with_physics: additive physics extension, no change to base encoder |
+| #54 | `0301c3e` | physics/geometry.py extracted; rectenna zero-density soundness fix |
+| #56 | `648d210` | generator LOS-compliant placement + pole-corrected latitude sampling |
+| #57 | `ef428bf` | generator physics-aware link kind sampling |
+
+### Measured effect on the generator's output
+
+30 generator samples, min_nodes=4, max_nodes=8, max_links=6, seeds
+20000..20029, evaluated by encode_architecture_with_physics with
+SceneConfig(receiver_conversion_efficiency=0.25):
+
+    before PR #57:   0/30 SAT (generator sampled link kinds independently of geometry)
+    after  PR #57:  20/30 SAT (generator samples link kinds from the viable set at final geometry)
+
+The remaining 10/30 UNSAT are genuine physics: LEO links at the outer
+edge of the placement distribution where delivered power falls below
+the 15 W demand floor, or multi-UAV architectures whose combined demand
+exceeds one source's supply.
+
+### Two source kinds in _SOURCE_KINDS
+
+SATELLITE_GEO was removed from the generator's source-kind pool in PR
+#57. At 35,800 km altitude a 2 cm beam spreads to a 600 m radius; a
+metre-scale UAV receiver captures about 1e-4 of the beam, and the chain
+is five orders of magnitude below viability. The GEO terminal remains
+in the grammar for hand-built architectures.
+
 ## 5. Known discrepancies (documented, not fixed)
 
 1. **s3-8 encoding direction.** Spec §34.2 writes `f_hat(x) ≤ f(x)` and
@@ -241,6 +284,11 @@ Remaining 6/30 UNSAT are all genuine MPE violations.
 | P23 | The cascaded link budget (`build_canonical_link_budget`) takes four bare floats; spec Section 8.4 mandates thirteen physical inputs. Phase 2 work in progress. | Phase 2 |
 | P24 | No rectenna model exists; only the PV-TE tandem receiver. Spec Section 8.2 requires an RF-to-DC chain. | Phase 2 |
 | P25 | `architecture_encoder.py` does not invoke `physics/link_budget`, `physics/atmosphere`, or `physics/receiver`. Encoder feasibility is currently driven only by flow balance and MPE. | Phase 2 |
+| P26 | The generator samples link kinds from the viable set at final geometry, but does not verify that every UAV's combined incoming supply exceeds its demand. 10/30 sampled architectures are UNSAT for this reason. | Follow-up |
+| P27 | `physics/beam.py` `combined_beam_efficiency` uses a first-order product of spillover and pointing losses. A rigorous treatment integrates the Gaussian over the shifted aperture. Labelled [ESTIMATED] in the module. | Deferred |
+| P28 | The encoder's `encode_architecture_with_physics` is still opt-in. `run_clear_d_loop` calls the base `encode_architecture`, not the physics variant. Decision 6 of the design doc covers the semantic consequences of flipping. | PR-C |
+| P29 | `visible_cap_fraction=0.10` is a modelling choice: the generator produces physically feasible but not boundary-pushing architectures. An ablation at 1.0 reproduces wide-placement behaviour. | Documented |
+| P30 | `atmospheric_path_length_m` returns the full chord when both endpoints are inside the atmosphere shell. Correct for ground-to-ground links of any length because those chords dip into the Earth; for two points at moderate altitude whose chord exits the top of the shell, the function over-counts. Not currently triggered by the generator. | Latent |
 
 ---
 
@@ -356,7 +404,7 @@ Bi₂Te₃ parameters, never Sb₂Se₃ conductivity.
 
 ## 12. End of handoff
 
-Verified at commit `aab8a42`, working tree clean, all four CI checks
+Verified at commit `ef428bf`, working tree clean, all four CI checks
 green on the three most recent merge commits (#41, #42, #43).
 
 If a claim in this document does not match the code you find on disk,

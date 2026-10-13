@@ -231,7 +231,12 @@ in the same PR made the loop-level comparison non-informative on the
 current seed distribution. Both facts are documented in the notebook
 itself and in the PR description.
 
-## Sprint 10 — Physics Phase 2 (in progress)
+## Phase 2 — Multi-Modal Wireless Power Model (in progress)
+
+This is Phase 2 of the specification's Development Phases (Section 25),
+not to be confused with roadmap Rev. 2's Sprint 10 (Q1 article and
+DARPA DID documentation). Prior PR titles labelled this work "Sprint
+10"; the label was a documentation error. The correct name is Phase 2.
 
 The specification's Development Phases (Section 25) list the Multi-Modal
 Wireless Power Model as Phase 2, with physics modules that were not yet
@@ -240,10 +245,16 @@ built. This sprint tracks that work.
 | Task | Status |
 |------|--------|
 | `physics/atmosphere.py` — Kruse-Kim extinction with Beer-Lambert transmittance | COMPLETE (PR #47) |
-| Rewire `control/tier2.py` to call `physics/atmosphere.py` | Not started |
-| Cascaded link budget with per-stage physical models (spec Section 8.4) | Not started |
-| `physics/rectenna.py` — RF-to-DC conversion chain (spec Section 8.2) | Not started |
-| Integrate `physics/link_budget`, `physics/atmosphere`, `physics/receiver` into `verification/architecture_encoder.py` | Not started |
+| Rewire `control/tier2.py` to call `physics/atmosphere.py` | COMPLETE (PR #50) |
+| `physics/beam.py` + `build_physical_link_budget` — Gaussian beam geometry | COMPLETE (PR #49) |
+| `physics/rectenna.py` — RF-to-DC conversion chain | COMPLETE (PR #51) |
+| Encoder physics integration design doc | COMPLETE (PR #52) |
+| `encode_architecture_with_physics` — additive physics extension | COMPLETE (PR #53) |
+| `physics/geometry.py` extracted; rectenna zero-density fix | COMPLETE (PR #54) |
+| Generator LOS-compliant placement + pole-corrected latitude | COMPLETE (PR #56) |
+| Generator physics-aware link kind sampling | COMPLETE (PR #57) |
+| Flip encoder default to physics variant (PR-C) | Not started |
+| Whole-network flow balance in the physics extension | Not started |
 
 ## Sprint 8 — not started
 
@@ -287,3 +298,12 @@ See the Master Engineering Roadmap (Rev. 2). Notable items:
 - **P24** — rectenna model absent; only PV-TE tandem receiver exists.
 - **P25** — encoder does not invoke physics modules; feasibility is
   driven only by flow balance and MPE.
+- **P26** — the generator does not verify combined UAV supply vs. demand.
+  Ten of thirty sampled architectures are UNSAT for this reason.
+- **P28** — the physics encoder remains opt-in. `run_clear_d_loop` uses
+  the base encoder; flipping is design doc Decision 6, still pending.
+- **P29** — `visible_cap_fraction=0.10` places UAVs at feasible but not
+  boundary-pushing ranges. Documented modelling choice.
+- **P30** — `atmospheric_path_length_m` over-counts for chords that exit
+  the top of the shell between two in-shell endpoints. Latent; not
+  triggered by the generator.
