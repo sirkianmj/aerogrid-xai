@@ -182,6 +182,16 @@ class Satellite:
             dt = dt.replace(tzinfo=UTC)
         return self.at(_TS.from_datetime(dt))
 
+    def is_in_eclipse_utc(self, dt: datetime) -> bool:
+        """True if the satellite is in Earth's umbra at the given UTC time.
+
+        Convenience wrapper over ``is_in_eclipse`` for callers that work
+        in wall-clock time rather than Skyfield Time objects.
+        """
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        return self.is_in_eclipse(_TS.from_datetime(dt))
+
 
 # --- Topocentric look angles and visibility (s1-3) -------------------------
 

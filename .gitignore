@@ -22,8 +22,12 @@ node_modules/
 .env.local
 .vite/
 
-# Native service data (never commit)
-data/
+# Native service data (never commit). The pattern is anchored to the
+# repository root so it only excludes the top-level runtime data
+# directory used by MinIO and PostgreSQL. Nested data directories that
+# contain source-controlled fixtures (for example
+# backend/app/physics/data/tle/) are not affected.
+/data/
 
 # IDE
 .vscode/
