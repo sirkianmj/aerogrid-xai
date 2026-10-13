@@ -6,21 +6,17 @@ Gate: Calibrated 90% CI coverage >= 85% on holdout.
 
 from __future__ import annotations
 
-import math
-from itertools import pairwise
-
 import numpy as np
 import pytest
 
 from app.control.tier2 import (
     MIN_CALIBRATION_SIZE,
-    AtmosphericParams,
     AtmosphericSurrogate,
     Tier2Estimate,
     UncertaintyInterval,
-    atmospheric_transmission,
-    extinction_coefficient,
 )
+from app.physics.atmosphere import AtmosphereConfig
+from app.physics.atmosphere import transmission as atmospheric_transmission
 
 # -- UncertaintyInterval -----------------------------------------------------
 
@@ -72,68 +68,6 @@ def test_tier2_estimate_rejects_empty_model_name() -> None:
     iv = UncertaintyInterval(low=0.0, high=1.0, nominal_coverage=0.9)
     with pytest.raises(ValueError, match="model_name must be non-empty"):
         Tier2Estimate(value=0.5, interval=iv, model_name="")
-
-
-# -- AtmosphericParams ------------------------------------------------------
-
-
-def test_params_reject_negative() -> None:
-    with pytest.raises(ValueError, match="must be non-negative"):
-        AtmosphericParams(A=-1.0)
-    with pytest.raises(ValueError, match="must be non-negative"):
-        AtmosphericParams(k_cloud=-0.1)
-
-
-def test_params_reject_non_finite() -> None:
-    with pytest.raises(ValueError, match="must be finite"):
-        AtmosphericParams(B=float("inf"))
-
-
-# -- extinction_coefficient and atmospheric_transmission --------------------
-
-
-def test_extinction_rejects_bad_wavelength() -> None:
-    with pytest.raises(ValueError, match="wavelength_nm must be > 0"):
-        extinction_coefficient(0.0, 10.0, 0.0, AtmosphericParams())
-
-
-def test_extinction_rejects_bad_visibility() -> None:
-    with pytest.raises(ValueError, match="visibility_km must be > 0"):
-        extinction_coefficient(1064.0, 0.0, 0.0, AtmosphericParams())
-
-
-def test_extinction_rejects_bad_cloud_factor() -> None:
-    with pytest.raises(ValueError, match="cloud_factor must be in"):
-        extinction_coefficient(1064.0, 10.0, 1.5, AtmosphericParams())
-    with pytest.raises(ValueError, match="cloud_factor must be in"):
-        extinction_coefficient(1064.0, 10.0, -0.1, AtmosphericParams())
-
-
-def test_transmission_zero_path_is_one() -> None:
-    tau = atmospheric_transmission(1064.0, 0.0, 10.0, 0.0, AtmosphericParams())
-    assert tau == pytest.approx(1.0)
-
-
-def test_transmission_rejects_negative_path() -> None:
-    with pytest.raises(ValueError, match="path_m must be >= 0"):
-        atmospheric_transmission(1064.0, -1.0, 10.0, 0.0, AtmosphericParams())
-
-
-def test_transmission_monotone_decreasing_in_path() -> None:
-    p = AtmosphericParams()
-    taus = [
-        atmospheric_transmission(1064.0, L, 10.0, 0.2, p)
-        for L in (0.0, 500.0, 1000.0, 2000.0, 5000.0)
-    ]
-    for a, b in pairwise(taus):
-        assert a > b
-
-
-def test_transmission_decreases_with_cloud() -> None:
-    p = AtmosphericParams()
-    t_clear = atmospheric_transmission(1064.0, 1000.0, 20.0, 0.0, p)
-    t_cloudy = atmospheric_transmission(1064.0, 1000.0, 20.0, 0.8, p)
-    assert t_clear > t_cloudy
 
 
 # -- Surrogate state --------------------------------------------------------
@@ -256,25 +190,30 @@ def _sample_inputs(rng: np.random.Generator, n: int) -> list[dict[str, float]]:
 
 
 def _true_targets(rng: np.random.Generator, inputs: list[dict[str, float]]) -> list[float]:
-    """Ground-truth transmission under a *different* model than the
-    surrogate: the same additive form with a 15 percent multiplicative
-    bias on the extinction coefficient, plus Gaussian measurement
-    noise. The surrogate is therefore systematically wrong, which is
-    exactly the regime split conformal is designed for: the coverage
-    guarantee holds regardless of base-model correctness."""
+    """Ground-truth transmission under a systematically-biased version
+    of the surrogate's point model.
+
+    The surrogate uses physics.atmosphere.transmission with the default
+    AtmosphereConfig. The ground truth here uses the same model but
+    raises the transmission to the 1.15 power, which is equivalent to
+    biasing the extinction coefficient by 15 percent (tau^1.15 =
+    exp(-1.15 * alpha * L)). The surrogate is therefore systematically
+    wrong, which is exactly the regime split conformal is designed for:
+    the coverage guarantee holds regardless of base-model correctness.
+
+    A small Gaussian measurement noise term is added on top so the
+    residuals are not purely the systematic bias."""
     targets: list[float] = []
-    params_true = AtmosphericParams()
     for inp in inputs:
-        alpha = extinction_coefficient(
+        tau_base = atmospheric_transmission(
             wavelength_nm=inp["wavelength_nm"],
+            path_length_m=inp["path_m"],
             visibility_km=inp["visibility_km"],
             cloud_factor=inp["cloud_factor"],
-            params=params_true,
         )
-        alpha_biased = alpha * 1.15
-        tau = math.exp(-alpha_biased * inp["path_m"])
+        tau_biased = tau_base**1.15
         noise = rng.normal(0.0, 0.005)
-        targets.append(min(1.0, max(0.0, tau + noise)))
+        targets.append(min(1.0, max(0.0, tau_biased + noise)))
     return targets
 
 
@@ -351,3 +290,41 @@ def test_interval_widths_shrink_with_larger_calibration() -> None:
     w_small = s_small.estimate_atmospheric_loss(test_inp).interval.width()
     w_large = s_large.estimate_atmospheric_loss(test_inp).interval.width()
     assert w_large <= w_small
+
+
+# -- Config plumbing --------------------------------------------------------
+
+
+def test_surrogate_accepts_atmosphere_config() -> None:
+    """The surrogate honours a non-default AtmosphereConfig."""
+    config_dry = AtmosphereConfig(molecular_extinction_per_km=1e-6)
+    config_wet = AtmosphereConfig(molecular_extinction_per_km=1.0)
+    s_dry = AtmosphericSurrogate(config=config_dry)
+    s_wet = AtmosphericSurrogate(config=config_wet)
+    inp = {
+        "wavelength_nm": 1064.0,
+        "path_m": 1000.0,
+        "visibility_km": 20.0,
+        "cloud_factor": 0.0,
+    }
+    tau_dry = s_dry._predict(inp)
+    tau_wet = s_wet._predict(inp)
+    assert tau_wet < tau_dry
+
+
+def test_surrogate_default_config_matches_physics_default() -> None:
+    """With no config argument, _predict uses AtmosphereConfig()'s defaults."""
+    s = AtmosphericSurrogate()
+    inp = {
+        "wavelength_nm": 1064.0,
+        "path_m": 1000.0,
+        "visibility_km": 20.0,
+        "cloud_factor": 0.0,
+    }
+    expected = atmospheric_transmission(
+        wavelength_nm=1064.0,
+        path_length_m=1000.0,
+        visibility_km=20.0,
+        cloud_factor=0.0,
+    )
+    assert s._predict(inp) == pytest.approx(expected, rel=1e-12)

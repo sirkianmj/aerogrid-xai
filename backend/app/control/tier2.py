@@ -8,46 +8,46 @@ Reference:
     Section 15.3 (Tier 2 model classes), Section 17 (Uncertainty-Aware
     AI), Section 18 (Predictive Beam Tracking).
 
-Method
-------
+Point model: physics.atmosphere
+-------------------------------
 
-A physics-informed parametric atmospheric model provides the point
-estimate. A split-conformal calibration layer provides the
-uncertainty interval.
+The point estimate is produced by app.physics.atmosphere.transmission,
+which implements Beer-Lambert transmittance with a Kruse (1962) /
+Kim et al. (2001) aerosol extinction model and configurable molecular
+and cloud terms. That module is the single source of truth for
+atmospheric transmittance across the platform. Before this rewire,
+tier2.py carried its own duplicate parametric model with unsourced
+coefficients; the duplication has been removed so that any change to
+the atmospheric physics is made in one place.
 
-Point model: Beer-Lambert transmission tau = exp(-alpha * L) where
-the extinction coefficient alpha has three additive contributions:
+The AtmosphereConfig accepted by this module is the same config type
+that physics.atmosphere and physics.link_budget accept, so callers
+can pass one config and have it take effect everywhere.
 
-    alpha = A                          (baseline clear-air term)
-          + B * (lambda_um)^-4         (Rayleigh-like wavelength term)
-          + k_aero / visibility_km     (aerosol extinction)
-          + k_cloud * cloud_factor     (cloud attenuation)
+Uncertainty: split conformal prediction
+---------------------------------------
 
-This is a standard first-order approximation. The coefficients are
-NOT calibrated against a specific published atmospheric dataset in
-this module; they are chosen in a plausible order of magnitude for
-the two project wavelengths (520 nm, 1064 nm). A follow-up commit
-can re-parameterize against libRadtran/SMARTS output as called for
-by spec Section 9.2.
-
-Uncertainty: split conformal prediction. Given n calibration pairs
-(X_i, Y_i), compute residuals r_i = |f(X_i) - Y_i|, sort, and take
-the ceil((n+1)(1-alpha))-th smallest residual as the conformal
-quantile q_hat. Under exchangeability, for a fresh test point
-(X, Y),
+Given n calibration pairs (X_i, Y_i), compute residuals
+r_i = |f(X_i) - Y_i|, sort, and take the ceil((n+1)(1-alpha))-th
+smallest residual as the conformal quantile q_hat. Under
+exchangeability, for a fresh test point (X, Y),
 
     P(|f(X) - Y| <= q_hat) >= 1 - alpha
 
-with no assumption about f being correct. This is the standard
-finite-sample guarantee.
+with no assumption about f being correct. The guarantee holds even if
+the point model is systematically biased, which is what makes it
+appropriate here: physics.atmosphere is a first-order approximation,
+and its coefficients carry epistemic tags ([SOURCED] for the Kruse-Kim
+aerosol term, [ESTIMATED] for the molecular and cloud terms). The
+conformal layer absorbs the resulting bias without requiring the model
+to be right.
 
 Why not PyTorch: the calibration guarantee is a property of the
 conformal wrapper, not of the point model. A neural network inside
 the wrapper would not improve the coverage bound; it would only
 change the interval widths, and only if the network out-performs
 the parametric model on data we do not have in-repo. The interface
-fixed by Section 15.3 is implementation-agnostic. See the commit
-message for the full rationale.
+fixed by Section 15.3 is implementation-agnostic.
 
 Interface convention (Section 15.3)
 -----------------------------------
@@ -66,6 +66,9 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 import numpy as np
+
+from app.physics.atmosphere import AtmosphereConfig
+from app.physics.atmosphere import transmission as atmospheric_transmission
 
 Inputs = Mapping[str, float]
 
@@ -129,84 +132,14 @@ class Tier2Estimate:
             raise ValueError("model_name must be non-empty")
 
 
-@dataclass(frozen=True)
-class AtmosphericParams:
-    """Parameters of the parametric atmospheric transmission model.
-
-    All values are positive. The magnitudes are chosen as plausible
-    first-order coefficients for near-visible and near-infrared laser
-    propagation; they are not calibrated against a specific
-    published dataset in this commit.
-    """
-
-    A: float = 1.0e-6
-    B: float = 3.0e-5
-    k_aero: float = 3.9e-4
-    k_cloud: float = 2.0e-2
-
-    def __post_init__(self) -> None:
-        for name in ("A", "B", "k_aero", "k_cloud"):
-            v = getattr(self, name)
-            if not math.isfinite(v):
-                raise ValueError(f"{name} must be finite; got {v}")
-            if v < 0.0:
-                raise ValueError(f"{name} must be non-negative; got {v}")
-
-
-def extinction_coefficient(
-    wavelength_nm: float,
-    visibility_km: float,
-    cloud_factor: float,
-    params: AtmosphericParams,
-) -> float:
-    """Return the extinction coefficient alpha in units of 1/m.
-
-    Additive contributions:
-
-        alpha = A + B * lambda_um^-4 + k_aero / visibility + k_cloud * cloud
-
-    Args:
-        wavelength_nm: Wavelength in nanometres. Must be > 0.
-        visibility_km: Meteorological visibility in kilometres. > 0.
-        cloud_factor: Dimensionless cloud cover in [0, 1].
-        params: The model parameters.
-
-    Returns:
-        Extinction coefficient in 1/m.
-    """
-    if wavelength_nm <= 0.0:
-        raise ValueError(f"wavelength_nm must be > 0; got {wavelength_nm}")
-    if visibility_km <= 0.0:
-        raise ValueError(f"visibility_km must be > 0; got {visibility_km}")
-    if not 0.0 <= cloud_factor <= 1.0:
-        raise ValueError(f"cloud_factor must be in [0, 1]; got {cloud_factor}")
-
-    lam_um = wavelength_nm / 1000.0
-    rayleigh = params.B * (lam_um**-4.0)
-    aerosol = params.k_aero / visibility_km
-    cloud = params.k_cloud * cloud_factor
-    return float(params.A + rayleigh + aerosol + cloud)
-
-
-def atmospheric_transmission(
-    wavelength_nm: float,
-    path_m: float,
-    visibility_km: float,
-    cloud_factor: float,
-    params: AtmosphericParams,
-) -> float:
-    """Beer-Lambert transmission over a path.
-
-    Returns the transmission coefficient tau in (0, 1].
-    """
-    if path_m < 0.0:
-        raise ValueError(f"path_m must be >= 0; got {path_m}")
-    alpha = extinction_coefficient(wavelength_nm, visibility_km, cloud_factor, params)
-    return float(math.exp(-alpha * path_m))
-
-
 class AtmosphericSurrogate:
     """Tier 2 atmospheric-loss surrogate with conformal calibration.
+
+    The point model is app.physics.atmosphere.transmission. Calibration
+    fits a split-conformal quantile on the residuals between the point
+    model's predictions and observed transmission values. The quantile
+    is the half-width of the uncertainty interval returned by
+    estimate_atmospheric_loss.
 
     Usage:
 
@@ -221,8 +154,8 @@ class AtmosphericSurrogate:
     data error.
     """
 
-    def __init__(self, params: AtmosphericParams | None = None) -> None:
-        self._params = params or AtmosphericParams()
+    def __init__(self, config: AtmosphereConfig | None = None) -> None:
+        self._config = config if config is not None else AtmosphereConfig()
         self._residual_quantile: float | None = None
         self._nominal_coverage: float | None = None
         self._calibration_size: int = 0
@@ -242,14 +175,14 @@ class AtmosphericSurrogate:
         return self._residual_quantile
 
     def _predict(self, inputs: Inputs) -> float:
-        """Evaluate the parametric model on a single input mapping."""
+        """Evaluate the physics.atmosphere point model on one input mapping."""
         try:
             return atmospheric_transmission(
                 wavelength_nm=float(inputs["wavelength_nm"]),
-                path_m=float(inputs["path_m"]),
+                path_length_m=float(inputs["path_m"]),
                 visibility_km=float(inputs["visibility_km"]),
                 cloud_factor=float(inputs["cloud_factor"]),
-                params=self._params,
+                config=self._config,
             )
         except KeyError as exc:
             raise ValueError(f"missing input key {exc}") from exc
@@ -310,7 +243,7 @@ class AtmosphericSurrogate:
 
         The interval is [value - q_hat, value + q_hat] clamped to
         [0, 1], where q_hat is the conformal quantile from the
-        calibration set and value is the parametric model's output.
+        calibration set and value is physics.atmosphere's transmission.
 
         Raises:
             RuntimeError: if the surrogate has not been calibrated.
