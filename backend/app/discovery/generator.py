@@ -77,11 +77,19 @@ from app.discovery.grammar import (
     NodeInstance,
     Terminal,
 )
+from app.physics import atmosphere as _atmosphere
+from app.physics import beam as _beam
+from app.physics import receiver as _receiver
+from app.physics import rectenna as _rectenna
 from app.physics.geometry import EARTH_RADIUS_M as _EARTH_RADIUS_M
+from app.physics.geometry import (
+    atmospheric_path_length_m as _atmospheric_path_length_m,
+)
 from app.physics.geometry import has_line_of_sight as _has_line_of_sight
 from app.physics.geometry import (
     node_position_from_params_m as _node_position_from_params_m,
 )
+from app.physics.geometry import range_m as _range_m
 from app.physics.geometry import (
     sample_direction_in_visible_cap as _sample_direction_in_visible_cap,
 )
@@ -217,18 +225,27 @@ class GeneratorConfig:
     # sphere and no LOS check is applied, reproducing the historical
     # behaviour so that an ablation study can compare the two.
 
-    visible_cap_fraction: float = 0.25
+    visible_cap_fraction: float = 0.10
     # Fraction of the source's full visible cap within which the UAV
     # is placed. The full cap half-angle for a LEO source to a ground
     # target is about 22 deg; a UAV placed at the edge of that cap is
     # thousands of kilometres away, where the Gaussian beam has spread
     # to tens of metres and the receiver captures a fraction of a
     # percent of the transmitted power. Sampling at a fraction of the
-    # cap places UAVs closer to the sub-satellite point, where the
-    # physical link budget can close. 0.25 keeps the sampled angle
-    # within about 5.5 deg for a LEO source, corresponding to a range
-    # of roughly 600-800 km at 500-1000 km altitude. Configurable so
-    # an ablation study can compare wide and narrow placements.
+    # cap places UAVs closer to the sub-satellite point.
+    #
+    # The default of 0.10 is chosen so that every source kind the
+    # generator samples (LEO, Ground_Station) yields an anchor link
+    # whose physical chain exceeds the viability threshold at the
+    # placement geometry. For a Ground_Station source at a few km
+    # altitude, 0.10 of a 4 deg cap is 0.4 deg, corresponding to
+    # roughly 45 km range; for a LEO source at 500 km altitude, 0.10
+    # of a 22 deg cap is 2.2 deg, corresponding to roughly 550 km
+    # slant range. Both close their link budgets. Larger fractions
+    # place UAVs at ranges where the atmospheric and beam-spreading
+    # losses put the delivered power below the viability threshold.
+    # Configurable so an ablation study can compare wide and narrow
+    # placements.
 
     def __post_init__(self) -> None:
         if self.min_nodes < 2:
@@ -291,8 +308,16 @@ def _sample_link_params(rng: random.Random, kind: Terminal) -> dict[str, float]:
     return {name: _sample_param(rng, lo, hi) for name, (lo, hi) in ranges.items()}
 
 
+# SATELLITE_GEO is a grammar terminal but is not sampled by the
+# generator. A GEO source at 35,800 km altitude spreads a 2 cm beam to
+# roughly 600 m radius; a small UAV receiver (metres across) captures
+# about 10^-4 of the beam, and the resulting chain efficiency is five
+# orders of magnitude below the viability threshold at any range. GEO
+# power delivery at UAV receiver scale is physically infeasible with
+# current technology. The terminal remains available for hand-built
+# architectures. A future revision may add large ground-array receivers,
+# at which point GEO becomes feasible and can be returned to the pool.
 _SOURCE_KINDS: tuple[Terminal, ...] = (
-    Terminal.SATELLITE_GEO,
     Terminal.SATELLITE_LEO,
     Terminal.GROUND_STATION,
 )
@@ -301,6 +326,129 @@ _UAV_KINDS: tuple[Terminal, ...] = (
     Terminal.UAV_COMPUTE,
 )
 _ALL_NODE_KINDS: tuple[Terminal, ...] = _SOURCE_KINDS + _UAV_KINDS
+
+
+_LINK_KIND_VIABILITY_FRACTION = 1.0e-6
+"""A link kind is viable at a geometry only if its physical chain
+delivers at least this fraction of the source power. Chains that lose
+more than six orders of magnitude are physically broken, not merely
+inefficient: no plausible aperture recovers them. This threshold is
+[ESTIMATED] and exists so the generator does not sample link kinds
+whose physics cannot reach the target."""
+
+_VIABILITY_TEST_APERTURE_M = 5.0
+"""Aperture used for the viability test. Uses the maximum of
+LINK_PARAM_RANGES so that a kind is judged viable if any plausible
+aperture can close the link, not just the smallest."""
+
+
+def _transmit_power_w_from_params(
+    node_params: dict[str, float],
+) -> float:
+    """Source power for a node, matching _transmit_power_w in the encoder."""
+    if "power_w" in node_params:
+        return float(node_params["power_w"])
+    return 20.0  # encoder's uav_assumed_transmit_w default
+
+
+def _link_chain_delivers_positive(
+    source_params: dict[str, float],
+    target_params: dict[str, float],
+    kind: Terminal,
+    aperture_m: float,
+) -> float:
+    """Return the DC power at the battery for a hypothetical link.
+
+    Constructs a minimal physical chain for the given source and target
+    node parameter maps and a candidate link kind and aperture. Returns
+    the delivered DC power in watts. Used only to decide whether a link
+    kind is viable at a geometry; the actual link parameters are sampled
+    separately.
+
+    The chain is:
+      transmitted power
+      x beam efficiency (spillover at the receiver)
+      x atmospheric transmittance (laser) or rf_transmittance (RF)
+      x receiver conversion (PV-TE eta_total, or rectenna efficiency)
+      x battery efficiency (0.92)
+
+    Reference values are the SceneConfig defaults, which is the same
+    baseline the physics encoder uses when no override is supplied.
+    """
+    p_src = _node_position_from_params_m(source_params)
+    p_tgt = _node_position_from_params_m(target_params)
+    rng_m = _range_m(p_src, p_tgt)
+    atm_path_m = _atmospheric_path_length_m(p_src, p_tgt)
+    p_tx = _transmit_power_w_from_params(source_params)
+    battery_eff = 0.92
+
+    def laser_chain() -> float:
+        wl_nm = 1064.0
+        w0 = 0.02
+        w_at = _beam.beam_radius_m(wl_nm, w0, rng_m)
+        eta_beam = _beam.combined_beam_efficiency(w_at, aperture_m, 0.0)
+        eta_atm = _atmosphere.transmission(
+            wavelength_nm=wl_nm,
+            path_length_m=atm_path_m,
+            visibility_km=20.0,
+            cloud_factor=0.0,
+        )
+        eta_receiver = _receiver.eta_total(298.15, 320.0, 298.15)
+        return p_tx * eta_beam * eta_atm * eta_receiver * battery_eff
+
+    def rf_chain() -> float:
+        freq_ghz = 2.45
+        wavelength_m = 299_792_458.0 / (freq_ghz * 1.0e9)
+        wavelength_nm = wavelength_m * 1.0e9
+        w0 = 0.02
+        w_at = _beam.beam_radius_m(wavelength_nm, w0, rng_m)
+        eta_beam = _beam.combined_beam_efficiency(w_at, aperture_m, 0.0)
+        eta_atm = 0.98
+        area_m2 = 3.14159265358979 * aperture_m * aperture_m
+        p_inc = p_tx * eta_beam * eta_atm
+        density = p_inc / area_m2 if area_m2 > 0.0 else 0.0
+        eta_rect = _rectenna.rectenna_efficiency(density, freq_ghz)
+        return p_tx * eta_beam * eta_atm * eta_rect * battery_eff
+
+    if kind == Terminal.LASER_LINK:
+        return laser_chain()
+    if kind == Terminal.MICROWAVE_LINK:
+        return rf_chain()
+    if kind == Terminal.HYBRID_LINK:
+        return min(laser_chain(), rf_chain())
+    raise ValueError(f"unsupported link kind {kind}")
+
+
+def _viable_link_kinds(
+    source_params: dict[str, float],
+    target_params: dict[str, float],
+) -> list[Terminal]:
+    """Return the link kinds whose physical chain reaches the target.
+
+    A kind is viable if, at the maximum plausible receiver aperture, its
+    physical chain delivers at least ``_LINK_KIND_VIABILITY_FRACTION``
+    of the source power. Laser is always viable in the current model
+    (spillover, transmittance, and receiver efficiency are all strictly
+    positive). Microwave is viable only at short ranges, because the
+    rectenna efficiency is a Gaussian in log10 of incident power density
+    centred on 1000 W/m^2, and at long range the incident density falls
+    many decades below the centre. Hybrid inherits the minimum of the
+    two chains, so it is viable only when microwave is.
+    """
+    p_src = _transmit_power_w_from_params(source_params)
+    threshold = _LINK_KIND_VIABILITY_FRACTION * p_src
+    viable: list[Terminal] = []
+    for kind in (
+        Terminal.LASER_LINK,
+        Terminal.MICROWAVE_LINK,
+        Terminal.HYBRID_LINK,
+    ):
+        delivered = _link_chain_delivers_positive(
+            source_params, target_params, kind, _VIABILITY_TEST_APERTURE_M
+        )
+        if delivered >= threshold:
+            viable.append(kind)
+    return viable
 
 
 def generate_architecture(
@@ -313,27 +461,28 @@ def generate_architecture(
     at least one UAV-kind node, and one incoming link for every UAV.
 
     When ``require_line_of_sight`` is True (the default), the generator
-    additionally guarantees that every link has line of sight between
-    its endpoints. Source-kind nodes are placed uniformly on the
-    sphere; each UAV is placed inside the visible cap of the anchor
-    source chosen for its repair link. Extra links that would fail the
-    line-of-sight check are dropped.
+    guarantees that every link has line of sight between its endpoints
+    and that every link's physical chain delivers at least
+    ``_LINK_KIND_VIABILITY_FRACTION`` of its source power.
+
+    Algorithm order matters. Node kinds and positions are sampled
+    first, then topology (which node links to which) without a kind,
+    then UAV placements inside their anchor sources' visible caps, and
+    only then are link kinds sampled — from the set that is viable at
+    the final geometry. Sampling a link kind before placement would
+    assign kinds to a geometry that no longer holds after the UAV is
+    moved into the visible cap.
 
     When ``require_line_of_sight`` is False, all nodes are placed
-    uniformly on the sphere (latitude corrected for the sphere measure)
-    and no LOS constraint is applied. This reproduces the historical
-    behavior and exists so that an ablation study can compare the two
-    distributions.
+    uniformly on the sphere (latitude corrected for the sphere measure),
+    no LOS or viability constraint is applied, and every candidate link
+    is emitted with a uniformly random kind. This reproduces the
+    historical behavior and exists for ablation studies.
 
     Determinism: if rng is provided, the call is deterministic. If
     config.seed is provided and rng is None, a fresh random.Random is
     created with that seed. If neither is provided, the call is
     non-deterministic.
-
-    Raises:
-        ValueError if no source or no UAV could be sampled (guaranteed
-        not to happen for min_nodes >= 2, since the sampler inserts one
-        of each before the shuffle).
     """
     cfg = config or GeneratorConfig()
     if rng is None:
@@ -357,56 +506,53 @@ def generate_architecture(
             "and one UAV must exist after node sampling"
         )
 
-    repair_links: list[LinkInstance] = []
+    # --- Step 1: sample topology without link kinds ---
+    # Repair links: one incoming edge per UAV from a random source.
+    # Only the source_id and target_id are chosen here; the link kind is
+    # deferred until after placement.
+    repair_topology: list[tuple[str, str]] = []
     anchors: dict[str, str] = {}
-    for i, uav_id in enumerate(uav_ids):
+    for uav_id in uav_ids:
         source_id = rng.choice(source_ids)
-        link_kind = rng.choice((Terminal.LASER_LINK, Terminal.MICROWAVE_LINK, Terminal.HYBRID_LINK))
-        repair_links.append(
-            LinkInstance(
-                link_id=f"l{i}",
-                kind=link_kind,
-                source_id=source_id,
-                target_id=uav_id,
-                params=_sample_link_params(rng, link_kind),
-            )
-        )
+        repair_topology.append((source_id, uav_id))
         anchors[uav_id] = source_id
 
+    # Extra links: random source-target pairs, no self-loops.
     max_possible_links = node_count * (node_count - 1)
-    remaining_budget = max(0, min(cfg.max_links, max_possible_links) - len(repair_links))
+    remaining_budget = max(0, min(cfg.max_links, max_possible_links) - len(repair_topology))
     n_extra = rng.randint(0, remaining_budget) if remaining_budget > 0 else 0
-
-    extra_links: list[LinkInstance] = []
-    for i in range(n_extra):
+    extra_topology: list[tuple[str, str]] = []
+    for _ in range(n_extra):
         source_idx = rng.randrange(node_count)
         target_idx = rng.randrange(node_count)
         while target_idx == source_idx:
             target_idx = rng.randrange(node_count)
-        link_kind = rng.choice((Terminal.LASER_LINK, Terminal.MICROWAVE_LINK, Terminal.HYBRID_LINK))
-        extra_links.append(
-            LinkInstance(
-                link_id=f"l{len(repair_links) + i}",
-                kind=link_kind,
-                source_id=f"n{source_idx}",
-                target_id=f"n{target_idx}",
-                params=_sample_link_params(rng, link_kind),
-            )
-        )
+        extra_topology.append((f"n{source_idx}", f"n{target_idx}"))
 
-    all_links = repair_links + extra_links
-
+    # --- Step 2: if LOS is not required, skip placement and emit directly ---
     if not cfg.require_line_of_sight:
-        nodes_legacy = tuple(
-            NodeInstance(
-                node_id=f"n{i}",
-                kind=kinds[i],
-                params=base_params[i],
+        all_topology = repair_topology + extra_topology
+        links_legacy: list[LinkInstance] = []
+        for i, (source_id, target_id) in enumerate(all_topology):
+            link_kind = rng.choice(
+                (Terminal.LASER_LINK, Terminal.MICROWAVE_LINK, Terminal.HYBRID_LINK)
             )
+            links_legacy.append(
+                LinkInstance(
+                    link_id=f"l{i}",
+                    kind=link_kind,
+                    source_id=source_id,
+                    target_id=target_id,
+                    params=_sample_link_params(rng, link_kind),
+                )
+            )
+        nodes_legacy = tuple(
+            NodeInstance(node_id=f"n{i}", kind=kinds[i], params=base_params[i])
             for i in range(node_count)
         )
-        return Architecture(nodes=nodes_legacy, links=tuple(all_links))
+        return Architecture(nodes=nodes_legacy, links=tuple(links_legacy))
 
+    # --- Step 3: place UAVs inside their anchor sources' visible caps ---
     source_radii: dict[str, float] = {}
     for i, kind in enumerate(kinds):
         if kind not in _SOURCE_KINDS:
@@ -437,23 +583,35 @@ def generate_architecture(
         final_params[uav_idx]["lon_deg"] = new_lon
 
     nodes = tuple(
-        NodeInstance(
-            node_id=f"n{i}",
-            kind=kinds[i],
-            params=final_params[i],
-        )
+        NodeInstance(node_id=f"n{i}", kind=kinds[i], params=final_params[i])
         for i in range(node_count)
     )
-
     node_by_id = {n.node_id: n for n in nodes}
+
+    # --- Step 4: for each topology edge, sample the link kind from the
+    # set that is viable at the final geometry, then filter by LOS. ---
+    all_topology = repair_topology + extra_topology
     surviving_links: list[LinkInstance] = []
-    for link in all_links:
-        src_node = node_by_id[link.source_id]
-        tgt_node = node_by_id[link.target_id]
-        p_src = _node_position_from_params_m(src_node.params)
-        p_tgt = _node_position_from_params_m(tgt_node.params)
-        if _has_line_of_sight(p_src, p_tgt):
-            surviving_links.append(link)
+    for source_id, target_id in all_topology:
+        src_node = node_by_id[source_id]
+        tgt_node = node_by_id[target_id]
+        p_src = _node_position_from_params_m(dict(src_node.params))
+        p_tgt = _node_position_from_params_m(dict(tgt_node.params))
+        if not _has_line_of_sight(p_src, p_tgt):
+            continue
+        viable = _viable_link_kinds(dict(src_node.params), dict(tgt_node.params))
+        if not viable:
+            continue
+        link_kind = rng.choice(viable)
+        surviving_links.append(
+            LinkInstance(
+                link_id=f"l{len(surviving_links)}",
+                kind=link_kind,
+                source_id=source_id,
+                target_id=target_id,
+                params=_sample_link_params(rng, link_kind),
+            )
+        )
 
     return Architecture(nodes=nodes, links=tuple(surviving_links))
 
