@@ -1,0 +1,21 @@
+/**
+ * Design tokens, mirroring src/styles/tokens.ts.
+ *
+ * The light theme is the default in :root. The dark theme is selected
+ * by applying the class "dark" to the html element. This is the
+ * Tailwind 4 dark-mode strategy.
+ */
+
+:root {
+  --color-bg: #f5f7fa;
+  --color-fg: #0f1419;
+  --color-accent-teal: #14b8a6;
+  --color-accent-violet: #8b5cf6;
+  --color-accent-amber: #f59e0b;
+  --color-accent-slate: #94a3b8;
+}
+
+.dark {
+  --color-bg: #0a0e14;
+  --color-fg: #e6e8eb;
+}

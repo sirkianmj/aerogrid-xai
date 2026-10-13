@@ -1,25 +1,70 @@
-*, *::before, *::after {
-  box-sizing: border-box;
-}
+@import "tailwindcss";
+@import "./styles/tokens.css";
 
-html, body, #root {
-  margin: 0;
-  padding: 0;
+/* Base styling for the mission-control shell. Component styling is
+   expressed with Tailwind utility classes. */
+
+html,
+body,
+#root {
   height: 100%;
+  margin: 0;
 }
 
 body {
-  background: #0b0d12;
-  color: #e6e6e6;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  color: #60a5fa;
-  text-decoration: none;
+/* Epistemic badge styling. The band color is set per badge as an
+   inline CSS custom property. Border and background use currentColor,
+   so the badge inherits the page's already-verified contrast for text. */
+
+.epistemic-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.5rem 0.125rem 0.375rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
 }
 
-a:hover {
-  text-decoration: underline;
+.epistemic-badge__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--epistemic-band-color, currentColor);
+  flex-shrink: 0;
+}
+
+.epistemic-badge__level {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.625rem;
+  opacity: 0.6;
+  margin-right: -0.125rem;
+}
+
+.epistemic-badge__label {
+  white-space: nowrap;
+}
+
+.tagged-output {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }

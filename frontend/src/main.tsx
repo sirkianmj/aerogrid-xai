@@ -1,9 +1,13 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import { StrictMode } from "react"
+import { createRoot } from "react-dom/client"
+import "./index.css"
+import App from "./App.tsx"
 
-createRoot(document.getElementById('root')!).render(
+// Apply the dark theme at the html element so the CSS custom properties
+// in tokens.css cascade to the body.
+document.documentElement.classList.add("dark")
+
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />
   </StrictMode>,
