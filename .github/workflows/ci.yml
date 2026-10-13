@@ -62,6 +62,55 @@ jobs:
       - name: Build
         run: npm run build
 
+  rls-isolation:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: aerogrid
+          POSTGRES_DB: aerogrid
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aerogrid -d aerogrid"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Miniforge
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: environment.yml
+          activate-environment: aerogrid
+          miniforge-version: latest
+      - name: Wait for PostgreSQL to accept connections
+        run: |
+          for i in $(seq 1 30); do
+            if pg_isready -h 127.0.0.1 -p 5432 -U aerogrid -d aerogrid; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "PostgreSQL did not become ready in 30 seconds"
+          exit 1
+        shell: bash -el {0}
+      - name: Apply the RLS migration
+        run: |
+          psql -h 127.0.0.1 -p 5432 -U aerogrid -d aerogrid \
+            -v ON_ERROR_STOP=1 \
+            -f backend/app/saas/migrations/001_rls_setup.sql
+        shell: bash -el {0}
+      - name: Run the RLS isolation tests
+        env:
+          AEROGRID_DATABASE_URL: postgresql+psycopg2://aerogrid@127.0.0.1:5432/aerogrid
+        run: |
+          cd backend
+          pytest tests/test_rls_isolation.py -v
+        shell: bash -el {0}
+
   cla-check:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
