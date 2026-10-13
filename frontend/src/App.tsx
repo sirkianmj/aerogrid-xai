@@ -4,6 +4,7 @@ import { ALL_TAGS, EPISTEMIC_TAGS } from "./components/EpistemicBadge/epistemic"
 import { XAITrace } from "./features/XAITrace/XAITrace"
 import { Globe } from "./features/Globe/Globe"
 import { DigitalTwin } from "./features/DigitalTwin/DigitalTwin"
+import { Telemetry } from "./features/Telemetry/Telemetry"
 
 type HealthState =
   | { status: "loading" }
@@ -53,6 +54,8 @@ function App() {
       <Globe />
 
       <DigitalTwin />
+
+      <Telemetry />
 
       <XAITrace />
 
