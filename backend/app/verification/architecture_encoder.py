@@ -29,30 +29,32 @@ Constraint families emitted
    - ``<link_id>_laser_mpe`` for Laser_Link.
    - ``<link_id>_rf_mpe`` for Microwave_Link.
    - BOTH ``<link_id>_hybrid_laser_mpe`` and ``<link_id>_hybrid_rf_mpe``
-     for Hybrid_Link. This is deliberately conservative: a hybrid link
-     may switch modality at any time, so it must satisfy both safety
-     limits simultaneously. A hybrid link that is laser-safe but
-     RF-unsafe is UNSAT, with a minimal core containing only the
-     violated family.
+     for Hybrid_Link. Deliberately conservative: a hybrid link may
+     switch modality at any time, so it must satisfy both safety limits
+     simultaneously.
 
 5. UAV-presence structural constraint:
    - ``requires_uav``: FALSE if the architecture contains no UAV node.
 
+6. Physics extension (opt-in via ``encode_architecture_with_physics``):
+   - ``<link_id>_physical_los``: FALSE if the segment between source and
+     target passes below the Earth's surface.
+   - ``<link_id>_physical_flow_cap``: flow <= delivered_w computed from
+     the physical chain (beam geometry, atmospheric transmittance,
+     receiver conversion, battery efficiency).
+
 Configuration
 -------------
 
-Two encoder constants are engineering estimates and are exposed through
-``EncoderConfig`` so that parameter studies can vary them without
-editing source:
+``EncoderConfig`` holds study-level choices (transmit power fallback,
+demand floor, which node kinds are human-accessible for MPE).
 
-    uav_assumed_transmit_w  [ESTIMATED] fallback transmit power for
-                            a link whose source node has no power_w
-    node_default_demand_w   [ESTIMATED] demand floor applied to every
-                            UAV node
-
-Both are marked ``[ESTIMATED]`` in ``EncoderConfig``'s docstring. They
-are not sourced. Any commercial or publication use that depends on
-their specific values must source them first.
+``SceneConfig`` holds environmental and receiver conditions (visibility,
+cloud, temperatures, battery efficiency, transmitter waist, RF
+transmittance, optional receiver-efficiency override). The two are
+separate so that the epistemic distinction between "study choices" and
+"scene properties" is preserved in the type system. See
+docs/ENCODER_PHYSICS_INTEGRATION.md for the design reasoning.
 """
 
 from __future__ import annotations
@@ -78,6 +80,7 @@ from app.discovery.grammar import (
 )
 from app.physics import atmosphere as _atmosphere
 from app.physics import beam as _beam
+from app.physics import geometry as _geometry
 from app.physics import receiver as _receiver
 from app.physics import rectenna as _rectenna
 from app.verification.regulatory import (
@@ -85,25 +88,10 @@ from app.verification.regulatory import (
     laser_mpe,
 )
 
-_EARTH_RADIUS_M = 6_371_000.0
-"""[ESTIMATED] Spherical-Earth radius. WGS-84 differs by up to ~21 km
-at any given point; a spherical model is a documented simplification
-(see docs/ENCODER_PHYSICS_INTEGRATION.md, Decision 1)."""
-
-_SPEED_OF_LIGHT_M_PER_S = 299_792_458.0
-"""[SOURCED] Exact speed of light in vacuum, m/s (SI definition)."""
-
-_H_ATMOSPHERE_M = 20_000.0
-"""[ESTIMATED] Thickness of the atmosphere shell used for atmospheric
-path-length clipping. The atmosphere has no sharp boundary; 20 km is a
-first-order choice covering the troposphere plus low stratosphere. A
-density-resolved profile is deferred (docs/ENCODER_PHYSICS_INTEGRATION.md,
-Decision 7)."""
-
 
 @dataclass(frozen=True)
 class EncoderConfig:
-    """Configuration for ``encode_architecture``.
+    """Study-level configuration for ``encode_architecture``.
 
     uav_assumed_transmit_w and node_default_demand_w are engineering
     estimates marked ``[ESTIMATED]``; they are not measured values and
@@ -135,16 +123,12 @@ class EncoderConfig:
             segments are. A complete model would additionally constrain
             the beam path where it crosses regions in which people may
             be present. That extension is deferred; see Section 16 of
-            the specification. The current model treats only the
-            target node kind as the discriminator.
+            the specification.
 
             WARNING — configuring this set too narrowly (omitting
             GROUND_STATION, for example) causes the encoder to declare
             unsafe architectures SAT. UNSAT is the definitive verdict
-            in Stage B; a false SAT is a soundness failure. Every
-            caller that overrides this field must justify the override
-            and, where applicable, add an MPE constraint family for the
-            omitted case.
+            in Stage B; a false SAT is a soundness failure.
     """
 
     uav_assumed_transmit_w: float = 20.0
@@ -163,8 +147,9 @@ class EncoderConfig:
 
 
 DEFAULT_ENCODER_CONFIG = EncoderConfig()
-"""Default configuration. Both values are [ESTIMATED]; callers running
-parameter studies should construct their own EncoderConfig."""
+"""Default configuration. uav_assumed_transmit_w and
+node_default_demand_w are [ESTIMATED]; callers running parameter studies
+should construct their own EncoderConfig."""
 
 
 _LASER_MPE_BOUNDARY_NM = 792.0
@@ -197,10 +182,9 @@ def _peak_intensity_w_per_m2(power_w: float, aperture_m: float) -> float:
     """Peak intensity at the receiver aperture.
 
     Treats the aperture as a circular collecting area of radius
-    ``aperture_m``: I = P / (pi * r^2). This over-estimates intensity
-    relative to a properly beam-spread link because it does not model
-    diffraction losses; it is the conservative choice for a safety
-    constraint.
+    ``aperture_m``: I = P / (pi * r^2). Over-estimates intensity
+    relative to a properly beam-spread link (no diffraction losses);
+    conservative for a safety constraint.
     """
     if aperture_m <= 0.0:
         return float("inf")
@@ -225,20 +209,13 @@ def _regulatory_constraints(
     """Return the MPE constraint(s) for one link.
 
     MPE is emitted only when the link's target node kind is in
-    ``config.human_accessible_kinds``. MPE governs human exposure;
-    a beam terminating on a UAV in flight or a satellite is not
-    subject to MPE at the target.
+    ``config.human_accessible_kinds``. MPE governs human exposure; a
+    beam terminating on a UAV in flight or a satellite is not subject
+    to MPE at the target.
 
-    This is a first-order simplification. It does not model beam-path
-    exposure near the transmitter or near the target, where the beam
-    passes through airspace that may contain people. That extension
-    is deferred (see specification Section 16 and the note on
-    ``EncoderConfig.human_accessible_kinds``).
-
-    For a Hybrid_Link to a human-accessible target, both a laser and
-    an RF MPE constraint are emitted. This is conservative: a hybrid
-    link may switch modality at any time, so both limits must hold
-    simultaneously.
+    For a Hybrid_Link to a human-accessible target, both a laser and an
+    RF MPE constraint are emitted. Conservative: a hybrid link may
+    switch modality at any time, so both limits must hold.
     """
     target = next((n for n in arch.nodes if n.node_id == link.target_id), None)
     if target is None or target.kind not in config.human_accessible_kinds:
@@ -398,6 +375,9 @@ def encode_architecture(
     return tuple(out)
 
 
+# --- Physics extension ----------------------------------------------------
+
+
 @dataclass(frozen=True)
 class SceneConfig:
     """Environmental and receiver conditions for the physics encoder.
@@ -512,131 +492,20 @@ DEFAULT_SCENE_CONFIG = SceneConfig()
 
 
 def _node_position_m(node: NodeInstance) -> tuple[float, float, float]:
-    """Return the 3D Cartesian position of a node on a spherical Earth.
+    """Return the 3D Cartesian position of an architecture node.
 
-    Latitude and longitude in degrees; altitude from either
-    ``altitude_km`` (satellites) or ``altitude_m`` (UAVs and ground
-    stations). Earth-centre origin, z-axis through the north pole,
-    x-axis through the (0, 0) meridian. Units are metres.
+    Thin wrapper around ``physics.geometry.node_position_from_params_m``
+    so that call sites within this module remain unchanged.
     """
-    lat_rad = math.radians(float(node.params["lat_deg"]))
-    lon_rad = math.radians(float(node.params["lon_deg"]))
-    if "altitude_km" in node.params:
-        alt_m = float(node.params["altitude_km"]) * 1000.0
-    elif "altitude_m" in node.params:
-        alt_m = float(node.params["altitude_m"])
-    else:
-        alt_m = 0.0
-    r = _EARTH_RADIUS_M + alt_m
-    return (
-        r * math.cos(lat_rad) * math.cos(lon_rad),
-        r * math.cos(lat_rad) * math.sin(lon_rad),
-        r * math.sin(lat_rad),
-    )
+    return _geometry.node_position_from_params_m(node.params)
 
 
-def _range_m(
-    pos_a: tuple[float, float, float],
-    pos_b: tuple[float, float, float],
-) -> float:
-    """Euclidean distance between two 3D positions, in metres."""
-    dx = pos_b[0] - pos_a[0]
-    dy = pos_b[1] - pos_a[1]
-    dz = pos_b[2] - pos_a[2]
-    return float(math.sqrt(dx * dx + dy * dy + dz * dz))
-
-
-def _atmospheric_path_length_m(
-    p_source: tuple[float, float, float],
-    p_target: tuple[float, float, float],
-    *,
-    earth_radius_m: float = _EARTH_RADIUS_M,
-    h_atmosphere_m: float = _H_ATMOSPHERE_M,
-) -> float:
-    """Length of the segment [source, target] inside the atmosphere shell.
-
-    The atmosphere is modelled as a spherical shell between radii
-    ``earth_radius_m`` and ``earth_radius_m + h_atmosphere_m``. The
-    segment may be entirely inside, entirely outside, or cross the
-    shell once. Returns the length of the in-shell portion.
-
-    This is the correct path length to feed to
-    ``physics/atmosphere.transmission``. Using the full geometric
-    distance would apply a ground-level extinction coefficient to a
-    vacuum path and underflow to zero (docs/ENCODER_PHYSICS_INTEGRATION.md,
-    Decision 7).
-    """
-    r_outer = earth_radius_m + h_atmosphere_m
-
-    def radius_squared(p: tuple[float, float, float]) -> float:
-        return p[0] * p[0] + p[1] * p[1] + p[2] * p[2]
-
-    source_inside = radius_squared(p_source) <= r_outer * r_outer
-    target_inside = radius_squared(p_target) <= r_outer * r_outer
-
-    if source_inside and target_inside:
-        return _range_m(p_source, p_target)
-    if not source_inside and not target_inside:
-        return 0.0
-
-    if source_inside:
-        p_inside, p_outside = p_source, p_target
-    else:
-        p_inside, p_outside = p_target, p_source
-
-    dx = p_outside[0] - p_inside[0]
-    dy = p_outside[1] - p_inside[1]
-    dz = p_outside[2] - p_inside[2]
-    a = dx * dx + dy * dy + dz * dz
-    b = 2.0 * (p_inside[0] * dx + p_inside[1] * dy + p_inside[2] * dz)
-    c = radius_squared(p_inside) - r_outer * r_outer
-
-    if a <= 0.0:
-        return 0.0
-
-    disc = b * b - 4.0 * a * c
-    if disc < 0.0:
-        return _range_m(p_source, p_target)
-
-    sqrt_disc = math.sqrt(disc)
-    t1 = (-b + sqrt_disc) / (2.0 * a)
-    t2 = (-b - sqrt_disc) / (2.0 * a)
-    positive_roots = [t for t in (t1, t2) if t > 0.0]
-    if not positive_roots:
-        return 0.0
-    t_exit = min(min(positive_roots), 1.0)
-    return float(t_exit * math.sqrt(a))
-
-
-def _has_line_of_sight(
-    pos_a: tuple[float, float, float],
-    pos_b: tuple[float, float, float],
-    *,
-    earth_radius_m: float = _EARTH_RADIUS_M,
-    grazing_tolerance: float = 1e-6,
-) -> bool:
-    """True if the straight segment between two points clears the Earth.
-
-    Computes the minimum distance from the Earth's centre to the
-    closed segment [A, B] and compares to the Earth radius. A small
-    grazing tolerance (``grazing_tolerance * earth_radius_m``) allows
-    tangent segments to count as line of sight.
-    """
-    abx = pos_b[0] - pos_a[0]
-    aby = pos_b[1] - pos_a[1]
-    abz = pos_b[2] - pos_a[2]
-    ab_dot_ab = abx * abx + aby * aby + abz * abz
-    if ab_dot_ab <= 0.0:
-        # Coincident points; the segment has zero length and lies at A.
-        d_min = math.sqrt(pos_a[0] ** 2 + pos_a[1] ** 2 + pos_a[2] ** 2)
-    else:
-        t_star = -(pos_a[0] * abx + pos_a[1] * aby + pos_a[2] * abz) / ab_dot_ab
-        t_clamped = max(0.0, min(1.0, t_star))
-        cx = pos_a[0] + t_clamped * abx
-        cy = pos_a[1] + t_clamped * aby
-        cz = pos_a[2] + t_clamped * abz
-        d_min = math.sqrt(cx * cx + cy * cy + cz * cz)
-    return d_min >= earth_radius_m * (1.0 - grazing_tolerance)
+_range_m = _geometry.range_m
+_has_line_of_sight = _geometry.has_line_of_sight
+_atmospheric_path_length_m = _geometry.atmospheric_path_length_m
+_EARTH_RADIUS_M = _geometry.EARTH_RADIUS_M
+_SPEED_OF_LIGHT_M_PER_S = _geometry.SPEED_OF_LIGHT_M_PER_S
+_H_ATMOSPHERE_M = _geometry.H_ATMOSPHERE_M
 
 
 def _laser_chain_efficiency(
@@ -647,10 +516,14 @@ def _laser_chain_efficiency(
 ) -> float:
     """Beam * atmosphere * PV-TE receiver * battery efficiency.
 
+    ``range_m`` is the full geometric distance from source to target,
+    used for beam spreading. ``atmospheric_path_m`` is the portion of
+    the path that lies inside the atmosphere shell, used for
+    Beer-Lambert transmittance (design doc, Decision 7).
+
     The receiver efficiency is evaluated at the reference temperatures
-    in ``scene``, not at the transient operating point. This is a
-    reference evaluation, not a thermal solve; the transient state is
-    Tier 2 territory.
+    in ``scene`` unless ``scene.receiver_conversion_efficiency`` is set,
+    in which case the scalar override is used.
     """
     wl_nm = float(link.params["wavelength_nm"])
     receiver_radius_m = float(link.params["aperture_m"])
@@ -768,8 +641,6 @@ def _physics_constraints(
         source = next((n for n in arch.nodes if n.node_id == link.source_id), None)
         target = next((n for n in arch.nodes if n.node_id == link.target_id), None)
         if source is None or target is None:
-            # Architecture validation forbids dangling references; this
-            # guard exists for defensive type narrowing only.
             continue
 
         features = features_of_link(link)
@@ -789,9 +660,6 @@ def _physics_constraints(
         range_m = _range_m(p_source, p_target)
         delivered_w = _physical_link_delivered_w(arch, link, range_m, scene, config)
         if not math.isfinite(delivered_w) or delivered_w < 0.0:
-            # Non-physical chain value; skip the constraint rather than
-            # emitting an unbounded or invalid bound. This should not
-            # occur for architectures produced by the current generator.
             continue
         flow = z3.Real(f"{link.link_id}_flow")
         out.append(
@@ -818,10 +686,7 @@ def encode_architecture_with_physics(
     base encoding are UNSAT under this function because they violate
     line of sight or the physical chain.
 
-    ``encode_architecture`` is unchanged by this addition. This
-    function is the additive step (PR-B) of the encoder physics
-    integration; the semantic flip (PR-C) will either make the base
-    function delegate here or change the loop's call site.
+    ``encode_architecture`` is unchanged by this addition.
 
     Args:
         arch: The architecture to encode.

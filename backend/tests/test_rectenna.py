@@ -141,9 +141,16 @@ def test_efficiency_at_2_45_ghz_is_lower_than_at_5_8_ghz() -> None:
 # -- rectenna_efficiency: input validation ----------------------------------
 
 
-def test_efficiency_rejects_nonpositive_density() -> None:
-    with pytest.raises(ValueError, match="input_power_density_w_per_m2"):
-        rectenna_efficiency(0.0, 5.8)
+def test_efficiency_zero_density_returns_zero() -> None:
+    """A rectenna with no incident power delivers no DC power.
+
+    Returning 0.0 rather than raising is required for Stage B
+    soundness: the encoder must classify a fully-attenuated link as
+    UNSAT, not crash."""
+    assert rectenna_efficiency(0.0, 5.8) == 0.0
+
+
+def test_efficiency_rejects_negative_density() -> None:
     with pytest.raises(ValueError, match="input_power_density_w_per_m2"):
         rectenna_efficiency(-1.0, 5.8)
 

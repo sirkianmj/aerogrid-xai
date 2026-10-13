@@ -201,11 +201,20 @@ def rectenna_efficiency(
         Efficiency in [0, peak_efficiency].
     """
     cfg = config if config is not None else DEFAULT_RECTENNA_CONFIG
-    if input_power_density_w_per_m2 <= 0.0 or not math.isfinite(input_power_density_w_per_m2):
+    if not math.isfinite(input_power_density_w_per_m2):
         raise ValueError(
-            "input_power_density_w_per_m2 must be finite and > 0; got "
-            f"{input_power_density_w_per_m2}"
+            f"input_power_density_w_per_m2 must be finite; got {input_power_density_w_per_m2}"
         )
+    if input_power_density_w_per_m2 < 0.0:
+        raise ValueError(
+            f"input_power_density_w_per_m2 must be >= 0; got {input_power_density_w_per_m2}"
+        )
+    if input_power_density_w_per_m2 == 0.0:
+        # A rectenna with no incident power delivers no DC power.
+        # Returning 0.0 rather than raising is required for Stage B
+        # soundness: the encoder must be able to classify an
+        # architecture with a fully-attenuated link as UNSAT, not crash.
+        return 0.0
     if frequency_ghz <= 0.0 or not math.isfinite(frequency_ghz):
         raise ValueError(f"frequency_ghz must be finite and > 0; got {frequency_ghz}")
 
