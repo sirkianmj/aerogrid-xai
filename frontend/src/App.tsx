@@ -6,6 +6,7 @@ import { Globe } from "./features/Globe/Globe"
 import { DigitalTwin } from "./features/DigitalTwin/DigitalTwin"
 import { Telemetry } from "./features/Telemetry/Telemetry"
 import { TradeSpace } from "./features/TradeSpace/TradeSpace"
+import { AdminPanel } from "./features/AdminPanel/AdminPanel"
 
 type HealthState =
   | { status: "loading" }
@@ -59,6 +60,8 @@ function App() {
       <Telemetry />
 
       <TradeSpace />
+
+      <AdminPanel token={localStorage.getItem("aerogrid.token")} />
 
       <XAITrace />
 
