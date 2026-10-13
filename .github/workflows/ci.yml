@@ -90,18 +90,24 @@ jobs:
         run: |
           pg_isready -h 127.0.0.1 -p 5432 -U aerogrid -d aerogrid
         shell: bash -el {0}
-      - name: Apply the RLS migration
+      - name: Apply the database migrations
         run: |
-          psql -h 127.0.0.1 -p 5432 -U aerogrid -d aerogrid \
-            -v ON_ERROR_STOP=1 \
-            -f backend/app/saas/migrations/001_rls_setup.sql
+          for f in backend/app/saas/migrations/*.sql; do
+            echo "--- applying ${f}"
+            psql -h 127.0.0.1 -p 5432 -U aerogrid -d aerogrid \
+              -v ON_ERROR_STOP=1 \
+              -f "${f}"
+          done
         shell: bash -el {0}
       - name: Run the database-backed test modules
         env:
           AEROGRID_DATABASE_URL: postgresql+psycopg2://aerogrid@127.0.0.1:5432/aerogrid
         run: |
           cd backend
-          pytest tests/test_rls_isolation.py tests/test_saas_routes.py \
+          pytest \
+            tests/test_rls_isolation.py \
+            tests/test_saas_routes.py \
+            tests/test_saas_billing_routes.py \
             -v --no-header -rA | tee /tmp/rls.log
           # Both modules skip cleanly when PostgreSQL is unreachable.
           # Under this job the service container is running and the

@@ -38,3 +38,4 @@ select = ["E", "W", "F", "I", "N", "UP", "B", "C4", "SIM", "RUF"]
 # and is not the mutable-default pitfall B008 is designed to catch.
 "**/api.py" = ["B008"]
 "**/routes.py" = ["B008"]
+"**/billing_routes.py" = ["B008"]
