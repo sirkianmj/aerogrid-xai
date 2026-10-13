@@ -6,6 +6,9 @@ Gate: Every decision has a literal computation trace.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+from typing import cast
+
 import pytest
 
 from app.control.tier1 import (
@@ -387,3 +390,68 @@ def test_trace_builder_finalize_produces_trace() -> None:
     assert isinstance(trace, DecisionTrace)
     assert trace.decision_kind == DecisionKind.HOLD
     assert trace.selected_action == "hold_uav_5"
+
+
+def test_malformed_extra_field_does_not_crash_and_is_dropped_from_observed() -> None:
+    """A candidate carrying a non-floatable extra field must not crash
+    the decision. The extra field is dropped from every recorded
+    observed set because no rule consumes it; the trace's meaning
+    (which values were available to the model) is preserved.
+
+    Regression for finding F-1 in docs/XAI_FIDELITY_AUDIT.md.
+    """
+    # The declared parameter type is Mapping[str, float]; passing a
+    # malformed extra field deliberately violates that contract so the
+    # runtime behavior can be asserted. cast documents the violation.
+    candidates = cast(
+        "Sequence[Mapping[str, float]]",
+        [{"uav_id": 1, "battery_pct": 10.0, "extra_field": "not_a_number"}],
+    )
+    trace = decide_charge_uav(candidates, default_charge_rule_list())
+    assert trace.selected_action == "charge_uav_1"
+    for step in trace.steps:
+        keys = [k for k, _ in step.observed]
+        assert "extra_field" not in keys, (
+            f"step {step.label}: extra_field should be dropped from observed"
+        )
+
+
+def test_malformed_consulted_value_marks_rule_skipped_not_crash() -> None:
+    """A malformed value on a key that a rule actually consults must
+    be recorded as a skipped step, not raise out of the decision.
+
+    Regression for finding F-1 in docs/XAI_FIDELITY_AUDIT.md.
+    """
+    candidates = cast(
+        "Sequence[Mapping[str, float]]",
+        [{"uav_id": 7, "battery_pct": "not_a_number"}],
+    )
+    trace = decide_charge_uav(candidates, default_charge_rule_list())
+    battery_step = next(step for step in trace.steps if step.label.endswith(".low_battery"))
+    assert battery_step.result == "skipped", battery_step
+    assert battery_step.weight == 0.0
+
+
+def test_candidate_overrides_estimate_for_same_key() -> None:
+    """The merge order in decide_charge_uav is ``{**estimates, **candidate}``:
+    a value supplied by the candidate wins over an estimate for the
+    same key. This is a safety property of the current design: a Tier
+    2 estimate cannot silently override a caller-supplied input.
+
+    Documented as finding F-2 in docs/XAI_FIDELITY_AUDIT.md. The test
+    locks the ordering; if a future change inverts it, this test fails
+    and the design decision must be re-argued.
+    """
+    # Candidate says atmosphere is favorable (>= 0.8); estimate says
+    # it is not (0.0). The candidate's value must win.
+    candidates = [{"uav_id": 1, "atmospheric_factor": 0.91}]
+    estimates = {"atmospheric_factor": 0.0}
+    trace = decide_charge_uav(
+        candidates,
+        default_charge_rule_list(),
+        estimates=estimates,
+    )
+    step = next(s for s in trace.steps if s.label.endswith(".atmosphere_favorable"))
+    assert step.result == "match", "candidate's atmospheric_factor did not override the estimate"
+    observed = dict(step.observed)
+    assert observed["atmospheric_factor"] == 0.91
