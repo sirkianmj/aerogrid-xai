@@ -467,16 +467,17 @@ update it.
 
 ---
 
-## 12. Post-Sprint-7 Update — state at `faa9cab`
+## 12. Post-Sprint-7 Update — state at `6871f39`
 
 This section supersedes the state claims in sections 0-9 of this document.
 Written 2026-10-13 after Sprint 8 s8-6 merged (PR #75).
 
 ### Current position
 
-    main HEAD           faa9cab  (PR #75, Sprint 8 s8-6 quota management)
-    tests backend       980 passed
-    tests frontend      153 passed
+    main HEAD           6871f39  (PR #79, Sprint 8 complete 9/9)
+    tests backend       990 passed  (before 004 migration; test counts
+                        below are CI-verified on main at 6871f39)
+    tests frontend      163 passed
     CI jobs             5: backend, frontend, formal-verification,
                         cla-check, rls-isolation
     branch protection   all five above are required contexts
@@ -517,6 +518,10 @@ Files present at `faa9cab`:
     quota.py             Metric, Plan, PLAN_LIMITS, QuotaStore,
                          PostgresQuotaStore, FakeQuotaStore, consume,
                          get_tenant_plan, get_quota_store
+    admin_routes.py      GET /saas/admin/tenants
+                         GET /saas/admin/tenants/{tenant_id}/usage
+                         both require_role(Role.SUPERADMIN), both use
+                         admin_session (cross-tenant by design)
     routes.py            GET /saas/whoami, GET /saas/mission-count
     migrations/
         001_rls_setup.sql        tenants, missions, aerogrid_app role,
@@ -540,9 +545,9 @@ Files present at `faa9cab`:
 | s8-5a Stripe library | COMPLETE | #73 |
 | s8-5b Stripe routes + webhook + idempotency | COMPLETE | #74 |
 | s8-6 Quota management | COMPLETE | #75 |
-| s8-7 Admin panel (React) | NOT STARTED | - |
-| s8-8 Notebook 09 (multi-tenant isolation) | NOT STARTED | - |
-| s8-9 Scientific gate (DB-level isolation audit) | NOT STARTED | - |
+| s8-7 Admin panel (React) | COMPLETE | #79 |
+| s8-8 Notebook 09 (multi-tenant isolation) | COMPLETE | #78 |
+| s8-9 Scientific gate (DB-level isolation audit) | COMPLETE | #77 |
 
 ### Quota behaviour (s8-6)
 
@@ -590,10 +595,27 @@ New this update:
   an entry. Currently listed: **/api.py, **/routes.py,
   **/billing_routes.py, **/quota.py.
 
+### Frontend additions
+
+    features/AdminPanel/  adminApi.ts      typed client for the two
+                                           /saas/admin endpoints
+                          AdminPanel.tsx  superadmin UI; reads token
+                                           from localStorage, handles
+                                           401/403/404/network
+                          AdminPanel.test.tsx 10 tests
+
 ### Where to continue
 
-Order: s8-9 (audit) -> s8-8 (notebook 09) -> s8-7 (admin panel) ->
-docs sync (this update begins it) -> Sprints 9-12.
+Sprint 8 is complete (9/9). Next: Sprint 9.
+
+Order for Sprint 9: s9-1 (master test harness) -> s9-2 (scientific
+validation suite) -> s9-3 (Z3 end-to-end) -> s9-4 (XAI fidelity
+audit) -> s9-5 (Notebook 10 upgrade to full A->E loop) ->
+s9-6 (nightly notebook reproducibility) -> s9-7 (gate).
+
+`tests/master_test.py` does not yet exist. Notebook 10 exists but
+is the PR-#46 repair-mechanism demo (15 cells), not the full A->E
+loop demonstration s9-5 requires. Both are open work items.
 
 Rationale for s8-9 first: its substance is already implemented and
 tested by test_rls_isolation.py and test_saas_quota.py. The audit

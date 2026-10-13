@@ -5,7 +5,7 @@ This project adheres to Semantic Versioning.
 
 ## [Unreleased]
 
-### Added (Sprint 8 - PRs #71 through #75)
+### Added (Sprint 8 - PRs #71 through #79)
 - PostgreSQL row-level security on `missions` (PR #71). Application
   role `aerogrid_app` with NOSUPERUSER NOBYPASSRLS; `tenant_session`
   switches via `SET LOCAL ROLE` and sets `app.tenant_id` via
@@ -25,7 +25,20 @@ This project adheres to Semantic Versioning.
   exceedance; wired into `POST /tradespace/run` (PR #75).
 - Fifth CI job `rls-isolation` (added during s8-3, promoted to a
   required branch-protection context after s8-6).
-- Backend test count 881 -> 980.
+- Database-level isolation audit (`docs/ISOLATION_AUDIT.md`); migration
+  `004_tenants_least_privilege.sql` revokes `SELECT` on `tenants` from
+  `aerogrid_app`, closing finding F-1 (PR #77).
+- Notebook 09 (`notebooks/09_tenant_isolation.ipynb`): provisions two
+  tenants, exercises every tenant-scoped endpoint with each token, and
+  proves at the database layer that A cannot read B (PR #78).
+- Admin routes: `GET /saas/admin/tenants` and
+  `GET /saas/admin/tenants/{tenant_id}/usage`, both superadmin-only
+  (PR #79).
+- AdminPanel frontend feature: superadmin UI reading from
+  `localStorage`; handles 401, 403, 404, and network errors; 10 new
+  tests (PR #79).
+- Branch protection: `rls-isolation` promoted to a required context.
+- Backend test count 881 -> 990; frontend 153 -> 163.
 
 ### Added (Sprint 7 - PRs #59 through #69)
 - Design system: Tailwind 4, design tokens, WCAG 2.1 AA contrast

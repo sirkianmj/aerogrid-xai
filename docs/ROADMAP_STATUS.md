@@ -275,7 +275,7 @@ built. This sprint tracks that work.
 | Flip encoder default to physics variant (PR-C) | Not started |
 | Whole-network flow balance in the physics extension | Not started |
 
-## Sprint 8 — in progress (6 of 9 complete)
+## Sprint 8 — complete (9 of 9)
 
 Sprint 8 (multi-tenant SaaS) at `faa9cab`:
 
@@ -288,9 +288,15 @@ Sprint 8 (multi-tenant SaaS) at `faa9cab`:
 | s8-5a Stripe library | COMPLETE | #73 |
 | s8-5b Stripe routes + webhook + idempotency | COMPLETE | #74 |
 | s8-6 Quota management | COMPLETE | #75 |
-| s8-7 Admin panel (React) | NOT STARTED | - |
-| s8-8 Notebook 09 (multi-tenant isolation) | NOT STARTED | - |
-| s8-9 Scientific gate: DB-level isolation audit | NOT STARTED | - |
+| s8-7 Admin panel (React) | COMPLETE | #79 |
+| s8-8 Notebook 09 (multi-tenant isolation) | COMPLETE | #78 |
+| s8-9 Scientific gate: DB-level isolation audit | COMPLETE | #77 |
+
+Sprint 8 closed at `6871f39`. Test counts: backend 990, frontend 163.
+The `rls-isolation` CI job runs five DB-backed test modules
+(test_rls_isolation, test_saas_routes, test_saas_billing_routes,
+test_saas_quota, test_saas_admin_routes) against an ephemeral
+PostgreSQL 16 container and fails on any skip.
 
 Branch protection now requires all five CI contexts, including
 `rls-isolation`. The four DB-backed test modules
