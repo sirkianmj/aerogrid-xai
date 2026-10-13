@@ -83,6 +83,16 @@ claims above are not confused with them:
   `T_MAX_K`; the PWL domain is restricted to the pre-cutoff band. See
   the notebook's Stage A markdown.
 
+## Citation audit
+
+Every citation referenced by the claims in this document has been
+collected and classified in `docs/CITATION_AUDIT.md`. That audit
+distinguishes three independent questions — is the citation
+well-formed, does the source exist, do the attributed values appear in
+the source — and reports the state of each. The High-priority items
+that require external access are P5 (Han et al. DOI unresolved) and
+C-3 (MUC-G4 characterization unverified).
+
 ## Enforcement
 
 `tests/master_test.py` runs the backend, frontend, and notebook phases
