@@ -258,7 +258,7 @@ itself and in the PR description.
 | s10-6 | Scientific gate: all references verified | COMPLETE — `docs/CITATION_AUDIT.md`; four High/Medium-priority external checks recorded for follow-up |
 | s10-1 | Q1 article draft | NOT STARTED |
 | s10-2 | DARPA DID-style documentation (SRS, Design Doc, Test Report) | NOT STARTED |
-| s10-3 | Epistemic hierarchy audit | NOT STARTED |
+| s10-3 | Epistemic hierarchy audit | COMPLETE — `docs/EPISTEMIC_HIERARCHY_AUDIT.md`; P34 closed; four follow-up findings F-1..F-4 recorded |
 | s10-5 | Notebook 11 — reproducibility binder | NOT STARTED |
 
 The s10-6 audit records that P5 (Han et al. citation) and C-3 (MUC-G4
@@ -371,5 +371,7 @@ fails on any skip.
   element-casing warnings for R3F intrinsics. Cosmetic.
 - **P33** — The Telemetry test's fake socket pushes messages outside
   React's event flow, producing an act() warning. Tests pass.
-- **P34** — Sprint 7 s7-7 and s7-9 are partial: the badge infrastructure
-  and per-panel tagging exist, but no formal UI audit has been done.
+- **P34** — CLOSED by `docs/EPISTEMIC_HIERARCHY_AUDIT.md` (s10-3).
+  The audit confirms 6/6 top-level panels are correctly wrapped in
+  `TaggedOutput`; four follow-up findings (F-1 through F-4) are recorded
+  in that document but none is a live defect on a shipped output path.

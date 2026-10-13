@@ -83,6 +83,15 @@ claims above are not confused with them:
   `T_MAX_K`; the PWL domain is restricted to the pre-cutoff band. See
   the notebook's Stage A markdown.
 
+## Epistemic hierarchy audit
+
+Every UI feature panel and every scientific backend endpoint has been
+audited for Section 21 epistemic tagging. See
+`docs/EPISTEMIC_HIERARCHY_AUDIT.md`. Result: 6/6 top-level panels
+correctly wrapped in `TaggedOutput`; all scientific endpoints except
+three `/orbital/*` routes carry an `epistemic_tag` field. Four findings
+(F-1 through F-4) recorded for follow-up; none is a live defect.
+
 ## Citation audit
 
 Every citation referenced by the claims in this document has been
