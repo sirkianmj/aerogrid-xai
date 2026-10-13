@@ -229,7 +229,7 @@ def test_physics_encoder_characterizes_generator_feasibility_rate() -> None:
     )
 
     scene = SceneConfig(receiver_conversion_efficiency=0.25)
-    n_seeds = 60
+    n_seeds = 30
     sat = 0
     for seed in range(n_seeds):
         arch = generate_architecture(
@@ -244,4 +244,37 @@ def test_physics_encoder_characterizes_generator_feasibility_rate() -> None:
         f"\nphysics encoder characterization: {sat}/{n_seeds} generated "
         f"architectures are SAT with receiver_conversion_efficiency=0.25"
     )
-    assert 0 <= sat <= n_seeds
+    assert sat > 0, (
+        "with physics-aware link kind sampling the generator should produce "
+        "at least some physically feasible architectures"
+    )
+
+
+# -- Physics-aware link kind sampling --------------------------------------
+
+
+def test_generator_samples_only_viable_link_kinds() -> None:
+    """Every link in every generated architecture has a physical chain
+    that delivers at least the viability threshold of the source power."""
+    from app.discovery.generator import (
+        _LINK_KIND_VIABILITY_FRACTION,
+        _link_chain_delivers_positive,
+    )
+
+    for seed in range(50):
+        arch = generate_architecture(
+            GeneratorConfig(min_nodes=4, max_nodes=8, max_links=6, seed=seed)
+        )
+        node_by_id = {n.node_id: n for n in arch.nodes}
+        for link in arch.links:
+            src_n = node_by_id[link.source_id]
+            tgt_n = node_by_id[link.target_id]
+            delivered = _link_chain_delivers_positive(
+                dict(src_n.params), dict(tgt_n.params), link.kind, 5.0
+            )
+            p_src = float(src_n.params.get("power_w", 20.0))
+            threshold = _LINK_KIND_VIABILITY_FRACTION * p_src
+            assert delivered >= threshold, (
+                f"seed {seed} link {link.link_id} kind {link.kind.value} "
+                f"delivers {delivered:.3e} W, below threshold {threshold:.3e} W"
+            )
