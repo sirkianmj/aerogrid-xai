@@ -1,0 +1,110 @@
+name: Notebook reproducibility (nightly)
+
+# Re-executes every notebooks/*.ipynb top-to-bottom against a fresh
+# conda environment and a running PostgreSQL 16 service container.
+# Roadmap task s9-6.
+#
+# The execution target is a scratch copy under /tmp so the repository
+# is never modified by a nightly run. The property under test is
+# "the notebook executes without error in a clean environment," not
+# "the notebook's outputs are byte-stable across runs." The latter
+# would churn the repo on every scheduled run.
+#
+# Notebooks that require PostgreSQL (09_tenant_isolation) find it via
+# AEROGRID_DATABASE_URL, set below. The migrations are applied before
+# any notebook runs.
+
+on:
+  schedule:
+    # 06:00 UTC daily.
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  execute-notebooks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: aerogrid
+          POSTGRES_DB: aerogrid
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aerogrid -d aerogrid"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Miniforge
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: environment.yml
+          activate-environment: aerogrid
+          miniforge-version: latest
+
+      - name: Sanity check PostgreSQL reachability
+        run: pg_isready -h 127.0.0.1 -p 5432 -U aerogrid -d aerogrid
+        shell: bash -el {0}
+
+      - name: Apply the database migrations
+        run: |
+          for f in backend/app/saas/migrations/*.sql; do
+            echo "--- applying ${f}"
+            psql -h 127.0.0.1 -p 5432 -U aerogrid -d aerogrid \
+              -v ON_ERROR_STOP=1 \
+              -f "${f}"
+          done
+        shell: bash -el {0}
+
+      - name: Execute every notebook in place
+        env:
+          AEROGRID_DATABASE_URL: postgresql+psycopg2://aerogrid@127.0.0.1:5432/aerogrid
+        run: |
+          # Notebooks resolve their import root as
+          # Path.cwd().parent / "backend". Executing them from their
+          # real location (notebooks/) preserves that resolution;
+          # --output-dir writes the executed copies to scratch so the
+          # repository is never modified by a scheduled run.
+          set -e
+          shopt -s nullglob
+          rm -rf /tmp/nb-repro-out
+          mkdir -p /tmp/nb-repro-out
+          failed=0
+          for nb in notebooks/*.ipynb; do
+            base=$(basename "$nb")
+            echo ""
+            echo "============================================================"
+            echo "executing ${base}"
+            echo "============================================================"
+            if ! jupyter nbconvert \
+                 --to notebook --execute \
+                 --ExecutePreprocessor.timeout=600 \
+                 --ExecutePreprocessor.kernel_name=python3 \
+                 --output-dir /tmp/nb-repro-out \
+                 "$nb"; then
+              echo "FAILED: ${base}"
+              failed=1
+            fi
+          done
+          echo ""
+          if [ "$failed" -ne 0 ]; then
+            echo "notebook-repro: at least one notebook failed to execute"
+            exit 1
+          fi
+          echo "notebook-repro: all notebooks executed without error"
+        shell: bash -el {0}
+
+      - name: Upload executed notebooks on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: executed-notebooks
+          path: /tmp/nb-repro-out/*.ipynb
+          retention-days: 7
+          if-no-files-found: ignore
