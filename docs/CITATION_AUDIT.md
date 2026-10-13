@@ -292,6 +292,7 @@ cross-check.
 | **C-3** (new) | MUC-G4 | The novelty argument depends on the accuracy of the paper characterization; the paper was not consulted. | **HIGH** — the entire distinctiveness claim for CLEAR-D rests on this. |
 | **C-4** (new) | ANSI Z136.1 / FCC Part 1.1310 values | Standards and regulations are identified by designation; the specific numeric limits were not cross-checked against current versions. | LOW |
 | **C-5** (new) | Burroughs Wellcome | Cited in specification §44 but not relied on elsewhere in the repository. | TRIVIAL — remove if unused, or keep with a note. |
+| **CIT-1** (new) | DID standard numbers (DI-IPSC-81428, 81433, 81434) | The DID documents in `docs/DID/` cite these as the templates they follow. The numbers are widely reported; the exact current revision of each template was not cross-checked against a DoD source. | LOW — a verifiable external check. |
 
 ## 6. What this audit does not do
 
