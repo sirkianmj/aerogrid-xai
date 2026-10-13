@@ -204,10 +204,29 @@ PR #43 adds:
 
 ## Sprint 7 — React Mission-Control UI
 
-Not yet started. `frontend/` currently holds the Sprint-0 scaffold only:
-App.tsx with a `/health` fetch, App.test.tsx with three passing tests,
-React 19.2 / Vite 8.3 / TypeScript 6.0 / Vitest 4, Vite proxy `/api`
-→ `http://127.0.0.1:8000`.
+COMPLETE. Six tasks, eleven PRs (#59 through #69).
+
+| ID | Task | Status |
+|----|------|--------|
+| s7-1 | Extend Sprint-0 design system | COMPLETE (PR #59) — Tailwind 4, design tokens, WCAG 2.1 AA contrast test, EpistemicHierarchyBadge with all seven Section 21 categories |
+| s7-2 | 3D Globe (Three.js) | COMPLETE (PRs #62, #63) — backend orbital endpoints and frontend Globe scene |
+| s7-3 | Real-time telemetry dashboard (WebSocket) | COMPLETE (PRs #66, #67) — `WS /telemetry/stream` with a bounded client-side ring buffer of 1000 samples |
+| s7-4 | XAI Trace Panel | COMPLETE (PRs #60, #61) — `POST /decisions/charge` and the Section 15.5 trace panel |
+| s7-5 | Digital Twin state view | COMPLETE (PRs #64, #65) — state, trajectory, and discrepancy endpoints plus an inline SVG transient chart |
+| s7-6 | Trade Space explorer | COMPLETE (PRs #68, #69) — NSGA-II endpoint and a parallel-coordinates Pareto explorer |
+| s7-7 | UI gate: every output tagged per Section 21 | PARTIAL — the `EpistemicBadge` component exists and every new panel wraps its content in `TaggedOutput`; a full UI audit remains |
+| s7-8 | Frontend CI extended with new components | COMPLETE (implicitly) — the existing frontend CI job runs oxlint + tsc -b + vitest + vite build, and all four are green on the new code |
+| s7-9 | UI does not obscure epistemic status | PARTIAL — the badge is rendered on every panel; a written audit remains |
+
+### Frontend test count
+
+0 (beyond scaffold) at ef428bf, 153 at 33d94f9.
+
+### Backend additions during Sprint 7
+
+Four new API packages: `app/physics/api.py`, `app/telemetry/api.py`,
+`app/digital_twin/api.py`, `app/tradespace/api.py`. Twelve HTTP routes
+and one WebSocket route. All registered in `app/main.py`.
 
 ## Sprint 9 — Master Test Harness (partial)
 
@@ -307,3 +326,12 @@ See the Master Engineering Roadmap (Rev. 2). Notable items:
 - **P30** — `atmospheric_path_length_m` over-counts for chords that exit
   the top of the shell between two in-shell endpoints. Latent; not
   triggered by the generator.
+- **P31** — Frontend production bundle is 1.20 MB / 330 KB gzipped,
+  dominated by Three.js. Code-splitting Globe into a lazy chunk is a
+  follow-up.
+- **P32** — The Globe test mocks the R3F Canvas, producing jsdom
+  element-casing warnings for R3F intrinsics. Cosmetic.
+- **P33** — The Telemetry test's fake socket pushes messages outside
+  React's event flow, producing an act() warning. Tests pass.
+- **P34** — Sprint 7 s7-7 and s7-9 are partial: the badge infrastructure
+  and per-panel tagging exist, but no formal UI audit has been done.

@@ -5,6 +5,25 @@ This project adheres to Semantic Versioning.
 
 ## [Unreleased]
 
+### Added (Sprint 7 - PRs #59 through #69)
+- Design system: Tailwind 4, design tokens, WCAG 2.1 AA contrast
+  verification, EpistemicHierarchyBadge with all seven Section 21
+  categories (PR #59).
+- 3D Globe: backend orbital endpoints (`/orbital/satellites`,
+  `/orbital/track`, `/orbital/visibility`) and frontend Three.js scene
+  with geodetic conversion library (PRs #62, #63).
+- Real-time telemetry: WebSocket endpoint `WS /telemetry/stream` and
+  frontend live panel with a bounded ring buffer of 1000 samples
+  (PRs #66, #67).
+- XAI Trace Panel: `POST /decisions/charge` endpoint and Section 15.5
+  trace panel (PRs #60, #61).
+- Digital Twin state view: `/digital-twin/state`, `/trajectory`,
+  `/discrepancy` endpoints and a panel with an inline SVG thermal
+  transient chart (PRs #64, #65).
+- Trade Space explorer: `POST /tradespace/run` running NSGA-II and a
+  parallel-coordinates Pareto front visualization (PRs #68, #69).
+- Backend test count 813 -> 881; frontend test count 0 -> 153.
+
 ### Added (Phase 2 - PR #57, previously labelled Sprint 10)
 - Generator physics-aware link kind sampling. Link kinds are sampled
   from the set that is physically viable at the final placed geometry,
