@@ -275,12 +275,29 @@ built. This sprint tracks that work.
 | Flip encoder default to physics variant (PR-C) | Not started |
 | Whole-network flow balance in the physics extension | Not started |
 
-## Sprint 8 — not started
+## Sprint 8 — in progress (6 of 9 complete)
 
-See the Master Engineering Roadmap (Rev. 2). Notable items:
+Sprint 8 (multi-tenant SaaS) at `faa9cab`:
 
-- Sprint 8 introduces MinIO (per D3), tenant isolation via PostgreSQL RLS,
-  Stripe billing.
+| Task | Status | PR |
+|------|--------|----|
+| s8-1 MinIO install + service scripts | COMPLETE | - |
+| s8-2 PostgreSQL 16 + Redis 8 startup | COMPLETE | - |
+| s8-3 PostgreSQL row-level security | COMPLETE | #71 |
+| s8-4 Tenant JWT middleware | COMPLETE | #72 |
+| s8-5a Stripe library | COMPLETE | #73 |
+| s8-5b Stripe routes + webhook + idempotency | COMPLETE | #74 |
+| s8-6 Quota management | COMPLETE | #75 |
+| s8-7 Admin panel (React) | NOT STARTED | - |
+| s8-8 Notebook 09 (multi-tenant isolation) | NOT STARTED | - |
+| s8-9 Scientific gate: DB-level isolation audit | NOT STARTED | - |
+
+Branch protection now requires all five CI contexts, including
+`rls-isolation`. The four DB-backed test modules
+(test_rls_isolation.py, test_saas_routes.py,
+test_saas_billing_routes.py, test_saas_quota.py) run in that job
+against an ephemeral PostgreSQL 16 service container and the job
+fails on any skip.
 - Sprint 9 builds the master test harness and
   `notebooks/10_clear_d_end_to_end.ipynb`. The composition that notebook
   was scheduled to produce is already in place as of PR #43; the notebook

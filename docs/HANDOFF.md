@@ -1,7 +1,10 @@
 # Handoff Document — AeroGrid-XAI (next AI agent)
 
-**Written:** 2026-10-13 (revised for Sprint 7)
-**Repository state:** `main` at commit `33d94f9`
+**Written:** 2026-10-13. Original at `33d94f9`; section 12 appended for `faa9cab`.
+**Repository state:** `main` at commit `faa9cab`. Sections 0-11 remain valid
+for the deep technical content (CLEAR-D pipeline structure, physics constants,
+attributions, tooling facts). Section 12 supersedes any state claim in
+sections 0-9.
 **Supersedes:** the prior handoff document describing commit `ef428bf`
 **Platform:** AeroGrid-XAI
 **Method:** CLEAR-D (Coupled-Loop Epistemic Architecture Reasoning and Discovery)
@@ -461,3 +464,138 @@ green on the three most recent merge commits (#41, #42, #43).
 If a claim in this document does not match the code you find on disk,
 the code is authoritative and this document is wrong. Say so and
 update it.
+
+---
+
+## 12. Post-Sprint-7 Update — state at `faa9cab`
+
+This section supersedes the state claims in sections 0-9 of this document.
+Written 2026-10-13 after Sprint 8 s8-6 merged (PR #75).
+
+### Current position
+
+    main HEAD           faa9cab  (PR #75, Sprint 8 s8-6 quota management)
+    tests backend       980 passed
+    tests frontend      153 passed
+    CI jobs             5: backend, frontend, formal-verification,
+                        cla-check, rls-isolation
+    branch protection   all five above are required contexts
+                        (enforce_admins=true, strict=true,
+                         allow_force_pushes=false, allow_deletions=false)
+
+### What changed since section 2
+
+- Test count went 881 -> 980 as Phase 2 (PRs #47-#57), Sprint 7
+  (PRs #59-#69), and Sprint 8 (PRs #71-#75) landed.
+- `rls-isolation` was added as a fifth CI job during Sprint 8 s8-3. It
+  runs an ephemeral PostgreSQL 16 service container, applies migrations
+  001-003, and runs the four DB-backed test modules. The job fails on
+  any skip. As of this update it is also a required branch-protection
+  context; a PR that removes it from `.github/workflows/ci.yml` cannot
+  merge.
+- Section 2's "exactly four jobs" is superseded.
+
+### `backend/app/saas/` is no longer empty (supersedes section 3)
+
+Files present at `faa9cab`:
+
+    __init__.py
+    auth.py              JWT issue/verify, roles viewer<admin<superadmin,
+                         require_tenant, require_role(min)
+    billing.py           StripeClient protocol, LiveStripeClient,
+                         FakeStripeClient, stripe_config
+    billing_routes.py    POST /saas/checkout-session,
+                         GET /saas/subscription,
+                         POST /saas/webhook/stripe
+    db.py                get_engine, tenant_session (SET LOCAL ROLE
+                         aerogrid_app + set_config('app.tenant_id')),
+                         admin_session, reset_engine_cache
+    fake_stripe.py       in-memory Stripe double with real HMAC signing
+    idempotency.py       IdempotencyStore, PostgresIdempotencyStore,
+                         FakeIdempotencyStore
+    models.py            Tenant, Mission ORM models
+    quota.py             Metric, Plan, PLAN_LIMITS, QuotaStore,
+                         PostgresQuotaStore, FakeQuotaStore, consume,
+                         get_tenant_plan, get_quota_store
+    routes.py            GET /saas/whoami, GET /saas/mission-count
+    migrations/
+        001_rls_setup.sql        tenants, missions, aerogrid_app role,
+                                 RLS policy on missions
+        002_billing_columns.sql  three Stripe columns on tenants;
+                                 stripe_events for idempotency
+        003_quota_usage.sql      quota_usage table with RLS, policy,
+                                 grant to aerogrid_app
+
+### Sprint 8 status
+
+| Task | Status | PR |
+|------|--------|----|
+| s8-1 MinIO install + service scripts | COMPLETE | - |
+| s8-2 PostgreSQL + Redis startup | COMPLETE | - |
+| s8-3 PostgreSQL RLS | COMPLETE | #71 |
+| s8-4 Tenant JWT middleware | COMPLETE | #72 |
+| s8-5a Stripe library | COMPLETE | #73 |
+| s8-5b Stripe routes + webhook + idempotency | COMPLETE | #74 |
+| s8-6 Quota management | COMPLETE | #75 |
+| s8-7 Admin panel (React) | NOT STARTED | - |
+| s8-8 Notebook 09 (multi-tenant isolation) | NOT STARTED | - |
+| s8-9 Scientific gate (DB-level isolation audit) | NOT STARTED | - |
+
+### Quota behaviour (s8-6)
+
+- Metrics: z3_solves, tradespace_runs, clear_d_runs.
+- Plans: free, pro, enterprise. Plan is derived from the tenant's
+  Stripe subscription status by plan_for_status; active and trialing
+  map to PRO, everything else maps to FREE.
+- consume(store, tenant_id, plan, metric, now=...) increments the
+  current month's counter in one atomic upsert, then raises HTTP 429
+  with a Retry-After header pointing at the next month's start if the
+  new count exceeds the plan limit. An over-limit attempt is still
+  charged, by design.
+- POST /tradespace/run requires a bearer JWT (minimum role viewer) and
+  charges one tradespace_runs unit after request validation and after
+  the max_nodes >= min_nodes check, so 400 and 422 responses are free.
+
+### Known discrepancies / open items (supersedes section 9)
+
+Closed since the original handoff:
+
+- P35 (branch protection missing rls-isolation) - CLOSED by this update.
+- The "four CI checks" description throughout sections 0-11 - superseded
+  by the five-job list in section 12.
+
+Still open, carried forward:
+
+- P5  Han et al. Matter & Light, 2026 citation lacks DOI and volume.
+- P21 Kruse-Kim coefficients cited by reference, not cross-checked
+      against source PDFs.
+- P26 Generator does not verify combined UAV supply vs. demand.
+- P31 Frontend bundle ~1.2 MB (330 KB gzipped); Globe code-splitting
+      is a reasonable follow-up.
+- s3-8 SAT-verdict direction: tracker marks PENDING; the reformulation
+      is documented in docs/ROADMAP_STATUS.md.
+- P14, P15, P16, P17, P20, P22, P23, P24, P25, P28, P29, P30, P32,
+  P33, P34 - see docs/ROADMAP_STATUS.md for the current text.
+
+New this update:
+
+- The session-opening handoff document (with byte-size claims of 7948
+  and 1745 and the per-file-ignore note about quota_routes.py) was a
+  proposal, not a state of the repository. It was never written to disk.
+  The true per-file-ignore rule, from backend/pyproject.toml, is that
+  any module using Depends, Query, or Path in argument defaults needs
+  an entry. Currently listed: **/api.py, **/routes.py,
+  **/billing_routes.py, **/quota.py.
+
+### Where to continue
+
+Order: s8-9 (audit) -> s8-8 (notebook 09) -> s8-7 (admin panel) ->
+docs sync (this update begins it) -> Sprints 9-12.
+
+Rationale for s8-9 first: its substance is already implemented and
+tested by test_rls_isolation.py and test_saas_quota.py. The audit
+publishes the DB-level guarantee before the admin panel builds UI that
+depends on it.
+
+Sections 7 (terminal facts) and 8 (tooling facts) of this document
+remain in force.
