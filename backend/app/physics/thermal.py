@@ -464,6 +464,67 @@ class ThermalModel:
             t_te_k=float(sol.y[1, -1]),
         )
 
+    def simulate_trajectory(
+        self,
+        p_incident_w: float,
+        v_m_per_s: float,
+        t_amb_k: float,
+        t_plc_initial_k: float,
+        t_te_initial_k: float,
+        t_end_s: float,
+        n_samples: int = 500,
+    ) -> tuple[ThermalSnapshot, ...]:
+        """Integrate the two-node ODE forward and return every sample.
+
+        Companion to ``simulate``, which returns only the final snapshot.
+        The trajectory endpoint of the digital-twin HTTP layer needs the
+        full series so the frontend can plot the transient response.
+
+        Args:
+            p_incident_w: Incident laser power at the receiver, W.
+            v_m_per_s: Airflow speed over the airframe, m/s.
+            t_amb_k: Ambient temperature, K.
+            t_plc_initial_k: Initial PLC temperature, K.
+            t_te_initial_k: Initial TE temperature, K.
+            t_end_s: Integration horizon, s. Must be > 0.
+            n_samples: Number of samples in the returned series. >= 2.
+
+        Returns:
+            Tuple of ThermalSnapshot, one per sample, in ascending time.
+
+        Raises:
+            ValueError on bad inputs, RuntimeError if the integrator fails.
+        """
+        if t_end_s <= 0.0:
+            raise ValueError(f"t_end_s must be > 0; got {t_end_s}")
+        if n_samples < 2:
+            raise ValueError(f"n_samples must be >= 2; got {n_samples}")
+
+        def rhs(t: float, y: np.ndarray) -> list[float]:
+            t_plc, t_te = float(y[0]), float(y[1])
+            return [
+                self.dt_plc_dt(t_plc, t_te, p_incident_w, v_m_per_s, t_amb_k),
+                self.dt_te_dt(t_plc, t_te, p_incident_w, v_m_per_s, t_amb_k),
+            ]
+
+        sol = solve_ivp(
+            rhs,
+            (0.0, t_end_s),
+            [t_plc_initial_k, t_te_initial_k],
+            t_eval=np.linspace(0.0, t_end_s, n_samples),
+            method="RK45",
+        )
+        if not sol.success:
+            raise RuntimeError(f"ODE integration failed: {sol.message}")
+        return tuple(
+            ThermalSnapshot(
+                time_s=float(sol.t[i]),
+                t_plc_k=float(sol.y[0, i]),
+                t_te_k=float(sol.y[1, i]),
+            )
+            for i in range(sol.t.size)
+        )
+
 
 def default_model() -> ThermalModel:
     """Construct a ThermalModel with the default parameters."""
