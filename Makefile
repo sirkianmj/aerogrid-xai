@@ -1,4 +1,4 @@
-.PHONY: help setup env-update test lint format dev-backend clean services-start services-stop services-status
+.PHONY: help setup env-update test lint format dev-backend clean services-start services-stop services-status master-test master-test-ci
 
 help:
 	@echo "AeroGrid-XAI -- available targets:"
@@ -24,6 +24,12 @@ lint:
 
 format:
 	cd backend && ruff format .
+
+master-test:
+	python3 tests/master_test.py
+
+master-test-ci:
+	python3 tests/master_test.py --require-db
 
 dev-backend:
 	cd backend && uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
