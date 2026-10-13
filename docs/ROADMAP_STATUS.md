@@ -250,6 +250,21 @@ in the same PR made the loop-level comparison non-informative on the
 current seed distribution. Both facts are documented in the notebook
 itself and in the PR description.
 
+## Sprint 10 — Publication & ATO Documentation (in progress)
+
+| ID | Task | Status |
+|----|------|--------|
+| s10-4 | Prior-art / defensive-publication memo | COMPLETE (PR #88) — Revision 2, 301 lines, `docs/DEFENSIVE_PUBLICATION.md` |
+| s10-6 | Scientific gate: all references verified | COMPLETE — `docs/CITATION_AUDIT.md`; four High/Medium-priority external checks recorded for follow-up |
+| s10-1 | Q1 article draft | NOT STARTED |
+| s10-2 | DARPA DID-style documentation (SRS, Design Doc, Test Report) | NOT STARTED |
+| s10-3 | Epistemic hierarchy audit | NOT STARTED |
+| s10-5 | Notebook 11 — reproducibility binder | NOT STARTED |
+
+The s10-6 audit records that P5 (Han et al. citation) and C-3 (MUC-G4
+paper characterization) both remain open because neither can be closed
+without external access to the sources. Neither is hidden.
+
 ## Phase 2 — Multi-Modal Wireless Power Model (in progress)
 
 This is Phase 2 of the specification's Development Phases (Section 25),
