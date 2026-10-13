@@ -50,6 +50,44 @@ function stubAppFetch(opts: StubOptions = {}) {
           json: () => Promise.resolve({ satellites: [] }),
         } as Response)
       }
+      if (url.endsWith("/digital-twin/state")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({
+            epistemic_tag: "simulation_result",
+            incident_power_w: 20, airflow_m_per_s: 5, ambient_temperature_k: 298.15,
+            steady_state: null,
+            thermal_runaway_power_w: 60, safety_margin_w: 40, safety_margin_fraction: 0.667,
+            receiver_efficiency: null, receiver_efficiency_source: "",
+          }),
+        } as Response)
+      }
+      if (url.endsWith("/digital-twin/trajectory")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({
+            epistemic_tag: "simulation_result",
+            t_end_s: 10, n_samples: 2,
+            samples: [
+              { time_s: 0, t_plc_k: 298.15, t_te_k: 298.15 },
+              { time_s: 10, t_plc_k: 299.0, t_te_k: 298.5 },
+            ],
+          }),
+        } as Response)
+      }
+      if (url.endsWith("/digital-twin/discrepancy")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({
+            epistemic_tag: "simulation_result",
+            n_observations: 0, n_triggered: 0, triggered_fields: [],
+            should_refine: false, threshold_summary: {}, records: [],
+          }),
+        } as Response)
+      }
       return Promise.reject(new Error(`unexpected url in App test: ${url}`))
     }),
   )
