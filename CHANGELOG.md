@@ -5,6 +5,28 @@ This project adheres to Semantic Versioning.
 
 ## [Unreleased]
 
+### Added (Sprint 8 - PRs #71 through #75)
+- PostgreSQL row-level security on `missions` (PR #71). Application
+  role `aerogrid_app` with NOSUPERUSER NOBYPASSRLS; `tenant_session`
+  switches via `SET LOCAL ROLE` and sets `app.tenant_id` via
+  `set_config(..., true)`. Policy uses
+  `NULLIF(current_setting('app.tenant_id', true), '')::uuid`.
+- Tenant JWT middleware: HS256 tokens, roles viewer < admin < superadmin,
+  `require_tenant` and `require_role(min)` FastAPI dependencies,
+  `GET /saas/whoami` and `GET /saas/mission-count` (PR #72).
+- Stripe billing library: `StripeClient` protocol, `LiveStripeClient`,
+  `FakeStripeClient`, `stripe_config` (PR #73).
+- Stripe routes and webhook handler: `POST /saas/checkout-session`,
+  `GET /saas/subscription`, `POST /saas/webhook/stripe` with HMAC
+  verification and PostgreSQL idempotency on event ID (PR #74).
+- Quota management: `Metric` (z3_solves, tradespace_runs, clear_d_runs),
+  `Plan` (free, pro, enterprise), `PLAN_LIMITS`, `PostgresQuotaStore`,
+  `FakeQuotaStore`, `consume` with HTTP 429 and `Retry-After` on limit
+  exceedance; wired into `POST /tradespace/run` (PR #75).
+- Fifth CI job `rls-isolation` (added during s8-3, promoted to a
+  required branch-protection context after s8-6).
+- Backend test count 881 -> 980.
+
 ### Added (Sprint 7 - PRs #59 through #69)
 - Design system: Tailwind 4, design tokens, WCAG 2.1 AA contrast
   verification, EpistemicHierarchyBadge with all seven Section 21
