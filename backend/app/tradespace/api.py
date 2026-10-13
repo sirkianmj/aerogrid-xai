@@ -14,6 +14,16 @@ Request body carries the NSGA-II hyperparameters and the generator
 bounds for the initial population. Everything has a default, so an
 empty JSON body runs a small demo.
 
+Authentication and metering
+---------------------------
+
+The endpoint requires a tenant JWT (minimum role: viewer). Each
+successful call consumes one unit of the tenant's monthly
+``tradespace_runs`` quota. The quota check happens after request
+validation and after the generator-bounds consistency check, so a
+request that would have been rejected with 400 or 422 does not consume
+a unit.
+
 Epistemic category
 ------------------
 
@@ -27,7 +37,7 @@ from __future__ import annotations
 
 import random
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.discovery.generator import GeneratorConfig, generate_architecture
@@ -37,6 +47,15 @@ from app.discovery.nsga2 import (
     NSGA2Config,
     run_nsga2,
     synthetic_evaluator,
+)
+from app.saas.auth import Role, TenantContext, require_role
+from app.saas.quota import (
+    Metric,
+    Plan,
+    QuotaStore,
+    consume,
+    get_quota_store,
+    get_tenant_plan,
 )
 
 router = APIRouter(prefix="/tradespace", tags=["tradespace"])
@@ -77,19 +96,34 @@ class RunResponse(BaseModel):
 
 
 @router.post("/run", response_model=RunResponse)
-async def run(request: RunRequest) -> RunResponse:
+async def run(
+    request: RunRequest,
+    ctx: TenantContext = Depends(require_role(Role.VIEWER)),
+    plan: Plan = Depends(get_tenant_plan),
+    store: QuotaStore = Depends(get_quota_store),
+) -> RunResponse:
     """Run NSGA-II and return the Pareto front.
 
+    Requires an authenticated tenant. The call is metered: one unit of
+    the tenant's monthly tradespace_runs quota per request. If the
+    caller has already exceeded the plan limit, the request is rejected
+    with 429 and a Retry-After header before any compute is performed.
+
     Raises:
-        HTTPException 400 if the generator bounds are inconsistent
-            (max_nodes < min_nodes), which the Pydantic model does not
-            check on its own.
+        HTTPException 400 if max_nodes < min_nodes (Pydantic does not
+            catch this cross-field constraint).
+        HTTPException 401 if no Authorization header is present or the
+            token is invalid.
+        HTTPException 404 if the tenant row does not exist.
+        HTTPException 429 if the caller has exceeded the plan quota.
     """
     if request.max_nodes < request.min_nodes:
         raise HTTPException(
             status_code=400,
             detail="max_nodes must be >= min_nodes",
         )
+
+    consume(store, ctx.tenant_id, plan, Metric.TRADESPACE_RUNS)
 
     rng = random.Random(request.seed)
     initial = []
