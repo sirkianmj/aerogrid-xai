@@ -103,3 +103,54 @@ def test_loop_conflict_table_is_populated_when_unsat_occurs() -> None:
         assert len(result.conflict_prone_table) > 0, (
             "infeasible architectures were encountered but the conflict-prone table is empty"
         )
+
+
+def test_loop_random_only_mode_produces_result() -> None:
+    """use_conflict_directed=False runs a valid control arm."""
+    seeds = _seed_population(4, seed=5000)
+    cfg = ClearDLoopConfig(population_size=6, n_generations=3, use_conflict_directed=False)
+    result = run_clear_d_loop(
+        seeds,
+        encode_architecture,
+        synthetic_evaluator(),
+        cfg,
+        random.Random(13),
+        hypervolume_samples=128,
+    )
+    assert len(result.generation_stats) == 3
+    assert len(result.final_population) == 6
+
+
+def test_loop_conflict_directed_reaches_at_least_as_many_feasible_as_random() -> None:
+    """H9 in miniature: on identical initial populations and seeds, the
+    conflict-directed arm ends with at least as many feasible
+    architectures as the random-only arm."""
+    seeds = _seed_population(4, seed=6000)
+
+    cfg_c = ClearDLoopConfig(population_size=8, n_generations=6, use_conflict_directed=True)
+    result_c = run_clear_d_loop(
+        seeds,
+        encode_architecture,
+        synthetic_evaluator(),
+        cfg_c,
+        random.Random(31),
+        hypervolume_samples=128,
+    )
+
+    cfg_r = ClearDLoopConfig(population_size=8, n_generations=6, use_conflict_directed=False)
+    result_r = run_clear_d_loop(
+        seeds,
+        encode_architecture,
+        synthetic_evaluator(),
+        cfg_r,
+        random.Random(31),
+        hypervolume_samples=128,
+    )
+
+    n_c = result_c.generation_stats[-1].n_feasible
+    n_r = result_r.generation_stats[-1].n_feasible
+    assert n_c >= n_r, (
+        f"conflict-directed arm finished with {n_c} feasible, "
+        f"random arm finished with {n_r} feasible; "
+        f"H9 is violated on this seed"
+    )

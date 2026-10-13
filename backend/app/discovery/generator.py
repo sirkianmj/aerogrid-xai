@@ -225,9 +225,18 @@ def generate_architecture(
     """Sample a random Architecture using the configured bounds.
 
     The generated architecture is guaranteed to contain at least one
-    source-kind node (Satellite or Ground_Station) and at least one
-    UAV-kind node, so that it represents a meaningful wireless-energy
-    topology rather than a degenerate one.
+    source-kind node (Satellite or Ground_Station), at least one
+    UAV-kind node, and at least one incoming link for every UAV-kind
+    node. A UAV with no incoming link is structurally unpowerable and
+    can never be repaired by the discovery loop's mutation operators,
+    so the generator does not emit such topologies.
+
+    ``max_links`` bounds the total link count (repairs plus extras).
+    Repair links are generated first; extras fill the remaining
+    budget up to ``max_links``. If the number of UAVs alone exceeds
+    ``max_links`` the repairs still take precedence and the total may
+    equal the number of UAVs; the caller should choose ``max_links``
+    at least as large as the expected UAV count.
 
     Determinism: if rng is provided, the call is deterministic. If
     config.seed is provided and rng is None, a fresh random.Random is
@@ -261,19 +270,58 @@ def generate_architecture(
         for i, kind in enumerate(kinds)
     )
 
-    max_possible_links = node_count * (node_count - 1)
-    link_count = rng.randint(1, min(cfg.max_links, max_possible_links))
+    # Phase 1: mandatory repair links. Every UAV must have at least
+    # one incoming link. A UAV with no incoming link is structurally
+    # unpowerable, and the Stage B encoder correctly rejects it with a
+    # demand_unmet constraint. Such an architecture is a degenerate
+    # seed: the mutation operators available to the discovery loop do
+    # not add links targeted at an arbitrary UAV, so an unpowerable
+    # UAV can never be repaired. The generator therefore guarantees
+    # connectivity at construction time.
+    #
+    # Repair links are sourced from a source-kind node (Satellite or
+    # Ground_Station) so that the source's supply, which is drawn from
+    # a wide range for sources, comfortably covers the UAV demand.
+    uav_ids = [n.node_id for n in nodes if n.kind in _UAV_KINDS]
+    source_ids = [n.node_id for n in nodes if n.kind in _SOURCE_KINDS]
+    if not source_ids or not uav_ids:
+        raise ValueError(
+            "generator internal invariant violated: at least one source "
+            "and one UAV must exist after node sampling"
+        )
 
-    links: list[LinkInstance] = []
-    for i in range(link_count):
+    repair_links: list[LinkInstance] = []
+    for i, uav_id in enumerate(uav_ids):
+        source_id = rng.choice(source_ids)
+        link_kind = rng.choice((Terminal.LASER_LINK, Terminal.MICROWAVE_LINK, Terminal.HYBRID_LINK))
+        repair_links.append(
+            LinkInstance(
+                link_id=f"l{i}",
+                kind=link_kind,
+                source_id=source_id,
+                target_id=uav_id,
+                params=_sample_link_params(rng, link_kind),
+            )
+        )
+
+    # Phase 2: extra random links, bounded so the total (repairs plus
+    # extras) does not exceed max_links. The bound is a hard upper
+    # limit; if max_links is smaller than the number of UAVs (i.e.,
+    # the repairs alone exhaust the budget) no extras are generated.
+    max_possible_links = node_count * (node_count - 1)
+    remaining_budget = max(0, min(cfg.max_links, max_possible_links) - len(repair_links))
+    n_extra = rng.randint(0, remaining_budget) if remaining_budget > 0 else 0
+
+    extra_links: list[LinkInstance] = []
+    for i in range(n_extra):
         source_idx = rng.randrange(node_count)
         target_idx = rng.randrange(node_count)
         while target_idx == source_idx:
             target_idx = rng.randrange(node_count)
         link_kind = rng.choice((Terminal.LASER_LINK, Terminal.MICROWAVE_LINK, Terminal.HYBRID_LINK))
-        links.append(
+        extra_links.append(
             LinkInstance(
-                link_id=f"l{i}",
+                link_id=f"l{len(repair_links) + i}",
                 kind=link_kind,
                 source_id=nodes[source_idx].node_id,
                 target_id=nodes[target_idx].node_id,
@@ -281,7 +329,7 @@ def generate_architecture(
             )
         )
 
-    return Architecture(nodes=nodes, links=tuple(links))
+    return Architecture(nodes=nodes, links=tuple(repair_links + extra_links))
 
 
 # --- Placeholder Z3 encoder -------------------------------------------------
