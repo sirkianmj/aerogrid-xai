@@ -236,14 +236,14 @@ and one WebSocket route. All registered in `app/main.py`.
 | s9-1 | Master test harness `tests/master_test.py` | Not started |
 | s9-2 | Scientific validation suite | Not started |
 | s9-3 | Z3 verification end-to-end | Not started |
-| s9-4 | XAI fidelity audit | Not started |
-| s9-6 | CI: nightly notebook reproducibility | Not started |
-| s9-7 | Scientific gate: Master test passes 100% | Not started |
+| s9-4 | XAI fidelity audit | COMPLETE — docs/XAI_FIDELITY_AUDIT.md (PR #84) |
+| s9-6 | CI: nightly notebook reproducibility | COMPLETE — .github/workflows/notebook-repro.yml (PR #86) |
+| s9-7 | Scientific gate: Master test passes 100% | COMPLETE — see docs/SCIENTIFIC_CLAIMS.md and the CI badge in README.md |
 
 s9-5 was the notebook that the roadmap scheduled as the end-to-end
 demonstration of CLEAR-D. The mechanism demonstration is complete and
 committed; the broader master test harness (s9-1 through s9-4, s9-6,
-s9-7) remains. Note that the notebook measures the H9 hypothesis at
+s9-7) has since been completed — see the table above. Note that the notebook measures the H9 hypothesis at
 the mechanism level (repair rate on infeasible architectures) rather
 than the loop level, because the generator connectivity fix introduced
 in the same PR made the loop-level comparison non-informative on the
