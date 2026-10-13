@@ -86,8 +86,24 @@ class DecisionKind(StrEnum):
 
 
 def _sorted_observed(inputs: Mapping[str, float]) -> ObservedPairs:
-    """Return a deterministic, hashable snapshot of an input mapping."""
-    return tuple(sorted((str(k), float(v)) for k, v in inputs.items()))
+    """Return a deterministic, hashable snapshot of an input mapping.
+
+    Values that cannot be coerced to float are dropped. The trace
+    records values a rule could consume; a value that no rule can
+    consume (a malformed extra field) is not part of the decision's
+    computation path and must not break the trace. A rule that does
+    consult a malformed value raises inside its predicate, and that
+    failure is handled in ``SparseRuleList.score_and_trace`` by
+    recording the rule as skipped.
+    """
+    pairs: list[tuple[str, float]] = []
+    for k, v in inputs.items():
+        try:
+            pairs.append((str(k), float(v)))
+        except (TypeError, ValueError):
+            continue
+    pairs.sort()
+    return tuple(pairs)
 
 
 @dataclass(frozen=True)
@@ -310,7 +326,7 @@ class SparseRuleList:
             label = f"{self.name}.{rule.family_name}"
             try:
                 matched = bool(rule.predicate(inputs))
-            except (KeyError, TypeError):
+            except (KeyError, TypeError, ValueError):
                 builder.record(
                     label=label,
                     observed={},
