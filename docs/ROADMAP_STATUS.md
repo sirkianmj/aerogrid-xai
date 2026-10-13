@@ -209,7 +209,43 @@ App.tsx with a `/health` fetch, App.test.tsx with three passing tests,
 React 19.2 / Vite 8.3 / TypeScript 6.0 / Vitest 4, Vite proxy `/api`
 → `http://127.0.0.1:8000`.
 
-## Sprint 8+ — not started
+## Sprint 9 — Master Test Harness (partial)
+
+| ID | Task | Status |
+|----|------|--------|
+| s9-5 | Notebook 10 — Full CLEAR-D loop demonstration | COMPLETE (PR #46) — mechanism-level demonstration at 3.29x |
+| s9-1 | Master test harness `tests/master_test.py` | Not started |
+| s9-2 | Scientific validation suite | Not started |
+| s9-3 | Z3 verification end-to-end | Not started |
+| s9-4 | XAI fidelity audit | Not started |
+| s9-6 | CI: nightly notebook reproducibility | Not started |
+| s9-7 | Scientific gate: Master test passes 100% | Not started |
+
+s9-5 was the notebook that the roadmap scheduled as the end-to-end
+demonstration of CLEAR-D. The mechanism demonstration is complete and
+committed; the broader master test harness (s9-1 through s9-4, s9-6,
+s9-7) remains. Note that the notebook measures the H9 hypothesis at
+the mechanism level (repair rate on infeasible architectures) rather
+than the loop level, because the generator connectivity fix introduced
+in the same PR made the loop-level comparison non-informative on the
+current seed distribution. Both facts are documented in the notebook
+itself and in the PR description.
+
+## Sprint 10 — Physics Phase 2 (in progress)
+
+The specification's Development Phases (Section 25) list the Multi-Modal
+Wireless Power Model as Phase 2, with physics modules that were not yet
+built. This sprint tracks that work.
+
+| Task | Status |
+|------|--------|
+| `physics/atmosphere.py` — Kruse-Kim extinction with Beer-Lambert transmittance | COMPLETE (PR #47) |
+| Rewire `control/tier2.py` to call `physics/atmosphere.py` | Not started |
+| Cascaded link budget with per-stage physical models (spec Section 8.4) | Not started |
+| `physics/rectenna.py` — RF-to-DC conversion chain (spec Section 8.2) | Not started |
+| Integrate `physics/link_budget`, `physics/atmosphere`, `physics/receiver` into `verification/architecture_encoder.py` | Not started |
+
+## Sprint 8 — not started
 
 See the Master Engineering Roadmap (Rev. 2). Notable items:
 
@@ -223,8 +259,8 @@ See the Master Engineering Roadmap (Rev. 2). Notable items:
 
 ## Documentation drift resolved
 
-- `docs/HANDOFF.md` written from the verified state at commit `e50529a`.
-- `CHANGELOG.md` updated through Sprint 7.
+- `docs/HANDOFF.md` written from the verified state at commit `aab8a42`.
+- `CHANGELOG.md` updated through Sprint 10.
 - This file's prior "Sprints 4–12 not started" statement is corrected above.
 
 ## Outstanding
@@ -242,3 +278,12 @@ See the Master Engineering Roadmap (Rev. 2). Notable items:
   but not removed.
 - **P17** — Notebook 06 could be upgraded to use the real encoder.
 - **P20** — upstream anyio `BlockingPortal` DeprecationWarning.
+- **P21** — Kruse-Kim coefficients in `physics/atmosphere.py` cited but
+  not verified against source PDFs; browser check required.
+- **P22** — `tier2.py` still uses its own unsourced coefficients; rewire
+  to `physics/atmosphere.py` is the next Phase 2 task.
+- **P23** — cascaded link budget has four bare-float inputs; spec Section
+  8.4 requires thirteen physical inputs.
+- **P24** — rectenna model absent; only PV-TE tandem receiver exists.
+- **P25** — encoder does not invoke physics modules; feasibility is
+  driven only by flow balance and MPE.
