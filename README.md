@@ -1,5 +1,7 @@
 # AeroGrid-XAI
 
+[![CI](https://github.com/sirkianmj/aerogrid-xai/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sirkianmj/aerogrid-xai/actions/workflows/ci.yml)
+
 A physics-aware, formally verified, interpretable-by-construction Digital
 Twin and generative discovery platform for space-to-air wireless energy
 transfer and autonomous UAV infrastructure networks.
@@ -9,7 +11,15 @@ transfer and autonomous UAV infrastructure networks.
 
 ## Status
 
-Pre-release. Sprint 0: repository, legal foundation, and CI/CD.
+Pre-release. Sprint 9 complete. Six required CI contexts (`backend`,
+`frontend`, `formal-verification`, `cla-check`, `rls-isolation`,
+`master-test`) all green on `main`. Backend 1062 tests, frontend 163
+tests, ten notebooks executable end to end.
+
+The project maintains a scientific claims-to-test mapping in
+`docs/SCIENTIFIC_CLAIMS.md`. Any scientific claim in the specification
+that is not covered by an automated test is marked invalid there, per
+the roadmap rule for sprint task s9-7.
 
 ## Scientific scope
 
