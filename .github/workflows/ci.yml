@@ -96,27 +96,30 @@ jobs:
             -v ON_ERROR_STOP=1 \
             -f backend/app/saas/migrations/001_rls_setup.sql
         shell: bash -el {0}
-      - name: Run the RLS isolation tests
+      - name: Run the database-backed test modules
         env:
           AEROGRID_DATABASE_URL: postgresql+psycopg2://aerogrid@127.0.0.1:5432/aerogrid
         run: |
           cd backend
-          pytest tests/test_rls_isolation.py -v --no-header -rA | tee /tmp/rls.log
-          # The test module is written to skip cleanly if PostgreSQL is
-          # unreachable. Under the rls-isolation job the service
-          # container is running and the reachability step above has
-          # already confirmed it, so a skip means the environment is
-          # wrong, not that the tests are inapplicable. Fail the job if
-          # the expected pass count is not present.
-          EXPECTED_PASSES=8
-          if ! grep -qE "(^|[^0-9])${EXPECTED_PASSES} passed" /tmp/rls.log; then
-            echo "Expected ${EXPECTED_PASSES} passing tests, but the pytest summary does not report them."
-            echo "Summary lines:"
-            grep -E "passed|failed|skipped|error" /tmp/rls.log || true
+          pytest tests/test_rls_isolation.py tests/test_saas_routes.py \
+            -v --no-header -rA | tee /tmp/rls.log
+          # Both modules skip cleanly when PostgreSQL is unreachable.
+          # Under this job the service container is running and the
+          # reachability step above has already confirmed it, so a skip
+          # means the environment is wrong, not that the tests are
+          # inapplicable. Fail on any skip, any failure, or on a run
+          # that does not report at least one passing test.
+          if grep -qE "[1-9][0-9]* failed" /tmp/rls.log; then
+            echo "The database-backed tests reported failures."
             exit 1
           fi
           if grep -qE "[1-9][0-9]* skipped" /tmp/rls.log; then
-            echo "The test run reported skips. In this job the database is present, so a skip is a configuration error."
+            echo "The database-backed tests reported skips. In this job the database is present, so a skip is a configuration error."
+            exit 1
+          fi
+          if ! grep -qE "[1-9][0-9]* passed" /tmp/rls.log; then
+            echo "The database-backed tests did not report any passing tests."
+            grep -E "passed|failed|skipped|error|collected" /tmp/rls.log || true
             exit 1
           fi
         shell: bash -el {0}

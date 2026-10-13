@@ -11,6 +11,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from app.control.api import router as control_router
 from app.digital_twin.api import router as digital_twin_router
 from app.physics.api import router as physics_router
+from app.saas.routes import router as saas_router
 from app.telemetry.api import router as telemetry_router
 from app.tradespace.api import router as tradespace_router
 
@@ -32,5 +33,6 @@ app.include_router(physics_router)
 app.include_router(digital_twin_router)
 app.include_router(telemetry_router)
 app.include_router(tradespace_router)
+app.include_router(saas_router)
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
