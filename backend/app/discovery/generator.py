@@ -65,6 +65,7 @@ between the two.
 
 from __future__ import annotations
 
+import math
 import random
 from dataclasses import dataclass
 
@@ -75,6 +76,17 @@ from app.discovery.grammar import (
     LinkInstance,
     NodeInstance,
     Terminal,
+)
+from app.physics.geometry import EARTH_RADIUS_M as _EARTH_RADIUS_M
+from app.physics.geometry import has_line_of_sight as _has_line_of_sight
+from app.physics.geometry import (
+    node_position_from_params_m as _node_position_from_params_m,
+)
+from app.physics.geometry import (
+    sample_direction_in_visible_cap as _sample_direction_in_visible_cap,
+)
+from app.physics.geometry import (
+    visible_cap_half_angle_rad as _visible_cap_half_angle_rad,
 )
 
 # --- Parameter ranges -----------------------------------------------------
@@ -89,7 +101,16 @@ NODE_PARAM_RANGES: dict[Terminal, dict[str, tuple[float, float]]] = {
     },
     Terminal.SATELLITE_LEO: {
         "altitude_km": (200.0, 2_000.0),
-        "power_w": (50.0, 1_000.0),
+        # [ESTIMATED] Power budget for a dedicated LEO power-beaming
+        # satellite. The specification cites PowerLight delivering
+        # nearly 1 kW from a ground transmitter; a space-based laser
+        # power transmitter would be at least that scale, typically
+        # kW to tens of kW. The previous range of 50-1000 W is not
+        # physically sufficient for a 15 W UAV demand floor over LEO
+        # distances (see physics chain: at 500 km with 2 cm waist and
+        # a 3 m receiver aperture, delivered power is under 3 W at
+        # 1000 W source power).
+        "power_w": (1_000.0, 20_000.0),
         "lat_deg": (-90.0, 90.0),
         "lon_deg": (-180.0, 180.0),
     },
@@ -132,20 +153,33 @@ translate."""
 
 
 LINK_PARAM_RANGES: dict[Terminal, dict[str, tuple[float, float]]] = {
+    # Receiver aperture ranges are [ESTIMATED] to match the scale of
+    # realistic power-beaming receivers. The specification cites the
+    # PowerLight ground-to-air demonstration using a stationary ground
+    # receiver, and the Han et al. bench receiver at roughly 1-2 W/cm^2.
+    # At LEO distances (500-800 km), a 2 cm beam waist expands to
+    # several metres by the time it reaches the ground; a receiver
+    # aperture of centimetres captures only a fraction of a percent of
+    # the beam, so the physical chain delivers sub-watt power even from
+    # a kilowatt source. Metres-scale apertures are what a real
+    # space-to-air power link requires. The lower bound of 0.5 m is
+    # chosen so the smallest generator output still has a physically
+    # plausible receive area; the upper bound of 5 m corresponds to a
+    # fixed ground installation.
     Terminal.LASER_LINK: {
         "wavelength_nm": (800.0, 1550.0),
-        "aperture_m": (0.01, 1.0),
+        "aperture_m": (0.5, 5.0),
         "capacity_factor": (0.5, 1.5),
     },
     Terminal.MICROWAVE_LINK: {
         "frequency_ghz": (2.45, 5.80),
-        "aperture_m": (0.01, 5.0),
+        "aperture_m": (0.5, 5.0),
         "capacity_factor": (0.5, 1.5),
     },
     Terminal.HYBRID_LINK: {
         "wavelength_nm": (800.0, 1550.0),
         "frequency_ghz": (2.45, 5.80),
-        "aperture_m": (0.01, 5.0),
+        "aperture_m": (0.5, 5.0),
         "capacity_factor": (0.5, 1.5),
     },
 }
@@ -173,6 +207,29 @@ class GeneratorConfig:
     max_links: int = 12
     seed: int | None = None
 
+    require_line_of_sight: bool = True
+    # When True (the default), every link emitted by the generator
+    # has line of sight between its endpoints by construction:
+    # source-kind nodes are placed uniformly on the sphere and each
+    # UAV is placed inside the visible cap of one anchor source that
+    # has an incoming link to it. Extra links that would fail LOS
+    # are dropped. When False, all nodes are placed uniformly on the
+    # sphere and no LOS check is applied, reproducing the historical
+    # behaviour so that an ablation study can compare the two.
+
+    visible_cap_fraction: float = 0.25
+    # Fraction of the source's full visible cap within which the UAV
+    # is placed. The full cap half-angle for a LEO source to a ground
+    # target is about 22 deg; a UAV placed at the edge of that cap is
+    # thousands of kilometres away, where the Gaussian beam has spread
+    # to tens of metres and the receiver captures a fraction of a
+    # percent of the transmitted power. Sampling at a fraction of the
+    # cap places UAVs closer to the sub-satellite point, where the
+    # physical link budget can close. 0.25 keeps the sampled angle
+    # within about 5.5 deg for a LEO source, corresponding to a range
+    # of roughly 600-800 km at 500-1000 km altitude. Configurable so
+    # an ablation study can compare wide and narrow placements.
+
     def __post_init__(self) -> None:
         if self.min_nodes < 2:
             raise ValueError(
@@ -185,17 +242,45 @@ class GeneratorConfig:
             )
         if self.max_links < 1:
             raise ValueError(f"max_links must be >= 1; got {self.max_links}")
+        if not 0.0 < self.visible_cap_fraction <= 1.0:
+            raise ValueError(
+                f"visible_cap_fraction must be in (0, 1]; got {self.visible_cap_fraction}"
+            )
 
 
 def _sample_param(rng: random.Random, lo: float, hi: float) -> float:
     return rng.uniform(lo, hi)
 
 
+def _sample_lat_uniform_on_sphere(
+    rng: random.Random,
+    lat_min_deg: float,
+    lat_max_deg: float,
+) -> float:
+    # Sample latitude uniformly on the sphere within a latitude band.
+    # Sampling latitude uniformly in degrees weights the poles: the
+    # fraction of sphere surface between latitudes l1 and l2 is
+    # (sin(l2) - sin(l1)) / 2, not (l2 - l1) / 180. To sample uniformly
+    # on the sphere, sample sin(lat) uniformly and take the arcsine.
+    sin_min = math.sin(math.radians(lat_min_deg))
+    sin_max = math.sin(math.radians(lat_max_deg))
+    if sin_min > sin_max:
+        sin_min, sin_max = sin_max, sin_min
+    sin_lat = rng.uniform(sin_min, sin_max)
+    return float(math.degrees(math.asin(sin_lat)))
+
+
 def _sample_node_params(rng: random.Random, kind: Terminal) -> dict[str, float]:
+    # Sample the parameters of one node kind. Latitude is uniform on
+    # the sphere; longitude is uniform. The role parameter, if present,
+    # is rounded to an integer ordinal.
     ranges = NODE_PARAM_RANGES[kind]
-    params = {name: _sample_param(rng, lo, hi) for name, (lo, hi) in ranges.items()}
-    # Round the role parameter for UAVs to the nearest integer so it
-    # is a valid role ordinal.
+    params: dict[str, float] = {}
+    for name, (lo, hi) in ranges.items():
+        if name == "lat_deg":
+            params[name] = _sample_lat_uniform_on_sphere(rng, lo, hi)
+        else:
+            params[name] = rng.uniform(lo, hi)
     if "role" in params:
         params["role"] = float(round(params["role"]))
     return params
@@ -224,19 +309,21 @@ def generate_architecture(
 ) -> Architecture:
     """Sample a random Architecture using the configured bounds.
 
-    The generated architecture is guaranteed to contain at least one
-    source-kind node (Satellite or Ground_Station), at least one
-    UAV-kind node, and at least one incoming link for every UAV-kind
-    node. A UAV with no incoming link is structurally unpowerable and
-    can never be repaired by the discovery loop's mutation operators,
-    so the generator does not emit such topologies.
+    The generated architecture contains at least one source-kind node,
+    at least one UAV-kind node, and one incoming link for every UAV.
 
-    ``max_links`` bounds the total link count (repairs plus extras).
-    Repair links are generated first; extras fill the remaining
-    budget up to ``max_links``. If the number of UAVs alone exceeds
-    ``max_links`` the repairs still take precedence and the total may
-    equal the number of UAVs; the caller should choose ``max_links``
-    at least as large as the expected UAV count.
+    When ``require_line_of_sight`` is True (the default), the generator
+    additionally guarantees that every link has line of sight between
+    its endpoints. Source-kind nodes are placed uniformly on the
+    sphere; each UAV is placed inside the visible cap of the anchor
+    source chosen for its repair link. Extra links that would fail the
+    line-of-sight check are dropped.
+
+    When ``require_line_of_sight`` is False, all nodes are placed
+    uniformly on the sphere (latitude corrected for the sphere measure)
+    and no LOS constraint is applied. This reproduces the historical
+    behavior and exists so that an ablation study can compare the two
+    distributions.
 
     Determinism: if rng is provided, the call is deterministic. If
     config.seed is provided and rng is None, a fresh random.Random is
@@ -244,16 +331,15 @@ def generate_architecture(
     non-deterministic.
 
     Raises:
-        ValueError if the config is inconsistent with the requirement
-        of at least one source and one UAV (which min_nodes >= 2
-        implies).
+        ValueError if no source or no UAV could be sampled (guaranteed
+        not to happen for min_nodes >= 2, since the sampler inserts one
+        of each before the shuffle).
     """
     cfg = config or GeneratorConfig()
     if rng is None:
         rng = random.Random(cfg.seed)
 
     node_count = rng.randint(cfg.min_nodes, cfg.max_nodes)
-    # Sample node kinds ensuring at least one source and one UAV.
     kinds: list[Terminal] = []
     kinds.append(rng.choice(_SOURCE_KINDS))
     kinds.append(rng.choice(_UAV_KINDS))
@@ -261,29 +347,10 @@ def generate_architecture(
         kinds.append(rng.choice(_ALL_NODE_KINDS))
     rng.shuffle(kinds)
 
-    nodes = tuple(
-        NodeInstance(
-            node_id=f"n{i}",
-            kind=kind,
-            params=_sample_node_params(rng, kind),
-        )
-        for i, kind in enumerate(kinds)
-    )
+    base_params = [_sample_node_params(rng, kind) for kind in kinds]
 
-    # Phase 1: mandatory repair links. Every UAV must have at least
-    # one incoming link. A UAV with no incoming link is structurally
-    # unpowerable, and the Stage B encoder correctly rejects it with a
-    # demand_unmet constraint. Such an architecture is a degenerate
-    # seed: the mutation operators available to the discovery loop do
-    # not add links targeted at an arbitrary UAV, so an unpowerable
-    # UAV can never be repaired. The generator therefore guarantees
-    # connectivity at construction time.
-    #
-    # Repair links are sourced from a source-kind node (Satellite or
-    # Ground_Station) so that the source's supply, which is drawn from
-    # a wide range for sources, comfortably covers the UAV demand.
-    uav_ids = [n.node_id for n in nodes if n.kind in _UAV_KINDS]
-    source_ids = [n.node_id for n in nodes if n.kind in _SOURCE_KINDS]
+    uav_ids = [f"n{i}" for i, k in enumerate(kinds) if k in _UAV_KINDS]
+    source_ids = [f"n{i}" for i, k in enumerate(kinds) if k in _SOURCE_KINDS]
     if not source_ids or not uav_ids:
         raise ValueError(
             "generator internal invariant violated: at least one source "
@@ -291,6 +358,7 @@ def generate_architecture(
         )
 
     repair_links: list[LinkInstance] = []
+    anchors: dict[str, str] = {}
     for i, uav_id in enumerate(uav_ids):
         source_id = rng.choice(source_ids)
         link_kind = rng.choice((Terminal.LASER_LINK, Terminal.MICROWAVE_LINK, Terminal.HYBRID_LINK))
@@ -303,11 +371,8 @@ def generate_architecture(
                 params=_sample_link_params(rng, link_kind),
             )
         )
+        anchors[uav_id] = source_id
 
-    # Phase 2: extra random links, bounded so the total (repairs plus
-    # extras) does not exceed max_links. The bound is a hard upper
-    # limit; if max_links is smaller than the number of UAVs (i.e.,
-    # the repairs alone exhaust the budget) no extras are generated.
     max_possible_links = node_count * (node_count - 1)
     remaining_budget = max(0, min(cfg.max_links, max_possible_links) - len(repair_links))
     n_extra = rng.randint(0, remaining_budget) if remaining_budget > 0 else 0
@@ -323,13 +388,74 @@ def generate_architecture(
             LinkInstance(
                 link_id=f"l{len(repair_links) + i}",
                 kind=link_kind,
-                source_id=nodes[source_idx].node_id,
-                target_id=nodes[target_idx].node_id,
+                source_id=f"n{source_idx}",
+                target_id=f"n{target_idx}",
                 params=_sample_link_params(rng, link_kind),
             )
         )
 
-    return Architecture(nodes=nodes, links=tuple(repair_links + extra_links))
+    all_links = repair_links + extra_links
+
+    if not cfg.require_line_of_sight:
+        nodes_legacy = tuple(
+            NodeInstance(
+                node_id=f"n{i}",
+                kind=kinds[i],
+                params=base_params[i],
+            )
+            for i in range(node_count)
+        )
+        return Architecture(nodes=nodes_legacy, links=tuple(all_links))
+
+    source_radii: dict[str, float] = {}
+    for i, kind in enumerate(kinds):
+        if kind not in _SOURCE_KINDS:
+            continue
+        alt_km = float(base_params[i].get("altitude_km", 0.0))
+        alt_m = float(base_params[i].get("altitude_m", 0.0))
+        source_radii[f"n{i}"] = _EARTH_RADIUS_M + alt_km * 1000.0 + alt_m
+
+    final_params = [dict(p) for p in base_params]
+    for uav_id in uav_ids:
+        uav_idx = int(uav_id[1:])
+        anchor_id = anchors[uav_id]
+        anchor_idx = int(anchor_id[1:])
+        anchor_r = source_radii[anchor_id]
+        if "altitude_km" in base_params[uav_idx]:
+            uav_alt_m = float(base_params[uav_idx]["altitude_km"]) * 1000.0
+        else:
+            uav_alt_m = float(base_params[uav_idx].get("altitude_m", 0.0))
+        uav_r = _EARTH_RADIUS_M + uav_alt_m
+        half_angle = cfg.visible_cap_fraction * _visible_cap_half_angle_rad(anchor_r, uav_r)
+        new_lat, new_lon = _sample_direction_in_visible_cap(
+            float(final_params[anchor_idx]["lat_deg"]),
+            float(final_params[anchor_idx]["lon_deg"]),
+            half_angle,
+            rng,
+        )
+        final_params[uav_idx]["lat_deg"] = new_lat
+        final_params[uav_idx]["lon_deg"] = new_lon
+
+    nodes = tuple(
+        NodeInstance(
+            node_id=f"n{i}",
+            kind=kinds[i],
+            params=final_params[i],
+        )
+        for i in range(node_count)
+    )
+
+    node_by_id = {n.node_id: n for n in nodes}
+    surviving_links: list[LinkInstance] = []
+    for link in all_links:
+        src_node = node_by_id[link.source_id]
+        tgt_node = node_by_id[link.target_id]
+        p_src = _node_position_from_params_m(src_node.params)
+        p_tgt = _node_position_from_params_m(tgt_node.params)
+        if _has_line_of_sight(p_src, p_tgt):
+            surviving_links.append(link)
+
+    return Architecture(nodes=nodes, links=tuple(surviving_links))
 
 
 # --- Placeholder Z3 encoder -------------------------------------------------
