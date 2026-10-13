@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { EpistemicBadge } from "./components/EpistemicBadge/EpistemicBadge"
 import { ALL_TAGS, EPISTEMIC_TAGS } from "./components/EpistemicBadge/epistemic"
+import { XAITrace } from "./features/XAITrace/XAITrace"
 
 type HealthState =
   | { status: "loading" }
@@ -30,7 +31,7 @@ function App() {
       <header className="mb-10">
         <h1 className="text-3xl font-semibold tracking-tight">AeroGrid-XAI</h1>
         <p className="mt-1 text-sm opacity-70">
-          Mission Control — Sprint 7 design system
+          Mission Control — Sprint 7
         </p>
       </header>
 
@@ -38,18 +39,16 @@ function App() {
         <h2 id="backend-status-heading" className="mb-3 text-lg font-medium">
           Backend status
         </h2>
-        {health.status === "loading" && (
-          <p className="opacity-70">Checking...</p>
-        )}
+        {health.status === "loading" && <p className="opacity-70">Checking...</p>}
         {health.status === "ok" && (
           <p className="opacity-90">Connected: {health.data.status}</p>
         )}
         {health.status === "error" && (
-          <p style={{ color: "var(--color-accent-amber)" }}>
-            Error: {health.message}
-          </p>
+          <p style={{ color: "var(--color-accent-amber)" }}>Error: {health.message}</p>
         )}
       </section>
+
+      <XAITrace />
 
       <section aria-labelledby="epistemic-heading">
         <h2 id="epistemic-heading" className="mb-1 text-lg font-medium">
