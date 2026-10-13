@@ -86,16 +86,9 @@ jobs:
           environment-file: environment.yml
           activate-environment: aerogrid
           miniforge-version: latest
-      - name: Wait for PostgreSQL to accept connections
+      - name: Sanity check PostgreSQL reachability
         run: |
-          for i in $(seq 1 30); do
-            if pg_isready -h 127.0.0.1 -p 5432 -U aerogrid -d aerogrid; then
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "PostgreSQL did not become ready in 30 seconds"
-          exit 1
+          pg_isready -h 127.0.0.1 -p 5432 -U aerogrid -d aerogrid
         shell: bash -el {0}
       - name: Apply the RLS migration
         run: |
