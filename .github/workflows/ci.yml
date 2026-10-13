@@ -101,7 +101,24 @@ jobs:
           AEROGRID_DATABASE_URL: postgresql+psycopg2://aerogrid@127.0.0.1:5432/aerogrid
         run: |
           cd backend
-          pytest tests/test_rls_isolation.py -v
+          pytest tests/test_rls_isolation.py -v --no-header -rA | tee /tmp/rls.log
+          # The test module is written to skip cleanly if PostgreSQL is
+          # unreachable. Under the rls-isolation job the service
+          # container is running and the reachability step above has
+          # already confirmed it, so a skip means the environment is
+          # wrong, not that the tests are inapplicable. Fail the job if
+          # the expected pass count is not present.
+          EXPECTED_PASSES=8
+          if ! grep -qE "(^|[^0-9])${EXPECTED_PASSES} passed" /tmp/rls.log; then
+            echo "Expected ${EXPECTED_PASSES} passing tests, but the pytest summary does not report them."
+            echo "Summary lines:"
+            grep -E "passed|failed|skipped|error" /tmp/rls.log || true
+            exit 1
+          fi
+          if grep -qE "[1-9][0-9]* skipped" /tmp/rls.log; then
+            echo "The test run reported skips. In this job the database is present, so a skip is a configuration error."
+            exit 1
+          fi
         shell: bash -el {0}
 
   cla-check:
