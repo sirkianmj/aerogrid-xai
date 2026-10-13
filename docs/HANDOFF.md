@@ -525,6 +525,9 @@ Files present at `faa9cab`:
                                  stripe_events for idempotency
         003_quota_usage.sql      quota_usage table with RLS, policy,
                                  grant to aerogrid_app
+        004_tenants_least_privilege.sql
+                                 revoke SELECT on tenants from
+                                 aerogrid_app (isolation audit F-1)
 
 ### Sprint 8 status
 
