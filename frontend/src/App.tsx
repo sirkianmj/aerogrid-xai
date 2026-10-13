@@ -5,6 +5,7 @@ import { XAITrace } from "./features/XAITrace/XAITrace"
 import { Globe } from "./features/Globe/Globe"
 import { DigitalTwin } from "./features/DigitalTwin/DigitalTwin"
 import { Telemetry } from "./features/Telemetry/Telemetry"
+import { TradeSpace } from "./features/TradeSpace/TradeSpace"
 
 type HealthState =
   | { status: "loading" }
@@ -56,6 +57,8 @@ function App() {
       <DigitalTwin />
 
       <Telemetry />
+
+      <TradeSpace />
 
       <XAITrace />
 
