@@ -12,20 +12,34 @@
 
 import { useRef, useState } from "react"
 import { TaggedOutput } from "../../components/EpistemicBadge/EpistemicBadge"
+import { useMission, type MissionConfig } from "../MissionControl/missionContext"
 import {
   ClearDApiError,
   runClearD,
+  type ClearDRequest,
   type ClearDResponse,
 } from "./clearDApi"
 
-const DEMO_REQUEST = {
-  population_size: 12,
-  n_generations: 10,
-  seed: 20261014,
-  min_nodes: 4,
-  max_nodes: 8,
-  max_links: 6,
-  use_conflict_directed: true,
+/**
+ * Build a CLEAR-D run request from the live mission configuration.
+ *
+ * The population size is at least the mission's UAV count (with a
+ * floor of 4 so the Pareto search has something to work with), and the
+ * seed is the mission's seed so two CLEAR-D runs on the same mission
+ * produce identical architectures. The remaining generator bounds stay
+ * at the panel's defaults until a future PR allows per-run
+ * configuration of the architecture space itself.
+ */
+function requestFor(cfg: MissionConfig): ClearDRequest {
+  return {
+    population_size: Math.max(4, cfg.n_uavs),
+    n_generations: 10,
+    seed: cfg.seed,
+    min_nodes: 4,
+    max_nodes: 8,
+    max_links: 6,
+    use_conflict_directed: true,
+  }
 }
 
 type PanelState =
@@ -35,6 +49,7 @@ type PanelState =
   | { status: "error"; message: string; status_code?: number }
 
 export function ClearDDashboard() {
+  const { config } = useMission()
   const [state, setState] = useState<PanelState>({ status: "idle" })
   const abortRef = useRef<AbortController | null>(null)
 
@@ -45,7 +60,7 @@ export function ClearDDashboard() {
     setState({ status: "loading" })
     const started = Date.now()
     try {
-      const result = await runClearD(DEMO_REQUEST, controller.signal)
+      const result = await runClearD(requestFor(config), controller.signal)
       if (controller.signal.aborted) return
       setState({ status: "ok", result, elapsedMs: Date.now() - started })
     } catch (err) {
@@ -114,12 +129,12 @@ export function ClearDDashboard() {
         </p>
       )}
 
-      {state.status === "ok" && <ResultView result={state.result} />}
+      {state.status === "ok" && <ResultView result={state.result} cfg={config} />}
     </section>
   )
 }
 
-function ResultView({ result }: { result: ClearDResponse }) {
+function ResultView({ result, cfg }: { result: ClearDResponse; cfg: MissionConfig }) {
   const unsatEvents = result.trace.filter((e) => e.status === "unsat")
   const satEvents = result.trace.filter((e) => e.status === "sat")
 
@@ -187,7 +202,7 @@ function ResultView({ result }: { result: ClearDResponse }) {
       </div>
 
       <footer className="mt-4 border-t border-current/10 pt-3 font-mono text-xs opacity-60">
-        artefact: cleard_loop · seed 20261014
+        {`artefact: cleard_loop · seed ${cfg.seed} · population ${Math.max(4, cfg.n_uavs)}`}
       </footer>
     </TaggedOutput>
   )
