@@ -48,6 +48,9 @@ vi.mock("./features/AdminPanel/AdminPanel", () => ({
 vi.mock("./features/XAITrace/XAITrace", () => ({
   XAITrace: () => <div data-testid="panel-xai-trace" />,
 }))
+vi.mock("./features/Architectures/ArchitecturesView", () => ({
+  ArchitecturesView: () => <div data-testid="panel-architectures" />,
+}))
 
 import App from "./App"
 
