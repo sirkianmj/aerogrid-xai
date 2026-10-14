@@ -42,7 +42,7 @@ export function ParallelCoordinates({
   ariaLabel,
 }: ParallelCoordinatesProps) {
   if (points.length === 0 || labels.length === 0) {
-    return <p className="text-sm opacity-60">No Pareto points to plot.</p>
+    return <p className="text-sm text-[var(--ink-secondary)]">No Pareto points to plot.</p>
   }
 
   const nAxes = labels.length
@@ -52,7 +52,7 @@ export function ParallelCoordinates({
   for (const p of points) {
     if (p.objectives.length !== nAxes) {
       return (
-        <p className="text-sm" style={{ color: "var(--color-accent-amber)" }}>
+        <p className="text-sm" style={{ color: "var(--status-red)" }}>
           Pareto point has {p.objectives.length} objectives; expected {nAxes}.
         </p>
       )
@@ -151,7 +151,7 @@ export function ParallelCoordinates({
             key={`pareto-${idx}`}
             points={pointsStr}
             fill="none"
-            stroke="#14b8a6"
+            stroke="var(--plot-primary)"
             strokeOpacity={opacity}
             strokeWidth={1.5}
           />

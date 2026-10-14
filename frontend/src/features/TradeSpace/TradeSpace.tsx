@@ -74,10 +74,10 @@ export function TradeSpace() {
 
   return (
     <section aria-labelledby="tradespace-heading" className="mb-10">
-      <h2 id="tradespace-heading" className="mb-1 text-lg font-medium">
+      <h2 id="tradespace-heading" className="mb-1 text-lg font-semibold">
         Trade Space (Section 14)
       </h2>
-      <p className="mb-4 text-sm opacity-70">
+      <p className="mb-4 text-sm text-[var(--ink-secondary)]">
         NSGA-II over the (C, R, E, N, T, U) objective vector. U is
         minimized; the rest are maximized. The plot normalizes every axis
         so higher on screen always means better.
@@ -88,35 +88,35 @@ export function TradeSpace() {
           type="button"
           onClick={run}
           disabled={state.status === "loading"}
-          className="rounded border px-3 py-1.5 text-sm disabled:opacity-50"
+          className="rounded border border-[var(--border-hairline)] px-3 py-1.5 text-sm hover:bg-[var(--bg-subtle)] disabled:opacity-50"
         >
           {state.status === "loading" ? "Running..." : "Run NSGA-II"}
         </button>
         {state.status === "ok" && (
           <>
-            <span className="text-xs opacity-60">
+            <span className="text-xs text-[var(--ink-tertiary)]">
               {`${state.result.n_pareto} Pareto point${state.result.n_pareto === 1 ? "" : "s"}`}
             </span>
-            <span className="text-xs opacity-60">
+            <span className="text-xs text-[var(--ink-tertiary)]">
               {`${state.result.n_final_population} final population`}
             </span>
-            <span className="text-xs opacity-60">{`elapsed ${state.elapsedMs} ms`}</span>
+            <span className="text-xs text-[var(--ink-tertiary)]">{`elapsed ${state.elapsedMs} ms`}</span>
           </>
         )}
       </div>
 
       {state.status === "idle" && (
-        <p className="text-sm opacity-60">No run yet. Press Run NSGA-II.</p>
+        <p className="text-sm text-[var(--ink-secondary)]">No run yet. Press Run NSGA-II.</p>
       )}
 
       {state.status === "error" && (
-        <p className="text-sm" style={{ color: "var(--color-accent-amber)" }}>
+        <p className="text-sm" style={{ color: "var(--status-red)" }}>
           Error{state.status_code ? ` (${state.status_code})` : ""}: {state.message}
         </p>
       )}
 
       {state.status === "ok" && (
-        <TaggedOutput tag="simulation_result" className="rounded border border-current/15 p-4">
+        <TaggedOutput tag="simulation_result" className="apple-card p-4">
           <ParallelCoordinates
             points={state.result.pareto_front}
             labels={state.result.objective_labels}
@@ -136,7 +136,7 @@ export function TradeSpace() {
             <ParetoTable result={state.result} />
           </div>
 
-          <footer className="mt-4 border-t border-current/10 pt-3 font-mono text-xs opacity-60">
+          <footer className="mt-4 border-t border-[var(--border-hairline)] pt-3 font-mono text-xs text-[var(--ink-tertiary)]">
             artefact: tradespace_pareto_front
           </footer>
         </TaggedOutput>
@@ -147,7 +147,7 @@ export function TradeSpace() {
 
 function HypervolumeStrip({ history }: { history: number[] }) {
   if (history.length === 0) {
-    return <p className="text-xs opacity-60">Empty history.</p>
+    return <p className="text-xs text-[var(--ink-secondary)]">Empty history.</p>
   }
   const max = Math.max(...history)
   return (
@@ -161,7 +161,7 @@ function HypervolumeStrip({ history }: { history: number[] }) {
             style={{
               width: 8,
               height: h,
-              background: "#14b8a6",
+              background: "var(--plot-primary)",
               opacity: 0.7,
             }}
           />
@@ -175,7 +175,7 @@ function ParetoTable({ result }: { result: TradeSpaceResponse }) {
   return (
     <div className="max-h-72 overflow-auto">
       <table className="w-full text-xs">
-        <thead className="text-left opacity-70">
+        <thead className="text-left text-[var(--ink-tertiary)]">
           <tr>
             <th className="py-1 font-normal">#</th>
             <th className="py-1 font-normal">gen</th>
@@ -190,7 +190,7 @@ function ParetoTable({ result }: { result: TradeSpaceResponse }) {
         </thead>
         <tbody>
           {result.pareto_front.map((p, i) => (
-            <tr key={i} className="border-t border-current/10">
+            <tr key={i} className="border-t border-[var(--border-hairline)]">
               <td className="py-1 font-mono">{i}</td>
               <td className="py-1 font-mono">{p.generation}</td>
               {p.objectives.map((v, j) => (
