@@ -103,12 +103,57 @@ def test_atmosphere_tau_is_in_unit_interval_when_link_is_up() -> None:
 
 def test_atmospheric_path_uses_effective_thickness_not_slant_range() -> None:
     """Slant range to LEO is thousands of km; the atmospheric path is
-    tens of km, because the extinction coefficient is calibrated for
-    the 8-9 km effective thickness of the atmosphere, not for the
-    vacuum path to orbit."""
-    s = compute_mission_state(MissionConfig(satellite_key="iss"))
-    if s.transmission.modality != "laser":
-        pytest.skip("link is offline at this time")
+    at most a few tens of km, because the extinction coefficient is
+    calibrated for the ~8.5 km effective thickness of the atmosphere,
+    not for the vacuum path to orbit.
+
+    The test sweeps within one ISS orbit from the TLE epoch for a time
+    at which the link is above the horizon at >=5 deg elevation, then
+    asserts the two distances. Deterministic; does not skip. The
+    master-test CI job runs with --require-db, which treats any skip
+    as a failure, so this test finds a valid geometry instead.
+    """
+    import math
+    from datetime import timedelta
+
+    from app.physics.catalog import get_satellite
+
+    cfg = MissionConfig(satellite_key="iss")
+    sat = get_satellite("iss")
+    r_earth_m = 6_371_000.0
+    min_elev_rad = math.radians(5.0)
+
+    t_found = None
+    # A single ISS orbit does not necessarily cross a specific ground
+    # station; mid-latitude visibility windows recur every 6-12 hours.
+    # Search three days at one-minute steps to guarantee a window
+    # exists at any mid-latitude site.
+    search_seconds = 3 * 24 * 3600
+    for offset in range(0, search_seconds, 60):
+        t = sat.epoch_utc + timedelta(seconds=offset)
+        sv = sat.at_utc(t)
+        lat1 = math.radians(sv.lat_deg)
+        lat2 = math.radians(cfg.ground_lat_deg)
+        dlat = lat2 - lat1
+        dlon = math.radians(cfg.ground_lon_deg - sv.lon_deg)
+        a = (
+            math.sin(dlat / 2) ** 2
+            + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+        )
+        psi = 2.0 * math.asin(min(1.0, math.sqrt(a)))
+        r_ratio = r_earth_m / (r_earth_m + sv.alt_km * 1000.0)
+        elev_rad = math.atan2(math.cos(psi) - r_ratio, math.sin(psi))
+        if elev_rad > min_elev_rad:
+            t_found = t
+            break
+
+    assert t_found is not None, (
+        "no above-horizon ISS time found within three days at Ground "
+        "Station Alpha; check the ground station coordinates or the "
+        "TLE"
+    )
+    s = compute_mission_state(cfg, t_utc=t_found)
+    assert s.transmission.modality == "laser"
     assert s.transmission.atmospheric_path_m < 100_000.0  # < 100 km
     assert s.transmission.slant_range_m > 200_000.0  # > 200 km
 
