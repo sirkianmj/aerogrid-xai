@@ -1,6 +1,7 @@
 # AeroGrid-XAI
 
 [![CI](https://github.com/sirkianmj/aerogrid-xai/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sirkianmj/aerogrid-xai/actions/workflows/ci.yml)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/sirkianmj/aerogrid-xai/HEAD?labpath=notebooks%2F11_binder_ready.ipynb)
 
 A physics-aware, formally verified, interpretable-by-construction Digital
 Twin and generative discovery platform for space-to-air wireless energy

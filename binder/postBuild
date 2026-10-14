@@ -1,0 +1,28 @@
+#!/bin/bash
+# Binder postBuild hook. Runs after conda env creation, before the
+# notebook server starts. Smoke-checks that the app modules Notebook 11
+# depends on actually import in the binder environment. A failure here
+# fails the binder build, which is the correct place to notice a broken
+# dependency graph.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+
+PYTHONPATH=backend python -c '
+from app.discovery.generator import GeneratorConfig, generate_architecture
+from app.discovery.loop import ClearDLoopConfig, run_clear_d_loop
+from app.discovery.nsga2 import synthetic_evaluator
+from app.physics.receiver import eta_plc, eta_total
+from app.refinement.bayes import GaussianBelief, recursive_bayes_update
+from app.refinement.pwl_tune import AdaptivePWLRefiner
+from app.verification.architecture_encoder import encode_architecture
+
+arch = generate_architecture(
+    GeneratorConfig(min_nodes=4, max_nodes=6, max_links=4, seed=0)
+)
+print(f"binder postBuild: generated {len(arch.nodes)} nodes, {len(arch.links)} links")
+print(f"binder postBuild: eta_plc(300 K) = {eta_plc(300.0):.6f}")
+print("binder postBuild: app imports OK")
+'
