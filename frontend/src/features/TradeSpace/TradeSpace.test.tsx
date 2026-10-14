@@ -18,17 +18,16 @@ const SAMPLE: TradeSpaceResponse = {
   ],
 }
 
-function stubFetchOk() {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(SAMPLE),
-      } as Response),
-    ),
+function stubFetchOk(): ReturnType<typeof vi.fn> {
+  const fn = vi.fn(() =>
+    Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(SAMPLE),
+    } as Response),
   )
+  vi.stubGlobal("fetch", fn)
+  return fn
 }
 
 describe("TradeSpace", () => {
@@ -173,5 +172,34 @@ describe("TradeSpace", () => {
       status: 200,
       json: () => Promise.resolve(SAMPLE),
     } as Response)
+  })
+
+
+  it("sends Authorization: Bearer when a token is present", async () => {
+    window.localStorage.setItem("aerogrid.token", "test-token")
+    try {
+      const fn = stubFetchOk()
+      const user = userEvent.setup()
+      render(<TradeSpace />)
+      await user.click(screen.getByRole("button", { name: /run nsga-ii/i }))
+      await waitFor(() => expect(fn).toHaveBeenCalled())
+      const init = fn.mock.calls[0][1] as RequestInit
+      expect((init.headers as Record<string, string>).Authorization).toBe(
+        "Bearer test-token",
+      )
+    } finally {
+      window.localStorage.removeItem("aerogrid.token")
+    }
+  })
+
+  it("omits Authorization when no token is stored", async () => {
+    window.localStorage.removeItem("aerogrid.token")
+    const fn = stubFetchOk()
+    const user = userEvent.setup()
+    render(<TradeSpace />)
+    await user.click(screen.getByRole("button", { name: /run nsga-ii/i }))
+    await waitFor(() => expect(fn).toHaveBeenCalled())
+    const init = fn.mock.calls[0][1] as RequestInit
+    expect((init.headers as Record<string, string>).Authorization).toBeUndefined()
   })
 })
