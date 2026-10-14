@@ -1,14 +1,40 @@
 /**
- * Design tokens, mirroring src/styles/tokens.ts.
+ * Design tokens.
  *
- * The light theme is the default in :root. The dark theme is selected
- * by applying the class "dark" to the html element. This is the
- * Tailwind 4 dark-mode strategy.
+ * Light is the default; the `.dark` class on <html> switches to dark.
+ * `main.tsx` applies `.dark` from the OS preference and keeps it in
+ * sync with `prefers-color-scheme`.
+ *
+ * The legacy names --color-bg, --color-fg, --color-accent-* are kept
+ * so the epistemic badge (components/EpistemicBadge) and any other
+ * pre-existing component that reads them continue to resolve.
  */
 
 :root {
-  --color-bg: #f5f7fa;
-  --color-fg: #0f1419;
+  /* Surfaces */
+  --bg-canvas: #f5f5f7;
+  --bg-surface: #ffffff;
+  --bg-sidebar: #f2f2f7;
+  --bg-subtle: #fafafc;
+
+  /* Ink */
+  --ink-primary: #1d1d1f;
+  --ink-secondary: #6e6e73;
+  --ink-tertiary: #86868b;
+
+  /* Borders */
+  --border-hairline: #e5e5ea;
+  --border-subtle: rgba(0, 0, 0, 0.06);
+
+  /* Status */
+  --status-green: #28cd41;
+  --status-orange: #ff9500;
+  --status-red: #ff3b30;
+
+  /* Legacy names — preserved for the epistemic badge and any other
+     component that reads the older palette. */
+  --color-bg: var(--bg-canvas);
+  --color-fg: var(--ink-primary);
   --color-accent-teal: #14b8a6;
   --color-accent-violet: #8b5cf6;
   --color-accent-amber: #f59e0b;
@@ -16,6 +42,15 @@
 }
 
 .dark {
-  --color-bg: #0a0e14;
-  --color-fg: #e6e8eb;
+  --bg-canvas: #0a0e14;
+  --bg-surface: #11161f;
+  --bg-sidebar: #0d131b;
+  --bg-subtle: #0f141b;
+  --ink-primary: #e6e8eb;
+  --ink-secondary: #9aa0a6;
+  --ink-tertiary: #6b7280;
+  --border-hairline: #1e2530;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --color-bg: var(--bg-canvas);
+  --color-fg: var(--ink-primary);
 }
