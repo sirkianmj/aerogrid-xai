@@ -10,6 +10,7 @@ import { useState } from "react"
 import { DEFAULT_CONFIG, useMission, type MissionConfig } from "./missionContext"
 
 type FieldErrors = {
+  t_utc?: string
   ground_lat_deg?: string
   ground_lon_deg?: string
   transmitter_power_w?: string
@@ -60,7 +61,8 @@ export function MissionConfigBar() {
     draft.ground_lon_deg !== config.ground_lon_deg ||
     draft.transmitter_power_w !== config.transmitter_power_w ||
     draft.n_uavs !== config.n_uavs ||
-    draft.seed !== config.seed
+    draft.seed !== config.seed ||
+    draft.t_utc !== config.t_utc
 
   function set<K extends keyof MissionConfig>(key: K, value: MissionConfig[K]) {
     setDraft((prev) => ({ ...prev, [key]: value }))
@@ -69,26 +71,47 @@ export function MissionConfigBar() {
   return (
     <section
       aria-labelledby="mission-config-heading"
-      className="mb-6 rounded border border-current/15 p-3 text-sm"
+      className="mb-6 rounded border border-[var(--border-hairline)] p-3 text-sm"
       data-testid="mission-config-bar"
     >
       <div className="mb-3 flex items-baseline gap-3">
         <h2 id="mission-config-heading" className="text-sm font-medium">
           Mission configuration
         </h2>
-        <span className="text-xs opacity-50">
+        <span className="text-xs text-[var(--ink-tertiary)]">
           drives every panel below that reads mission state
         </span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-[0.65rem] uppercase tracking-wide opacity-50">Satellite</span>
+          <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
+            Mission time (UTC)
+          </span>
+          <input
+            aria-label="Mission time UTC"
+            type="datetime-local"
+            value={draft.t_utc ? draft.t_utc.slice(0, 16) : ""}
+            onChange={(e) => {
+              const v = e.target.value
+              set("t_utc", v ? `${v}:00Z` : null)
+            }}
+            className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-xs"
+          />
+          <span className="text-[0.6rem] text-[var(--ink-tertiary)]">
+            {draft.t_utc
+              ? "SGP4 accuracy degrades far from the TLE epoch."
+              : "Empty: use the satellite TLE epoch."}
+          </span>
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">Satellite</span>
           <select
             aria-label="Satellite key"
             value={draft.satellite_key}
             onChange={(e) => set("satellite_key", e.target.value)}
-            className="rounded border border-current/20 bg-transparent px-2 py-1 font-mono text-xs"
+            className="rounded border border-[var(--border-hairline)] bg-transparent px-2 py-1 font-mono text-xs"
           >
             <option value="iss">ISS</option>
             <option value="geo">GEO demo</option>
@@ -97,7 +120,7 @@ export function MissionConfigBar() {
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-[0.65rem] uppercase tracking-wide opacity-50">
+          <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
             Ground lat (deg)
           </span>
           <input
@@ -106,17 +129,17 @@ export function MissionConfigBar() {
             step="0.001"
             value={draft.ground_lat_deg}
             onChange={(e) => set("ground_lat_deg", num(e.target.value, draft.ground_lat_deg))}
-            className="rounded border border-current/20 bg-transparent px-2 py-1 font-mono text-xs"
+            className="rounded border border-[var(--border-hairline)] bg-transparent px-2 py-1 font-mono text-xs"
           />
           {errors.ground_lat_deg && (
-            <span className="text-[0.65rem]" style={{ color: "var(--color-accent-amber)" }}>
+            <span className="text-[0.65rem]" style={{ color: "var(--status-red)" }}>
               {errors.ground_lat_deg}
             </span>
           )}
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-[0.65rem] uppercase tracking-wide opacity-50">
+          <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
             Ground lon (deg)
           </span>
           <input
@@ -125,17 +148,17 @@ export function MissionConfigBar() {
             step="0.001"
             value={draft.ground_lon_deg}
             onChange={(e) => set("ground_lon_deg", num(e.target.value, draft.ground_lon_deg))}
-            className="rounded border border-current/20 bg-transparent px-2 py-1 font-mono text-xs"
+            className="rounded border border-[var(--border-hairline)] bg-transparent px-2 py-1 font-mono text-xs"
           />
           {errors.ground_lon_deg && (
-            <span className="text-[0.65rem]" style={{ color: "var(--color-accent-amber)" }}>
+            <span className="text-[0.65rem]" style={{ color: "var(--status-red)" }}>
               {errors.ground_lon_deg}
             </span>
           )}
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-[0.65rem] uppercase tracking-wide opacity-50">
+          <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
             Transmitter power (W)
           </span>
           <input
@@ -147,17 +170,17 @@ export function MissionConfigBar() {
             onChange={(e) =>
               set("transmitter_power_w", num(e.target.value, draft.transmitter_power_w))
             }
-            className="rounded border border-current/20 bg-transparent px-2 py-1 font-mono text-xs"
+            className="rounded border border-[var(--border-hairline)] bg-transparent px-2 py-1 font-mono text-xs"
           />
           {errors.transmitter_power_w && (
-            <span className="text-[0.65rem]" style={{ color: "var(--color-accent-amber)" }}>
+            <span className="text-[0.65rem]" style={{ color: "var(--status-red)" }}>
               {errors.transmitter_power_w}
             </span>
           )}
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-[0.65rem] uppercase tracking-wide opacity-50">UAVs</span>
+          <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">UAVs</span>
           <input
             aria-label="UAV count"
             type="number"
@@ -166,17 +189,17 @@ export function MissionConfigBar() {
             max={20}
             value={draft.n_uavs}
             onChange={(e) => set("n_uavs", Math.round(num(e.target.value, draft.n_uavs)))}
-            className="rounded border border-current/20 bg-transparent px-2 py-1 font-mono text-xs"
+            className="rounded border border-[var(--border-hairline)] bg-transparent px-2 py-1 font-mono text-xs"
           />
           {errors.n_uavs && (
-            <span className="text-[0.65rem]" style={{ color: "var(--color-accent-amber)" }}>
+            <span className="text-[0.65rem]" style={{ color: "var(--status-red)" }}>
               {errors.n_uavs}
             </span>
           )}
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-[0.65rem] uppercase tracking-wide opacity-50">Seed</span>
+          <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">Seed</span>
           <input
             aria-label="Seed"
             type="number"
@@ -184,10 +207,10 @@ export function MissionConfigBar() {
             min={0}
             value={draft.seed}
             onChange={(e) => set("seed", Math.round(num(e.target.value, draft.seed)))}
-            className="rounded border border-current/20 bg-transparent px-2 py-1 font-mono text-xs"
+            className="rounded border border-[var(--border-hairline)] bg-transparent px-2 py-1 font-mono text-xs"
           />
           {errors.seed && (
-            <span className="text-[0.65rem]" style={{ color: "var(--color-accent-amber)" }}>
+            <span className="text-[0.65rem]" style={{ color: "var(--status-red)" }}>
               {errors.seed}
             </span>
           )}
@@ -199,7 +222,7 @@ export function MissionConfigBar() {
           type="button"
           disabled={hasErrors || !isDirty}
           onClick={() => applyConfig(draft)}
-          className="rounded border px-3 py-1 text-xs uppercase tracking-wider hover:bg-current/5 disabled:opacity-40"
+          className="rounded border px-3 py-1 text-xs uppercase tracking-wider hover:bg-[var(--bg-subtle)] disabled:opacity-40"
           data-testid="mission-apply"
         >
           Apply
@@ -210,13 +233,13 @@ export function MissionConfigBar() {
             setDraft(DEFAULT_CONFIG)
             reset()
           }}
-          className="rounded border px-3 py-1 text-xs uppercase tracking-wider hover:bg-current/5"
+          className="rounded border px-3 py-1 text-xs uppercase tracking-wider hover:bg-[var(--bg-subtle)]"
           data-testid="mission-reset"
         >
           Reset to defaults
         </button>
         {isDirty && !hasErrors && (
-          <span className="text-xs opacity-60" data-testid="mission-dirty">
+          <span className="text-xs text-[var(--ink-secondary)]" data-testid="mission-dirty">
             unsaved changes
           </span>
         )}

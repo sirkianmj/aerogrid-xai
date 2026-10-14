@@ -70,10 +70,13 @@ function App() {
               Session
             </div>
             <SessionBar />
-            <MissionConfigBar />
           </div>
         }
       >
+        <div className="mb-8">
+          <MissionConfigBar />
+        </div>
+
         {activeView === "twin" && (
           <div className="mx-auto max-w-5xl space-y-6">
             <MissionControl />
