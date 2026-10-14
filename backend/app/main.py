@@ -10,6 +10,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.control.api import router as control_router
 from app.digital_twin.api import router as digital_twin_router
+from app.mission.api import router as mission_router
 from app.physics.api import router as physics_router
 from app.saas.admin_routes import router as saas_admin_router
 from app.saas.billing_routes import router as saas_billing_router
@@ -33,6 +34,7 @@ async def health() -> dict[str, str]:
 app.include_router(control_router)
 app.include_router(physics_router)
 app.include_router(digital_twin_router)
+app.include_router(mission_router)
 app.include_router(telemetry_router)
 app.include_router(tradespace_router)
 app.include_router(saas_router)
