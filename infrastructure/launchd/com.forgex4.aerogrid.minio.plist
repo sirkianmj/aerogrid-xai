@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.forgex4.aerogrid.minio</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__CONDA_ENV__/bin/minio</string>
+        <string>server</string>
+        <string>__REPO_ROOT__/data/minio</string>
+        <string>--address</string>
+        <string>127.0.0.1:9000</string>
+        <string>--console-address</string>
+        <string>127.0.0.1:9001</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>__REPO_ROOT__</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>__LOG_DIR__/minio.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>__LOG_DIR__/minio.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>__CONDA_ENV__/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>MINIO_ROOT_USER</key>
+        <string>aerogrid</string>
+        <key>MINIO_ROOT_PASSWORD</key>
+        <string>aerogrid-dev</string>
+    </dict>
+</dict>
+</plist>
