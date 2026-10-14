@@ -143,6 +143,53 @@ export type MissionState = {
   epistemic_tag: string
 }
 
+/** One node of a user-selected architecture. */
+export type SelectedNode = {
+  node_id: string
+  kind: string
+  params: Record<string, number>
+}
+
+/** One link of a user-selected architecture. */
+export type SelectedLink = {
+  link_id: string
+  kind: string
+  source_id: string
+  target_id: string
+  params?: Record<string, number>
+}
+
+/** A user-selected architecture to load into the mission. */
+export type SelectedArchitecture = {
+  node_list: SelectedNode[]
+  link_list: SelectedLink[]
+}
+
+/** Body for POST /mission/state. */
+export type MissionStateRequest = {
+  seed: number
+  satellite_key?: string
+  a_km?: number
+  e?: number
+  i_deg?: number
+  raan_deg?: number
+  argp_deg?: number
+  m0_deg?: number
+  elements_epoch_utc?: string
+  n_uavs: number
+  ground_lat_deg: number
+  ground_lon_deg: number
+  transmitter_power_w: number
+  visibility_km: number
+  cloud_factor: number
+  transmitter_aperture_m: number
+  uav_alt_m: number
+  uav_receiver_aperture_m2: number
+  uav_receiver_type: string
+  t_utc?: string | null
+  selected_architecture?: SelectedArchitecture | null
+}
+
 export class MissionApiError extends Error {
   readonly status: number
   readonly detail: string
@@ -181,4 +228,27 @@ export async function fetchMissionSatellites(
   signal?: AbortSignal,
 ): Promise<string[]> {
   return getJson<string[]>("/api/mission/satellites", signal)
+}
+
+export async function postMissionState(
+  body: MissionStateRequest,
+  signal?: AbortSignal,
+): Promise<MissionState> {
+  const response = await fetch("/api/mission/state", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  })
+  if (!response.ok) {
+    let detail = `HTTP ${response.status}`
+    try {
+      const payload = (await response.json()) as { detail?: unknown }
+      if (typeof payload.detail === "string") detail = payload.detail
+    } catch {
+      // not JSON
+    }
+    throw new MissionApiError(response.status, detail)
+  }
+  return (await response.json()) as MissionState
 }

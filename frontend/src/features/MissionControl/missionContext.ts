@@ -12,7 +12,7 @@
  */
 
 import { createContext, useContext } from "react"
-import type { MissionState } from "./missionApi"
+import type { MissionState, SelectedArchitecture } from "./missionApi"
 
 /**
  * User-supplied mean Keplerian elements. When present, override the
@@ -53,6 +53,9 @@ export type MissionConfig = {
   uav_receiver_aperture_m2: number
   /** UAV receiver conversion model: laser_photovoltaic or rectenna. */
   uav_receiver_type: "laser_photovoltaic" | "rectenna"
+  /** When set, the mission uses this topology instead of generating
+   *  one. Loaded from the architecture explorer. */
+  selected_architecture?: SelectedArchitecture | null
 }
 
 export const DEFAULT_CONFIG: MissionConfig = {
@@ -70,6 +73,7 @@ export const DEFAULT_CONFIG: MissionConfig = {
   uav_alt_m: 1000.0,
   uav_receiver_aperture_m2: 0.5,
   uav_receiver_type: "laser_photovoltaic",
+  selected_architecture: null,
 }
 
 export type MissionLoad =

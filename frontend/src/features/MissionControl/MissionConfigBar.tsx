@@ -131,6 +131,26 @@ export function MissionConfigBar() {
         </span>
       </div>
 
+      {config.selected_architecture && (
+        <div
+          className="mb-3 flex flex-wrap items-center gap-2 rounded border border-[var(--status-green)] bg-[var(--bg-subtle)] px-2 py-1 text-[0.7rem]"
+          data-testid="selected-architecture-pill"
+        >
+          <span className="font-mono text-[var(--ink-secondary)]">
+            loaded: CLEAR-D architecture · {config.selected_architecture.node_list.length}N{" "}
+            {config.selected_architecture.link_list.length}L
+          </span>
+          <button
+            type="button"
+            onClick={() => applyConfig({ selected_architecture: null })}
+            className="ml-auto rounded border border-[var(--border-hairline)] px-2 py-0.5 uppercase tracking-wider hover:bg-[var(--bg-surface)]"
+            data-testid="selected-architecture-clear"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2">
           <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
@@ -532,7 +552,15 @@ export function MissionConfigBar() {
         <button
           type="button"
           disabled={hasErrors || !isDirty}
-          onClick={() => applyConfig(draft)}
+          onClick={() => {
+            // The draft never carries selected_architecture; that
+            // field is owned by the architecture explorer. Passing it
+            // here would either stale-overwrite or lose the loaded
+            // topology. Omit it so the current value is preserved.
+            const { selected_architecture: _ignored, ...rest } = draft
+            void _ignored
+            applyConfig(rest)
+          }}
           className="rounded border px-3 py-1 text-xs uppercase tracking-wider hover:bg-[var(--bg-subtle)] disabled:opacity-40"
           data-testid="mission-apply"
         >

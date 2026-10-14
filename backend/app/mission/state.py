@@ -26,7 +26,7 @@ from app.control.tier1 import decide_charge_uav, default_charge_rule_list
 from app.control.tier2 import AtmosphericSurrogate, Tier2Estimate
 from app.discovery.attribution import ConflictProneTable, attribute_and_mark
 from app.discovery.generator import GeneratorConfig, generate_architecture
-from app.discovery.grammar import Architecture, Terminal
+from app.discovery.grammar import Architecture, LinkInstance, NodeInstance, Terminal
 from app.discovery.loop import ClearDLoopConfig, run_clear_d_loop
 from app.discovery.nsga2 import synthetic_evaluator
 from app.physics.atmosphere import (
@@ -103,6 +103,40 @@ class UavHardware:
 
 
 @dataclass(frozen=True)
+class SelectedArchitecture:
+    """User-selected architecture, replacing the mission's generated one.
+
+    Holds the same node and link instances the CLEAR-D discovery engine
+    emits. When a mission carries this, the architecture step skips
+    generation and encodes the user's topology directly. The verdict,
+    constraint count, and epsilon come from the mission's own encoder,
+    not from the discovery run's cache — the numbers the user sees are
+    the mission's evaluation of their selected topology.
+    """
+
+    nodes: tuple[NodeInstance, ...]
+    links: tuple[LinkInstance, ...]
+
+    def __post_init__(self) -> None:
+        if len(self.nodes) < 2:
+            raise ValueError(f"SelectedArchitecture needs at least 2 nodes; got {len(self.nodes)}")
+        ids = {n.node_id for n in self.nodes}
+        if len(ids) != len(self.nodes):
+            raise ValueError("SelectedArchitecture: node_id values must be unique")
+        for ln in self.links:
+            if ln.source_id not in ids:
+                raise ValueError(
+                    f"SelectedArchitecture: link {ln.link_id!r} source "
+                    f"{ln.source_id!r} not in nodes"
+                )
+            if ln.target_id not in ids:
+                raise ValueError(
+                    f"SelectedArchitecture: link {ln.link_id!r} target "
+                    f"{ln.target_id!r} not in nodes"
+                )
+
+
+@dataclass(frozen=True)
 class MissionConfig:
     """Deterministic inputs for one mission-state computation."""
 
@@ -123,6 +157,7 @@ class MissionConfig:
     transmitter_aperture_m: float = 0.02
     uav_alt_m: float = 1_000.0
     uav_hardware: UavHardware = UavHardware()
+    selected_architecture: SelectedArchitecture | None = None
 
 
 # --- response models -----------------------------------------------------
@@ -775,9 +810,25 @@ def compute_mission_state(
         )
 
     # --- architecture (real encoder + Z3 verdict) ---------------------
-    arch = generate_architecture(
-        GeneratorConfig(min_nodes=4, max_nodes=max(4, cfg.n_uavs + 2), max_links=6, seed=cfg.seed)
-    )
+    # When the caller has loaded a discovered architecture into the
+    # mission, use it as-is; otherwise sample a fresh one from the
+    # generator. Both branches run the same encoder below, so the
+    # verdict shown is the mission's evaluation of whatever topology
+    # is active.
+    if cfg.selected_architecture is not None:
+        arch = Architecture(
+            nodes=cfg.selected_architecture.nodes,
+            links=cfg.selected_architecture.links,
+        )
+    else:
+        arch = generate_architecture(
+            GeneratorConfig(
+                min_nodes=4,
+                max_nodes=max(4, cfg.n_uavs + 2),
+                max_links=6,
+                seed=cfg.seed,
+            )
+        )
     constraints = encode_architecture(arch)
     table = ConflictProneTable()
     attribution = attribute_and_mark(constraints, table)
