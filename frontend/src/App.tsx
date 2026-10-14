@@ -2,6 +2,8 @@ import { useEffect, useState } from "react"
 import { EpistemicBadge } from "./components/EpistemicBadge/EpistemicBadge"
 import { SessionBar } from "./components/Session/SessionBar"
 import { MissionControl } from "./features/MissionControl/MissionControl"
+import { MissionConfigBar } from "./features/MissionControl/MissionConfigBar"
+import { MissionProvider } from "./features/MissionControl/MissionProvider"
 import { ClearDDashboard } from "./features/ClearDDashboard/ClearDDashboard"
 import { FanetGraph } from "./features/Fanet/FanetGraph"
 import { ALL_TAGS, EPISTEMIC_TAGS } from "./components/EpistemicBadge/epistemic"
@@ -37,6 +39,7 @@ function App() {
 
   return (
     <div className="min-h-screen p-8">
+      <MissionProvider>
       <header className="mb-10">
         <h1 className="text-3xl font-semibold tracking-tight">AeroGrid-XAI</h1>
         <p className="mt-1 text-sm opacity-70">
@@ -45,6 +48,8 @@ function App() {
       </header>
 
       <SessionBar />
+
+      <MissionConfigBar />
 
       <MissionControl />
 
@@ -97,6 +102,7 @@ function App() {
           ))}
         </ul>
       </section>
+      </MissionProvider>
     </div>
   )
 }

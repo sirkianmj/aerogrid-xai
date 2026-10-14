@@ -10,19 +10,10 @@
  * discovery loop; Section 21 category is simulation_result.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 import { TaggedOutput } from "../../components/EpistemicBadge/EpistemicBadge"
-import {
-  fetchMissionState,
-  MissionApiError,
-  type MissionNode,
-  type MissionState,
-} from "../MissionControl/missionApi"
-
-type Load =
-  | { status: "loading" }
-  | { status: "ok"; data: MissionState }
-  | { status: "error"; message: string; status_code?: number }
+import type { MissionNode, MissionState } from "../MissionControl/missionApi"
+import { useMission } from "../MissionControl/missionContext"
 
 const VIEW_W = 960
 const VIEW_H = 520
@@ -62,51 +53,7 @@ function groupByLayer(
 }
 
 export function FanetGraph() {
-  const [load, setLoad] = useState<Load>({ status: "loading" })
-  const abortRef = useRef<AbortController | null>(null)
-
-  const refresh = useCallback(() => {
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
-    setLoad({ status: "loading" })
-    fetchMissionState(controller.signal)
-      .then((data) => {
-        if (controller.signal.aborted) return
-        setLoad({ status: "ok", data })
-      })
-      .catch((err: unknown) => {
-        if (controller.signal.aborted) return
-        if (err instanceof MissionApiError) {
-          setLoad({ status: "error", message: err.detail, status_code: err.status })
-        } else if (err instanceof Error) {
-          setLoad({ status: "error", message: err.message })
-        } else {
-          setLoad({ status: "error", message: String(err) })
-        }
-      })
-  }, [])
-
-  useEffect(() => {
-    const controller = new AbortController()
-    abortRef.current = controller
-    fetchMissionState(controller.signal)
-      .then((data) => {
-        if (controller.signal.aborted) return
-        setLoad({ status: "ok", data })
-      })
-      .catch((err: unknown) => {
-        if (controller.signal.aborted) return
-        if (err instanceof MissionApiError) {
-          setLoad({ status: "error", message: err.detail, status_code: err.status })
-        } else if (err instanceof Error) {
-          setLoad({ status: "error", message: err.message })
-        } else {
-          setLoad({ status: "error", message: String(err) })
-        }
-      })
-    return () => controller.abort()
-  }, [])
+  const { state: load, refresh } = useMission()
 
   return (
     <section aria-labelledby="fanet-heading" className="mb-10">

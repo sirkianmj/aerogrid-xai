@@ -157,9 +157,11 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
 }
 
 export async function fetchMissionState(
+  query?: string,
   signal?: AbortSignal,
 ): Promise<MissionState> {
-  return getJson<MissionState>("/api/mission/state", signal)
+  const url = query ? `/api/mission/state?${query}` : "/api/mission/state"
+  return getJson<MissionState>(url, signal)
 }
 
 export async function fetchMissionSatellites(

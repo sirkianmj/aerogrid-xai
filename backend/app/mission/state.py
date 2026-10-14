@@ -45,6 +45,7 @@ class MissionConfig:
     ground_lon_deg: float = -77.860
     ground_alt_m: float = 350.0
     n_uavs: int = 6
+    transmitter_power_w: float = 10_000.0
     wavelength_nm: float = 1064.0
     visibility_km: float = 10.0
     cloud_factor: float = 0.2
@@ -357,7 +358,7 @@ def compute_mission_state(
         transmission = TransmissionState(
             modality="laser",
             wavelength_nm=cfg.wavelength_nm,
-            transmitter_power_w=10_000.0,
+            transmitter_power_w=float(cfg.transmitter_power_w),
             slant_range_m=float(slant_range_m),
             atmospheric_path_m=float(atmospheric_path_m),
             elevation_deg=float(math.degrees(elevation_rad)),
@@ -369,10 +370,15 @@ def compute_mission_state(
             extinction_coeff_per_m=cfg.extinction_coeff_per_m,
         )
     else:
+        # The transmitter power is the mission's *configured* power,
+        # not the power actually emitted right now. The link is offline
+        # (modality="offline", transmittance=0.0); the response still
+        # reports what the mission is configured to transmit so the UI
+        # can display it next to the "offline" indicator.
         transmission = TransmissionState(
             modality="offline",
             wavelength_nm=cfg.wavelength_nm,
-            transmitter_power_w=0.0,
+            transmitter_power_w=float(cfg.transmitter_power_w),
             slant_range_m=float(slant_range_m),
             atmospheric_path_m=0.0,
             elevation_deg=float(math.degrees(elevation_rad)),

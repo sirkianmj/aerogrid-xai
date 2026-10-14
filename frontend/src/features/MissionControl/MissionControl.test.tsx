@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { MissionControl } from "./MissionControl"
+import { MissionProvider } from "./MissionProvider"
 import type { MissionState } from "./missionApi"
 
 const SAMPLE: MissionState = {
@@ -142,6 +143,10 @@ function stubFetchOk(payload: MissionState = SAMPLE): ReturnType<typeof vi.fn> {
   return fn
 }
 
+function renderWithProvider(ui: React.ReactElement) {
+  return render(ui, { wrapper: MissionProvider })
+}
+
 describe("MissionControl", () => {
   afterEach(() => {
     vi.restoreAllMocks()
@@ -151,7 +156,7 @@ describe("MissionControl", () => {
 
   it("renders the section heading and a loading state on mount", () => {
     stubFetchOk()
-    render(<MissionControl />)
+    renderWithProvider(<MissionControl />)
     expect(
       screen.getByRole("heading", { name: /mission control/i, level: 2 }),
     ).toBeInTheDocument()
@@ -160,7 +165,7 @@ describe("MissionControl", () => {
 
   it("renders every pipeline stage code after load", async () => {
     stubFetchOk()
-    render(<MissionControl />)
+    renderWithProvider(<MissionControl />)
     for (const code of [
       "SPACE",
       "WIRELESS TX",
@@ -178,14 +183,14 @@ describe("MissionControl", () => {
 
   it("renders the satellite name and orbit class", async () => {
     stubFetchOk()
-    render(<MissionControl />)
+    renderWithProvider(<MissionControl />)
     await waitFor(() => expect(screen.getByText(/ISS \(ZARYA\)/i)).toBeInTheDocument())
     expect(screen.getByText(/LEO/)).toBeInTheDocument()
   })
 
   it("renders the Z3 verdict and constraint count in the open detail", async () => {
     stubFetchOk()
-    render(<MissionControl />)
+    renderWithProvider(<MissionControl />)
     const z3 = await screen.findByTestId("stage-Z3")
     const scoped = within(z3)
     // "SAT" appears in the stage heading AND in the verdict field, by
@@ -196,7 +201,7 @@ describe("MissionControl", () => {
 
   it("renders the CLEAR-D feasible and infeasible counts", async () => {
     stubFetchOk()
-    render(<MissionControl />)
+    renderWithProvider(<MissionControl />)
     const cleard = await screen.findByTestId("stage-CLEAR-D")
     const scoped = within(cleard)
     // Feasible (5) is unique inside CLEAR-D; infeasible (1) coincides
@@ -209,7 +214,7 @@ describe("MissionControl", () => {
 
   it("renders the Tier 1 selected action and confidence", async () => {
     stubFetchOk()
-    render(<MissionControl />)
+    renderWithProvider(<MissionControl />)
     await waitFor(() =>
       expect(screen.getByText(/charge_uav_1/)).toBeInTheDocument(),
     )
@@ -218,7 +223,7 @@ describe("MissionControl", () => {
 
   it("renders wired, partial, and pending status pills", async () => {
     stubFetchOk()
-    render(<MissionControl />)
+    renderWithProvider(<MissionControl />)
     await waitFor(() => expect(screen.getByTestId("stage-SPACE")).toBeInTheDocument())
     expect(screen.getAllByTestId("status-pill-wired").length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByTestId("status-pill-partial").length).toBeGreaterThanOrEqual(1)
@@ -234,7 +239,7 @@ describe("MissionControl", () => {
         invalid_reason: "TLE is 4650 days old; SGP4 drift likely",
       },
     })
-    render(<MissionControl />)
+    renderWithProvider(<MissionControl />)
     await waitFor(() =>
       expect(screen.getByText(/TLE is 4650 days old/)).toBeInTheDocument(),
     )
@@ -243,7 +248,7 @@ describe("MissionControl", () => {
 
   it("shows an error state and a Retry button when fetch fails", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("network failure"))))
-    render(<MissionControl />)
+    renderWithProvider(<MissionControl />)
     await waitFor(() => expect(screen.getByTestId("mission-error")).toBeInTheDocument())
     expect(screen.getByText(/network failure/)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument()
@@ -252,7 +257,7 @@ describe("MissionControl", () => {
   it("re-fetches when Refresh is clicked", async () => {
     const fn = stubFetchOk()
     const user = userEvent.setup()
-    render(<MissionControl />)
+    renderWithProvider(<MissionControl />)
     const refresh = await screen.findByRole("button", { name: /refresh/i })
     await user.click(refresh)
     await waitFor(() => expect(fn).toHaveBeenCalledTimes(2))
@@ -261,7 +266,7 @@ describe("MissionControl", () => {
   it("does not send an Authorization header even when a token is present", async () => {
     window.localStorage.setItem("aerogrid.token", "some-token")
     const fn = stubFetchOk()
-    render(<MissionControl />)
+    renderWithProvider(<MissionControl />)
     await waitFor(() => expect(fn).toHaveBeenCalled())
     const init = fn.mock.calls[0][1] as RequestInit | undefined
     expect(init?.headers).toBeUndefined()
