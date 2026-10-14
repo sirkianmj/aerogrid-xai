@@ -33,6 +33,9 @@ from pydantic import BaseModel, Field
 from app.discovery.generator import GeneratorConfig, generate_architecture
 from app.discovery.loop import ClearDLoopConfig, run_clear_d_loop
 from app.discovery.nsga2 import synthetic_evaluator
+from app.discovery.sensitivity import compute_sensitivity
+from app.mission.api import MissionStateRequest
+from app.mission.state import MissionConfig, UavHardware
 from app.verification.architecture_encoder import encode_architecture
 
 router = APIRouter(prefix="/discovery", tags=["discovery"])
@@ -222,5 +225,114 @@ async def run(request: RunRequest) -> RunResponse:
                 ],
             )
             for ind in result.final_population
+        ],
+    )
+
+
+# --- Sensitivity analysis ---------------------------------------------------
+# Section 22 capability: rank which parameters move the delivered power.
+
+
+class SensitivityRequest(BaseModel):
+    """Request body for POST /discovery/sensitivity."""
+
+    base: MissionStateRequest
+    perturb_fraction: float = Field(0.10, gt=0.0, lt=1.0)
+
+
+class ParameterSensitivityModel(BaseModel):
+    name: str
+    base_value: float
+    low_value: float
+    high_value: float
+    power_at_low_w: float
+    power_at_high_w: float
+    derivative_w_per_unit: float
+    elasticity: float | None
+    direction: str
+
+
+class SensitivityResponse(BaseModel):
+    epistemic_tag: str = "simulation_result"
+    base_delivered_power_w: float
+    base_sat_verdict: str
+    parameters: list[ParameterSensitivityModel]
+
+
+@router.post("/sensitivity", response_model=SensitivityResponse)
+async def sensitivity(request: SensitivityRequest) -> SensitivityResponse:
+    """Compute the sensitivity of delivered power to each parameter."""
+    req = request.base
+
+    from app.mission.api import _selected_from_body
+    from app.mission.state import SatelliteElements
+
+    element_fields = (
+        req.a_km,
+        req.e,
+        req.i_deg,
+        req.raan_deg,
+        req.argp_deg,
+        req.m0_deg,
+        req.elements_epoch_utc,
+    )
+    n_elements = sum(f is not None for f in element_fields)
+    if 0 < n_elements < 7:
+        raise HTTPException(
+            status_code=400,
+            detail="custom orbit: all seven element parameters required together",
+        )
+
+    elements: SatelliteElements | None = None
+    if n_elements == 7:
+        elements = SatelliteElements(
+            epoch_utc=req.elements_epoch_utc,  # type: ignore[arg-type]
+            a_km=req.a_km,  # type: ignore[arg-type]
+            e=req.e,  # type: ignore[arg-type]
+            i_deg=req.i_deg,  # type: ignore[arg-type]
+            raan_deg=req.raan_deg,  # type: ignore[arg-type]
+            argp_deg=req.argp_deg,  # type: ignore[arg-type]
+            m0_deg=req.m0_deg,  # type: ignore[arg-type]
+        )
+
+    selected = _selected_from_body(req.selected_architecture)
+
+    cfg = MissionConfig(
+        seed=req.seed,
+        satellite_key=req.satellite_key or "iss",
+        satellite_elements=elements,
+        n_uavs=req.n_uavs,
+        ground_lat_deg=req.ground_lat_deg,
+        ground_lon_deg=req.ground_lon_deg,
+        transmitter_power_w=req.transmitter_power_w,
+        visibility_km=req.visibility_km,
+        cloud_factor=req.cloud_factor,
+        transmitter_aperture_m=req.transmitter_aperture_m,
+        uav_alt_m=req.uav_alt_m,
+        uav_hardware=UavHardware(
+            receiver_aperture_m2=req.uav_receiver_aperture_m2,
+            receiver_type=req.uav_receiver_type,
+        ),
+        selected_architecture=selected,
+    )
+
+    report = compute_sensitivity(cfg, perturb_fraction=request.perturb_fraction)
+
+    return SensitivityResponse(
+        base_delivered_power_w=report.base_delivered_power_w,
+        base_sat_verdict=report.base_sat_verdict,
+        parameters=[
+            ParameterSensitivityModel(
+                name=p.name,
+                base_value=p.base_value,
+                low_value=p.low_value,
+                high_value=p.high_value,
+                power_at_low_w=p.power_at_low_w,
+                power_at_high_w=p.power_at_high_w,
+                derivative_w_per_unit=p.derivative_w_per_unit,
+                elasticity=p.elasticity,
+                direction=p.direction,
+            )
+            for p in report.parameters
         ],
     )
