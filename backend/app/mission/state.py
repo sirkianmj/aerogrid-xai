@@ -89,6 +89,16 @@ class UavHardware:
     receiver_aperture_m2: float = 0.5
     receiver_type: str = "laser_photovoltaic"
     battery_efficiency: float = 0.92
+    # Physical bus parameters. These do not feed the optical cascade,
+    # but they determine whether the design is physically plausible.
+    # ``mass_kg`` and ``wingspan_m`` together give a wing-loading
+    # proxy; ``battery_wh`` sizes the energy store that the delivered
+    # power fills; ``thermal_limit_c`` bounds the receiver operating
+    # temperature before the efficiency curve collapses.
+    mass_kg: float = 5.0
+    wingspan_m: float = 2.0
+    battery_wh: float = 100.0
+    thermal_limit_c: float = 80.0
 
     def __post_init__(self) -> None:
         if self.receiver_aperture_m2 <= 0.0:
@@ -100,6 +110,14 @@ class UavHardware:
             )
         if not 0.0 < self.battery_efficiency <= 1.0:
             raise ValueError(f"battery_efficiency must be in (0, 1]; got {self.battery_efficiency}")
+        if self.mass_kg <= 0.0:
+            raise ValueError(f"mass_kg must be > 0; got {self.mass_kg}")
+        if self.wingspan_m <= 0.0:
+            raise ValueError(f"wingspan_m must be > 0; got {self.wingspan_m}")
+        if self.battery_wh <= 0.0:
+            raise ValueError(f"battery_wh must be > 0; got {self.battery_wh}")
+        if self.thermal_limit_c <= 0.0:
+            raise ValueError(f"thermal_limit_c must be > 0; got {self.thermal_limit_c}")
 
 
 @dataclass(frozen=True)
@@ -157,6 +175,10 @@ class MissionConfig:
     transmitter_aperture_m: float = 0.02
     uav_alt_m: float = 1_000.0
     uav_hardware: UavHardware = UavHardware()
+    # Optional per-UAV hardware. When present, UAV i uses entry i;
+    # entries beyond the list length fall back to the uniform
+    # ``uav_hardware``. The list length need not match n_uavs.
+    uav_hardware_list: tuple[UavHardware, ...] | None = None
     selected_architecture: SelectedArchitecture | None = None
 
 
@@ -231,6 +253,16 @@ class UavState(BaseModel):
     link_slant_range_m: float
     link_elevation_deg: float
     receiver_efficiency: float
+    # Per-UAV hardware that produced the above figures.
+    mass_kg: float
+    wingspan_m: float
+    battery_wh: float
+    thermal_limit_c: float
+    receiver_aperture_m2: float
+    receiver_type: str
+    # Derived feasibility: wing loading and the boolean rule-of-thumb.
+    wing_loading_kg_per_m2: float
+    lift_feasible: bool
 
 
 class MissionNode(BaseModel):
@@ -938,6 +970,12 @@ def compute_mission_state(
         radius_deg = 0.05
         uav_lat = cfg.ground_lat_deg + radius_deg * math.cos(angle)
         uav_lon = cfg.ground_lon_deg + radius_deg * math.sin(angle)
+        # Per-UAV hardware when supplied, uniform fallback otherwise.
+        if cfg.uav_hardware_list is not None and i < len(cfg.uav_hardware_list):
+            uav_hardware = cfg.uav_hardware_list[i]
+        else:
+            uav_hardware = cfg.uav_hardware
+
         link = _compute_uav_link(
             sat=sat,
             t=t,
@@ -945,8 +983,17 @@ def compute_mission_state(
             uav_lon_deg=uav_lon,
             uav_alt_m=cfg.uav_alt_m,
             cfg=cfg,
-            hardware=cfg.uav_hardware,
+            hardware=uav_hardware,
         )
+
+        # Wing loading: mass / wing area, with a rectangular-planform
+        # assumption (chord = 0.15 * wingspan). A rule-of-thumb
+        # threshold of 30 kg/m^2 flags designs a small UAV cannot lift
+        # at typical cruise airspeeds; the exact threshold is a rule of
+        # thumb, not a validated aerodynamic model.
+        wing_area_m2 = 0.15 * uav_hardware.wingspan_m**2
+        wing_loading_kg_per_m2 = uav_hardware.mass_kg / wing_area_m2
+        lift_feasible = wing_loading_kg_per_m2 <= 30.0
         uavs.append(
             UavState(
                 uav_id=i,
@@ -967,6 +1014,14 @@ def compute_mission_state(
                 link_slant_range_m=link["link_slant_range_m"],
                 link_elevation_deg=link["link_elevation_deg"],
                 receiver_efficiency=link["receiver_efficiency"],
+                mass_kg=uav_hardware.mass_kg,
+                wingspan_m=uav_hardware.wingspan_m,
+                battery_wh=uav_hardware.battery_wh,
+                thermal_limit_c=uav_hardware.thermal_limit_c,
+                receiver_aperture_m2=uav_hardware.receiver_aperture_m2,
+                receiver_type=uav_hardware.receiver_type,
+                wing_loading_kg_per_m2=float(wing_loading_kg_per_m2),
+                lift_feasible=lift_feasible,
             )
         )
 

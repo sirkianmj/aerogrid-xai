@@ -61,6 +61,7 @@ function queryString(c: MissionConfig): string {
   p.set("ground_lat_deg", String(c.ground_lat_deg))
   p.set("ground_lon_deg", String(c.ground_lon_deg))
   p.set("transmitter_power_w", String(c.transmitter_power_w))
+  p.set("wavelength_nm", String(c.wavelength_nm))
   p.set("visibility_km", String(c.visibility_km))
   p.set("cloud_factor", String(c.cloud_factor))
   p.set("transmitter_aperture_m", String(c.transmitter_aperture_m))
@@ -78,6 +79,7 @@ function requestBody(c: MissionConfig): MissionStateRequest {
     ground_lat_deg: c.ground_lat_deg,
     ground_lon_deg: c.ground_lon_deg,
     transmitter_power_w: c.transmitter_power_w,
+    wavelength_nm: c.wavelength_nm,
     visibility_km: c.visibility_km,
     cloud_factor: c.cloud_factor,
     transmitter_aperture_m: c.transmitter_aperture_m,
@@ -86,6 +88,7 @@ function requestBody(c: MissionConfig): MissionStateRequest {
     uav_receiver_type: c.uav_receiver_type,
     t_utc: c.t_utc,
     selected_architecture: c.selected_architecture ?? null,
+    uav_hardware_list: c.uav_hardware_list ?? null,
   }
   if (c.satellite_elements) {
     body.a_km = c.satellite_elements.a_km

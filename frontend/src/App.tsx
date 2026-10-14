@@ -6,6 +6,7 @@ import { SessionBar } from "./components/Session/SessionBar"
 import { AdminPanel } from "./features/AdminPanel/AdminPanel"
 import { ArchitecturesView } from "./features/Architectures/ArchitecturesView"
 import { SensitivityPanel } from "./features/Sensitivity/SensitivityPanel"
+import { DesignStudio } from "./features/DesignStudio/DesignStudio"
 import { ClearDDashboard } from "./features/ClearDDashboard/ClearDDashboard"
 import { DigitalTwin } from "./features/DigitalTwin/DigitalTwin"
 import { FanetGraph } from "./features/Fanet/FanetGraph"
@@ -22,6 +23,7 @@ const NAV: AppShellNavItem[] = [
   { id: "cleard", label: "CLEAR-D Synthesis", tag: "Part V" },
   { id: "xai", label: "Two-Tier XAI Core", tag: "15·26" },
   { id: "tradespace", label: "Trade Space", tag: "14" },
+  { id: "design", label: "Design Studio", tag: "P-V" },
   { id: "admin", label: "SaaS & Admin", tag: "23" },
   { id: "about", label: "About & Legend", tag: "21" },
 ]
@@ -98,6 +100,11 @@ function App() {
         {activeView === "xai" && (
           <div className="mx-auto max-w-5xl space-y-6">
             <XAITrace />
+          </div>
+        )}
+        {activeView === "design" && (
+          <div className="mx-auto max-w-5xl space-y-6">
+            <DesignStudio />
           </div>
         )}
         {activeView === "tradespace" && (
