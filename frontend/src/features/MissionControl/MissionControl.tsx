@@ -1,31 +1,34 @@
 /**
- * Mission Control — the vertical pipeline view.
+ * Mission Control — engineering schematic + live data table.
  *
- * Renders Section 4 of the specification as a live instrument. Every
- * stage card reads from a single coherent mission state returned by
- * GET /mission/state; nothing is fabricated. Stages the backend has
- * not yet wired are visibly marked with a status pill and a reason
- * rather than hidden.
+ * Layout: a wide SVG schematic on the left (satellite → beam →
+ * atmosphere → UAV cluster → ground station) rendered with real
+ * shapes from components/Orbit/svg. To the right, a table with one
+ * row per pipeline stage, its status pill, and its live numbers.
  *
- * The panel is a drill-in: each stage card has an expandable detail
- * area. Clicking the disclosure button toggles it. Nothing else is
- * clickable.
+ * Every value in the table is read from the single mission state
+ * returned by GET /mission/state. Nothing is fabricated. Stages the
+ * backend has not wired show a `pending` pill with a reason.
  */
 
 import { useState } from "react"
 import { TaggedOutput } from "../../components/EpistemicBadge/EpistemicBadge"
+import { SatelliteSVG } from "../../components/Orbit/svg/SatelliteSVG"
+import { UavSVG } from "../../components/Orbit/svg/UavSVG"
+import { GroundStationSVG } from "../../components/Orbit/svg/GroundStationSVG"
+import { AtmosphereBand } from "../../components/Orbit/svg/AtmosphereBand"
 import type { MissionState, PipelineStage } from "./missionApi"
 import { useMission } from "./missionContext"
 
 const STATUS_COLOR: Record<string, string> = {
-  wired: "var(--color-accent-teal)",
-  partial: "var(--color-accent-violet)",
-  pending: "var(--color-accent-slate)",
-  offline: "var(--color-accent-amber)",
+  wired: "var(--status-green)",
+  partial: "var(--status-orange)",
+  pending: "var(--ink-tertiary)",
+  offline: "var(--status-red)",
 }
 
 function StatusPill({ status, reason }: { status: string; reason?: string }) {
-  const color = STATUS_COLOR[status] ?? "var(--color-accent-slate)"
+  const color = STATUS_COLOR[status] ?? "var(--ink-tertiary)"
   return (
     <span
       data-testid={`status-pill-${status}`}
@@ -35,14 +38,15 @@ function StatusPill({ status, reason }: { status: string; reason?: string }) {
         color,
         display: "inline-flex",
         alignItems: "center",
-        gap: "0.25rem",
+        gap: "0.3rem",
         padding: "0.05rem 0.45rem",
         border: "1px solid",
         borderRadius: "999px",
-        fontFamily: "ui-monospace, monospace",
+        fontFamily: "ui-monospace, SFMono-Regular, monospace",
         fontSize: "0.65rem",
         textTransform: "uppercase",
-        letterSpacing: "0.05em",
+        letterSpacing: "0.04em",
+        whiteSpace: "nowrap",
       }}
     >
       <span
@@ -59,23 +63,6 @@ function StatusPill({ status, reason }: { status: string; reason?: string }) {
   )
 }
 
-function KeyValue({
-  label,
-  value,
-  mono = true,
-}: {
-  label: string
-  value: string
-  mono?: boolean
-}) {
-  return (
-    <div className="flex items-baseline gap-2">
-      <span className="text-[0.65rem] uppercase tracking-wide opacity-50">{label}</span>
-      <span className={mono ? "font-mono text-sm" : "text-sm"}>{value}</span>
-    </div>
-  )
-}
-
 function stageByKey(stages: PipelineStage[], key: string): PipelineStage {
   return (
     stages.find((s) => s.key === key) ?? {
@@ -87,66 +74,16 @@ function stageByKey(stages: PipelineStage[], key: string): PipelineStage {
   )
 }
 
-function Stage({
-  code,
-  title,
-  status,
-  statusReason,
-  children,
-  defaultOpen = false,
-}: {
-  code: string
-  title: string
-  status: string
-  statusReason?: string
-  children: React.ReactNode
-  defaultOpen?: boolean
-}) {
-  const [open, setOpen] = useState(defaultOpen)
-  return (
-    <section
-      data-testid={`stage-${code}`}
-      className="rounded border border-current/15 bg-current/[0.015]"
-    >
-      <div className="flex items-center gap-3 px-4 py-3">
-        <span className="font-mono text-[0.65rem] uppercase tracking-widest opacity-40 w-24 shrink-0">
-          {code}
-        </span>
-        <h3 className="text-sm font-medium flex-1">{title}</h3>
-        <StatusPill status={status} reason={statusReason} />
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls={`stage-${code}-detail`}
-          onClick={() => setOpen((v) => !v)}
-          className="rounded border border-current/20 px-2 py-0.5 text-[0.65rem] uppercase tracking-wider opacity-70 hover:opacity-100 hover:bg-current/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-current/40"
-        >
-          {open ? "Hide detail" : "Detail"}
-        </button>
-      </div>
-      {open && (
-        <div
-          id={`stage-${code}-detail`}
-          className="border-t border-current/10 px-4 py-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
-        >
-          {children}
-        </div>
-      )}
-    </section>
-  )
-}
-
 function fmtDeg(v: number, axis: "lat" | "lon"): string {
-  const hemi =
-    axis === "lat" ? (v >= 0 ? "N" : "S") : v >= 0 ? "E" : "W"
+  const hemi = axis === "lat" ? (v >= 0 ? "N" : "S") : v >= 0 ? "E" : "W"
   return `${Math.abs(v).toFixed(3)}° ${hemi}`
 }
 
 function fmtRelativeSeconds(seconds: number): string {
   const days = seconds / 86400
   if (Math.abs(days) < 1) return `${seconds.toFixed(0)} s`
-  if (Math.abs(days) < 365) return `${days.toFixed(1)} days`
-  return `${(days / 365.25).toFixed(1)} years`
+  if (Math.abs(days) < 365) return `${days.toFixed(1)} d`
+  return `${(days / 365.25).toFixed(1)} y`
 }
 
 export function MissionControl() {
@@ -154,265 +91,414 @@ export function MissionControl() {
 
   return (
     <section aria-labelledby="mission-control-heading" className="mb-10">
-      <div className="mb-1 flex items-baseline gap-3">
-        <h2 id="mission-control-heading" className="text-lg font-medium">
+      <div className="mb-1 flex flex-wrap items-baseline gap-3">
+        <h2 id="mission-control-heading" className="text-lg font-semibold">
           Mission Control
         </h2>
-        <span className="text-xs opacity-50">
-          Section 4 pipeline · live state from <code>GET /mission/state</code>
+        <span className="text-xs text-[var(--ink-secondary)]">
+          Section 4 pipeline · live state from{" "}
+          <code className="font-mono">GET /mission/state</code>
         </span>
+        <button
+          type="button"
+          onClick={refresh}
+          className="ml-auto rounded-md border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-1 text-xs hover:bg-[var(--bg-subtle)]"
+        >
+          Refresh
+        </button>
       </div>
-      <p className="mb-4 text-sm opacity-70 max-w-3xl">
-        One coherent scenario: satellite propagated from a packaged TLE, atmosphere
-        at the current geometry, a real Z3 SAT/UNSAT verdict on a generated
-        architecture, a CLEAR-D snapshot, and a Tier 1 decision over the UAVs.
-        No fabricated values; stages the backend has not yet wired say so.
-      </p>
 
       {load.status === "loading" && (
-        <p className="text-sm opacity-60" data-testid="mission-loading">
+        <p className="text-sm text-[var(--ink-secondary)]" data-testid="mission-loading">
           Loading mission state…
         </p>
       )}
 
       {load.status === "error" && (
-        <div className="rounded border border-current/15 p-4" data-testid="mission-error">
-          <p className="text-sm" style={{ color: "var(--color-accent-amber)" }}>
+        <div className="apple-card p-4" data-testid="mission-error">
+          <p className="text-sm" style={{ color: "var(--status-red)" }}>
             Error{load.status_code ? ` (${load.status_code})` : ""}: {load.message}
           </p>
           <button
             type="button"
             onClick={() => refresh()}
-            className="mt-3 rounded border px-3 py-1 text-xs hover:bg-current/5"
+            className="mt-3 rounded border border-[var(--border-hairline)] px-3 py-1 text-xs hover:bg-[var(--bg-subtle)]"
           >
             Retry
           </button>
         </div>
       )}
 
-      {load.status === "ok" && <PipelineView data={load.data} onRefresh={refresh} />}
+      {load.status === "ok" && (
+        <TaggedOutput tag="simulation_result">
+          <div className="mb-3 flex flex-wrap items-baseline gap-4 font-mono text-[11px] text-[var(--ink-secondary)]">
+            <span>t = {load.data.t_utc}</span>
+            <span>seed = {load.data.seed}</span>
+            <span>
+              {load.data.pipeline_stages.filter((p) => p.status === "wired").length} wired ·{" "}
+              {load.data.pipeline_stages.filter((p) => p.status === "partial").length} partial ·{" "}
+              {load.data.pipeline_stages.filter((p) => p.status === "pending").length} pending
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[500px_1fr]">
+            <Schematic data={load.data} />
+            <StageTable data={load.data} />
+          </div>
+        </TaggedOutput>
+      )}
     </section>
   )
 }
 
-function PipelineView({ data, onRefresh }: { data: MissionState; onRefresh: () => void }) {
+/* ------------------------------------------------------------------ */
+/* Left: the schematic                                                 */
+/* ------------------------------------------------------------------ */
+
+function Schematic({ data }: { data: MissionState }) {
+  const sat = data.satellite
+  const uavs = data.uavs
+  const nUavs = Math.max(1, uavs.length)
+  const uavCount = Math.min(nUavs, 5)
+  const uavXs = Array.from({ length: uavCount }, (_, i) => {
+    const spacing = 90
+    const totalW = spacing * (uavCount - 1)
+    return 250 - totalW / 2 + i * spacing
+  })
+
+  // Beam direction: if the transmission is offline (below horizon)
+  // draw the beam as dashed and do not connect to the UAV cluster.
+  const isOffline = data.transmission.modality === "offline"
+  const beamStroke = isOffline ? "var(--ink-tertiary)" : "var(--ink-primary)"
+
+  return (
+    <div className="apple-card p-3">
+      <svg
+        viewBox="0 0 500 640"
+        className="h-full w-full"
+        role="img"
+        aria-label="Mission topology schematic"
+      >
+        {/* Subtle grid */}
+        <g stroke="var(--border-hairline)" strokeWidth="0.5" opacity="0.6">
+          {[80, 160, 240, 320, 400, 480, 560].map((y) => (
+            <line key={`h${y}`} x1="0" y1={y} x2="500" y2={y} />
+          ))}
+          {[100, 200, 300, 400].map((x) => (
+            <line key={`v${x}`} x1={x} y1="0" x2={x} y2="640" />
+          ))}
+        </g>
+
+        {/* Stage labels */}
+        <g
+          fontFamily="ui-monospace, monospace"
+          fontSize="9"
+          fill="var(--ink-tertiary)"
+          letterSpacing="0.06em"
+        >
+          <text x="16" y="26">01 · SPACE — SGP4/SDP4</text>
+          <text x="16" y="196">02 · WIRELESS TX</text>
+          <text x="16" y="290">03 · ATMOSPHERE</text>
+          <text x="16" y="426">04 · UAV NETWORK</text>
+          <text x="16" y="546">05 · GEOGRAPHY</text>
+        </g>
+
+        {/* SPACE — satellite */}
+        <g transform="translate(200, 60)">
+          <SatelliteSVG variant={sat.orbit_class === "GEO" ? "geo" : "leo"} />
+        </g>
+        <text
+          x="250"
+          y="155"
+          textAnchor="middle"
+          fontFamily="ui-monospace, monospace"
+          fontSize="10"
+          fill="var(--ink-primary)"
+        >
+          {sat.name} · {sat.orbit_class}
+        </text>
+
+        {/* WIRELESS TX — beam */}
+        <line
+          x1="250"
+          y1="175"
+          x2="250"
+          y2="440"
+          stroke={beamStroke}
+          strokeWidth="2"
+          strokeDasharray={isOffline ? "6 4" : undefined}
+        />
+        <line
+          x1="236"
+          y1="175"
+          x2="250"
+          y2="440"
+          stroke="var(--ink-tertiary)"
+          strokeWidth="0.6"
+          strokeDasharray="3 3"
+        />
+        <line
+          x1="264"
+          y1="175"
+          x2="250"
+          y2="440"
+          stroke="var(--ink-tertiary)"
+          strokeWidth="0.6"
+          strokeDasharray="3 3"
+        />
+        <text
+          x="258"
+          y="230"
+          fontFamily="ui-monospace, monospace"
+          fontSize="9"
+          fill="var(--ink-secondary)"
+        >
+          {isOffline
+            ? "LINK OFFLINE"
+            : `${data.transmission.wavelength_nm.toFixed(0)} nm · ${(data.transmission.transmitter_power_w / 1000).toFixed(1)} kW`}
+        </text>
+
+        {/* ATMOSPHERE — band across the beam */}
+        <AtmosphereBand
+          x={120}
+          y={330}
+          width={260}
+          height={40}
+          opticalDepth={
+            isOffline ? 0 : Math.max(0.02, 1 - data.atmosphere.transmittance)
+          }
+        />
+
+        {/* UAV NETWORK — drone silhouettes */}
+        <g>
+          {uavXs.map((x, i) => (
+            <g key={i} transform={`translate(${x - 30}, 440)`}>
+              <UavSVG variant={uavs[i]?.role === "UAV_Compute" ? "fixed" : "quad"} />
+            </g>
+          ))}
+        </g>
+
+        {/* FANET mesh links */}
+        <g stroke="var(--ink-tertiary)" strokeWidth="0.8" strokeDasharray="3 3" opacity="0.5">
+          {uavXs.slice(1).map((x, i) => (
+            <line key={i} x1={uavXs[i]} y1="462" x2={x} y2="462" />
+          ))}
+        </g>
+
+        {/* GEOGRAPHY — ground station */}
+        <g transform="translate(220, 560)">
+          <GroundStationSVG />
+        </g>
+      </svg>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Right: the data table                                               */
+/* ------------------------------------------------------------------ */
+
+function StageRow({
+  code,
+  title,
+  status,
+  statusReason,
+  children,
+}: {
+  code: string
+  title: string
+  status: string
+  statusReason?: string
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(true)
+  return (
+    <div
+      data-testid={`stage-${code}`}
+      className="border-b border-[var(--border-hairline)] py-2 last:border-b-0"
+    >
+      <div className="flex items-center gap-3">
+        <span className="w-24 shrink-0 font-mono text-[10px] uppercase tracking-widest text-[var(--ink-tertiary)]">
+          {code}
+        </span>
+        <span className="flex-1 text-[12px] font-medium">{title}</span>
+        <StatusPill status={status} reason={statusReason} />
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={`stage-${code}-detail`}
+          onClick={() => setOpen((v) => !v)}
+          className="rounded border border-[var(--border-hairline)] px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)]"
+        >
+          {open ? "−" : "+"}
+        </button>
+      </div>
+      {open && (
+        <div
+          id={`stage-${code}-detail`}
+          className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 pl-[6.5rem] font-mono text-[11px]"
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function KV({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-[10px] uppercase tracking-wide text-[var(--ink-tertiary)]">
+        {label}
+      </span>
+      <span className="text-[var(--ink-primary)]">{value}</span>
+    </div>
+  )
+}
+
+function StageTable({ data }: { data: MissionState }) {
   const s = data
   const stages = s.pipeline_stages
-  const txStage = stageByKey(stages, "wireless_transmission")
-  const atmStage = stageByKey(stages, "atmosphere")
-  const uavStage = stageByKey(stages, "uav_network")
-  const geoStage = stageByKey(stages, "geographic_region")
-  const tier1Stage = stageByKey(stages, "tier1_decision")
-  const z3Stage = stageByKey(stages, "z3_verification")
-  const cleardStage = stageByKey(stages, "cleard_loop")
-  const tier2Stage = stageByKey(stages, "tier2_surrogates")
-
   const sat = s.satellite
   const tleStatus = sat.valid ? "wired" : "offline"
   const tleReason = sat.valid ? "" : sat.invalid_reason
+  const atm = s.atmosphere
 
   return (
-    <TaggedOutput tag="simulation_result" className="rounded border border-current/15 p-4">
-      <div className="mb-4 flex flex-wrap items-baseline gap-4 text-xs opacity-70">
-        <span className="font-mono">t = {s.t_utc}</span>
-        <span className="font-mono">seed = {s.seed}</span>
-        <span>{s.pipeline_stages.filter((p) => p.status === "wired").length} wired ·{" "}
-              {s.pipeline_stages.filter((p) => p.status === "partial").length} partial ·{" "}
-              {s.pipeline_stages.filter((p) => p.status === "pending").length} pending</span>
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="ml-auto rounded border border-current/20 px-2 py-0.5 text-[0.65rem] uppercase tracking-wider hover:bg-current/5"
-        >
-          Refresh
-        </button>
-      </div>
+    <div className="apple-card p-4">
+      <StageRow
+        code="SPACE"
+        title={`Satellite — ${sat.name} (${sat.orbit_class})`}
+        status={tleStatus}
+        statusReason={tleReason}
+      >
+        <KV label="lat" value={fmtDeg(sat.lat_deg, "lat")} />
+        <KV label="lon" value={fmtDeg(sat.lon_deg, "lon")} />
+        <KV label="alt" value={`${sat.alt_km.toFixed(1)} km`} />
+        <KV label="eclipse" value={sat.in_eclipse ? "yes" : "no"} />
+        <KV label="period" value={`${(sat.period_seconds / 60).toFixed(1)} min`} />
+        <KV label="TLE age" value={fmtRelativeSeconds(sat.tle_age_seconds)} />
+        {!sat.valid && (
+          <p className="col-span-2 text-[10px]" style={{ color: "var(--status-red)" }}>
+            {sat.invalid_reason}
+          </p>
+        )}
+      </StageRow>
 
-      <div className="space-y-3">
-        <Stage
-          code="SPACE"
-          title={`Satellite energy source — ${sat.name} (${sat.orbit_class})`}
-          status={tleStatus}
-          statusReason={tleReason}
-          defaultOpen
-        >
-          <KeyValue label="lat" value={fmtDeg(sat.lat_deg, "lat")} />
-          <KeyValue label="lon" value={fmtDeg(sat.lon_deg, "lon")} />
-          <KeyValue label="alt" value={`${sat.alt_km.toFixed(1)} km`} />
-          <KeyValue label="eclipse" value={sat.in_eclipse ? "yes" : "no"} />
-          <KeyValue label="period" value={`${(sat.period_seconds / 60).toFixed(1)} min`} />
-          <KeyValue
-            label="TLE age"
-            value={fmtRelativeSeconds(sat.tle_age_seconds)}
-          />
-          {!sat.valid && (
-            <div className="col-span-full text-xs" style={{ color: "var(--color-accent-amber)" }}>
-              {sat.invalid_reason}
-            </div>
+      <StageRow
+        code="WIRELESS TX"
+        title={`Wireless transmission — ${s.transmission.modality}`}
+        status={stageByKey(stages, "wireless_transmission").status}
+        statusReason={stageByKey(stages, "wireless_transmission").reason}
+      >
+        <KV label="wavelength" value={`${s.transmission.wavelength_nm.toFixed(0)} nm`} />
+        <KV label="transmitter" value={`${(s.transmission.transmitter_power_w / 1000).toFixed(1)} kW`} />
+        <KV label="slant" value={`${(s.transmission.slant_range_m / 1000).toFixed(0)} km`} />
+        <KV label="elevation" value={`${s.transmission.elevation_deg.toFixed(2)}°`} />
+      </StageRow>
+
+      <StageRow
+        code="ATMOSPHERE"
+        title="Atmospheric transmission"
+        status={stageByKey(stages, "atmosphere").status}
+        statusReason={stageByKey(stages, "atmosphere").reason}
+      >
+        <KV label="τ" value={atm.transmittance.toFixed(4)} />
+        {atm.transmittance_low !== null &&
+          atm.transmittance_high !== null &&
+          atm.nominal_coverage !== null && (
+            <KV
+              label="τ interval"
+              value={`[${atm.transmittance_low.toFixed(3)}, ${atm.transmittance_high.toFixed(3)}] @ ${(atm.nominal_coverage * 100).toFixed(0)}%`}
+            />
           )}
-        </Stage>
+        <KV label="visibility" value={`${atm.visibility_km.toFixed(0)} km`} />
+        <KV label="cloud" value={atm.cloud_factor.toFixed(2)} />
+      </StageRow>
 
-        <Stage
-          code="WIRELESS TX"
-          title={`Wireless power transmission — ${s.transmission.modality}`}
-          status={txStage.status}
-          statusReason={txStage.reason}
-          defaultOpen
-        >
-          <KeyValue label="wavelength" value={`${s.transmission.wavelength_nm.toFixed(0)} nm`} />
-          <KeyValue
-            label="transmitter"
-            value={`${(s.transmission.transmitter_power_w / 1000).toFixed(1)} kW`}
+      <StageRow
+        code="UAV NETWORK"
+        title={`UAV network — ${s.uavs.length} node${s.uavs.length === 1 ? "" : "s"}`}
+        status={stageByKey(stages, "uav_network").status}
+        statusReason={stageByKey(stages, "uav_network").reason}
+      >
+        {s.uavs.slice(0, 6).map((u) => (
+          <KV
+            key={u.uav_id}
+            label={`uav-${u.uav_id}`}
+            value={`${u.role} · ${u.battery_pct.toFixed(0)}% · ΔT ${u.thermal_headroom_c.toFixed(0)}°C`}
           />
-          <KeyValue
-            label="slant range"
-            value={`${(s.transmission.slant_range_m / 1000).toFixed(1)} km`}
-          />
-          <KeyValue
-            label="atmos path"
-            value={`${(s.transmission.atmospheric_path_m / 1000).toFixed(2)} km`}
-          />
-          <KeyValue
-            label="elevation"
-            value={`${s.transmission.elevation_deg.toFixed(2)}°`}
-          />
-          <KeyValue
-            label="epistemic"
-            value={s.transmission.modality === "laser" ? "simulation_result" : "offline"}
-            mono
-          />
-        </Stage>
+        ))}
+      </StageRow>
 
-        <Stage
-          code="ATMOSPHERE"
-          title="Atmospheric transmission model"
-          status={atmStage.status}
-          statusReason={atmStage.reason}
-        >
-          <KeyValue label="τ" value={s.atmosphere.transmittance.toFixed(4)} />
-          {s.atmosphere.transmittance_low !== null &&
-            s.atmosphere.transmittance_high !== null &&
-            s.atmosphere.nominal_coverage !== null && (
-              <KeyValue
-                label="τ interval"
-                value={`[${s.atmosphere.transmittance_low.toFixed(3)}, ${s.atmosphere.transmittance_high.toFixed(3)}] @ ${(s.atmosphere.nominal_coverage * 100).toFixed(0)}%`}
-              />
-            )}
-          <KeyValue label="visibility" value={`${s.atmosphere.visibility_km.toFixed(1)} km`} />
-          <KeyValue label="cloud" value={s.atmosphere.cloud_factor.toFixed(2)} />
-          <KeyValue
-            label="extinction"
-            value={`${s.atmosphere.extinction_coeff_per_m.toExponential(2)} /m`}
-          />
-        </Stage>
+      <StageRow
+        code="GEOGRAPHY"
+        title={`Ground station — ${s.ground_station.name}`}
+        status={stageByKey(stages, "geographic_region").status}
+        statusReason={stageByKey(stages, "geographic_region").reason}
+      >
+        <KV label="lat" value={fmtDeg(s.ground_station.lat_deg, "lat")} />
+        <KV label="lon" value={fmtDeg(s.ground_station.lon_deg, "lon")} />
+        <KV label="alt" value={`${s.ground_station.alt_m.toFixed(0)} m`} />
+      </StageRow>
 
-        <Stage
-          code="UAV NETWORK"
-          title={`UAV infrastructure network — ${s.uavs.length} node${s.uavs.length === 1 ? "" : "s"}`}
-          status={uavStage.status}
-          statusReason={uavStage.reason}
-          defaultOpen
-        >
-          {s.uavs.map((u) => (
-            <div
-              key={u.uav_id}
-              className="rounded border border-current/10 px-2 py-1 font-mono text-xs"
-            >
-              <div className="opacity-70">uav-{u.uav_id} · {u.role}</div>
-              <div>battery {u.battery_pct.toFixed(0)}%</div>
-              <div>thermal ΔT {u.thermal_headroom_c.toFixed(0)}°C</div>
-            </div>
-          ))}
-        </Stage>
-
-        <Stage
-          code="GEOGRAPHY"
-          title={`Geographic region — ${s.ground_station.name}`}
-          status={geoStage.status}
-          statusReason={geoStage.reason}
-        >
-          <KeyValue label="lat" value={fmtDeg(s.ground_station.lat_deg, "lat")} />
-          <KeyValue label="lon" value={fmtDeg(s.ground_station.lon_deg, "lon")} />
-          <KeyValue label="alt" value={`${s.ground_station.alt_m.toFixed(0)} m`} />
-        </Stage>
-
-        <div className="pt-2">
-          <p className="mb-2 text-[0.7rem] uppercase tracking-widest opacity-40">
-            Intelligence layer
-          </p>
-        </div>
-
-        <Stage
-          code="TIER 1"
-          title={`Interpretable decision — ${s.tier1.selected_action} (${s.tier1.decision_kind})`}
-          status={tier1Stage.status}
-          statusReason={tier1Stage.reason}
-          defaultOpen
-        >
-          <KeyValue label="score" value={s.tier1.score.toFixed(3)} />
-          <KeyValue label="confidence" value={`${(s.tier1.confidence * 100).toFixed(1)}%`} />
-          <KeyValue
-            label="alternative"
-            value={
-              s.tier1.alternative_action
-                ? `${s.tier1.alternative_action} (${s.tier1.alternative_score.toFixed(3)})`
-                : "—"
-            }
-          />
-          <KeyValue label="epistemic" value={s.tier1.epistemic_tag} />
-        </Stage>
-
-        <Stage
-          code="Z3"
-          title={`Formal verification — ${s.architecture.sat_verdict.toUpperCase()}`}
-          status={z3Stage.status}
-          statusReason={z3Stage.reason}
-          defaultOpen
-        >
-          <KeyValue label="verdict" value={s.architecture.sat_verdict} />
-          <KeyValue label="constraints" value={String(s.architecture.n_constraints)} />
-          <KeyValue label="ε" value={s.architecture.epsilon_bound.toExponential(3)} />
-          <KeyValue label="nodes" value={String(s.architecture.nodes)} />
-          <KeyValue label="links" value={String(s.architecture.links)} />
-        </Stage>
-
-        <Stage
-          code="CLEAR-D"
-          title={`Discovery loop — ${s.cleard.feasible_final} feasible / ${s.cleard.population_size} population`}
-          status={cleardStage.status}
-          statusReason={cleardStage.reason}
-          defaultOpen
-        >
-          <KeyValue label="generations" value={String(s.cleard.n_generations)} />
-          <KeyValue label="feasible" value={String(s.cleard.feasible_final)} />
-          <KeyValue label="infeasible" value={String(s.cleard.infeasible_final)} />
-          <KeyValue
-            label="conflict-prone"
-            value={String(s.cleard.conflict_prone_features)}
-          />
-          <KeyValue
-            label="mode"
-            value={s.cleard.use_conflict_directed ? "conflict-directed" : "random"}
-            mono={false}
-          />
-        </Stage>
-
-        <Stage
-          code="TIER 2"
-          title="Auxiliary prediction surrogates"
-          status={tier2Stage.status}
-          statusReason={tier2Stage.reason}
-        >
-          <p className="col-span-full text-xs opacity-60">
-            Tier 2 calibrated-interval rendering is a later PR. This stage exists
-            in the specification and is not yet surfaced in the UI.
-          </p>
-        </Stage>
+      <div className="mt-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-[var(--ink-tertiary)]">
+        Intelligence layer
       </div>
 
-      <footer className="mt-4 border-t border-current/10 pt-3 font-mono text-xs opacity-60">
-        artefact: mission_state · seed {s.seed}
-      </footer>
-    </TaggedOutput>
+      <StageRow
+        code="TIER 1"
+        title={`Interpretable decision — ${s.tier1.selected_action} (${s.tier1.decision_kind})`}
+        status={stageByKey(stages, "tier1_decision").status}
+        statusReason={stageByKey(stages, "tier1_decision").reason}
+      >
+        <KV label="score" value={s.tier1.score.toFixed(3)} />
+        <KV label="confidence" value={`${(s.tier1.confidence * 100).toFixed(1)}%`} />
+        <KV
+          label="alternative"
+          value={s.tier1.alternative_action || "—"}
+        />
+        <KV label="epistemic" value={s.tier1.epistemic_tag} />
+      </StageRow>
+
+      <StageRow
+        code="Z3"
+        title={`Formal verification — ${s.architecture.sat_verdict.toUpperCase()}`}
+        status={stageByKey(stages, "z3_verification").status}
+        statusReason={stageByKey(stages, "z3_verification").reason}
+      >
+        <KV label="verdict" value={s.architecture.sat_verdict} />
+        <KV label="constraints" value={String(s.architecture.n_constraints)} />
+        <KV label="ε" value={s.architecture.epsilon_bound.toExponential(3)} />
+        <KV label="nodes" value={String(s.architecture.nodes)} />
+        <KV label="links" value={String(s.architecture.links)} />
+      </StageRow>
+
+      <StageRow
+        code="CLEAR-D"
+        title={`Discovery loop — ${s.cleard.feasible_final} feasible / ${s.cleard.population_size}`}
+        status={stageByKey(stages, "cleard_loop").status}
+        statusReason={stageByKey(stages, "cleard_loop").reason}
+      >
+        <KV label="generations" value={String(s.cleard.n_generations)} />
+        <KV label="feasible" value={String(s.cleard.feasible_final)} />
+        <KV label="infeasible" value={String(s.cleard.infeasible_final)} />
+        <KV label="conflict-prone" value={String(s.cleard.conflict_prone_features)} />
+        <KV
+          label="mode"
+          value={s.cleard.use_conflict_directed ? "conflict-directed" : "random"}
+        />
+      </StageRow>
+
+      <StageRow
+        code="TIER 2"
+        title="Auxiliary prediction surrogates"
+        status={stageByKey(stages, "tier2_surrogates").status}
+        statusReason={stageByKey(stages, "tier2_surrogates").reason}
+      >
+        <p className="col-span-2 text-[10px] text-[var(--ink-secondary)]">
+          Tier 2 calibrated-interval rendering is a later PR.
+        </p>
+      </StageRow>
+    </div>
   )
 }

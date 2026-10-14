@@ -1,39 +1,33 @@
 /**
- * AppShell — the macOS-style three-pane frame for the workstation.
+ * AppShell — the macOS-style two-pane frame.
  *
  * Layout:
  *
- *     ┌────────────────────────────────────────────────────────────┐
- *     │ title bar:  traffic lights │ segmented view switcher │ rhs  │
- *     ├──────────────┬─────────────────────────────────────────────┤
- *     │              │                                             │
+ *     ┌──────────────┬─────────────────────────────────────────────┐
  *     │   sidebar    │              center canvas                  │
  *     │              │                                             │
  *     └──────────────┴─────────────────────────────────────────────┘
  *
- * The title bar shows the two invariants this project actually enforces
- * at CI:
- *
- *   - "Tier-2 Firewall Verified"  — the static analyzer in
- *     backend/app/control/static_analyzer.py is a required CI gate;
- *     it verifies that no Tier 2 function is reachable from the action
- *     interface.
- *   - "AGPL-3.0"                  — the license the repository ships
- *     under (dual-license, but AGPL-3.0 is the community default).
- *
- * No live server status is displayed here. A real live-Z3 badge needs a
- * status source (a /mission/state field or a telemetry channel) and is
- * deferred to a later PR. Showing a static "SAT ε=0.019" string — as
- * the mockup does — would be a fabricated number, which the project's
- * own rules forbid.
+ * No header bar. The application title, the invariant badges, and the
+ * theme toggle all live in the sidebar. Navigation is one list, not
+ * two; a header switcher that duplicated the sidebar nav has been
+ * removed. The layout matches Xcode, Finder, and every other native
+ * macOS app: a fixed sidebar carries navigation and identity; the
+ * main pane carries content.
  */
 
+import { useState } from "react"
 import type { ReactNode } from "react"
+import {
+  applyTheme,
+  readThemePref,
+  setThemePref,
+  type ThemePref,
+} from "../../lib/theme"
 
 export type AppShellNavItem = {
   id: string
   label: string
-  /** Optional short tag rendered to the right of the label. */
   tag?: string
 }
 
@@ -41,12 +35,62 @@ export type AppShellProps = {
   navItems: AppShellNavItem[]
   activeView: string
   onViewChange: (id: string) => void
-  /** Content of the center pane. */
   children: ReactNode
-  /** Optional content rendered below the nav list in the sidebar. */
   sidebarExtra?: ReactNode
-  /** Optional content rendered in the right-hand inspector. */
   inspector?: ReactNode
+}
+
+function InvariantBadge({ label, title }: { label: string; title: string }) {
+  return (
+    <span
+      title={title}
+      className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 text-[10px] font-mono text-[var(--ink-secondary)]"
+    >
+      <span
+        aria-hidden="true"
+        className="h-1.5 w-1.5 rounded-full bg-[var(--status-green)]"
+      />
+      <span>{label}</span>
+    </span>
+  )
+}
+
+function ThemeToggle() {
+  const [pref, setPref] = useState<ThemePref>(() => readThemePref())
+  const options: ThemePref[] = ["auto", "light", "dark"]
+
+  function choose(next: ThemePref) {
+    setThemePref(next)
+    setPref(next)
+    // Re-apply is handled inside setThemePref; nothing else to do.
+  }
+
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Theme"
+      className="segmented-track w-full"
+      data-testid="theme-toggle"
+    >
+      {options.map((opt) => {
+        const active = pref === opt
+        return (
+          <button
+            key={opt}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => choose(opt)}
+            className={`segmented-item flex-1 !px-1 text-center !text-[10px] capitalize ${
+              active ? "active" : ""
+            }`}
+          >
+            {opt}
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 export function AppShell({
@@ -57,38 +101,29 @@ export function AppShell({
   sidebarExtra,
   inspector,
 }: AppShellProps) {
+  // applyTheme is called once at boot by main.tsx. Re-applying here on
+  // every render is unnecessary; the ThemeToggle handles its own
+  // changes.
+  void applyTheme
+
   return (
-    <div className="flex h-screen w-screen flex-col bg-[var(--bg-canvas)] text-[var(--ink-primary)]">
-      <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-[var(--border-hairline)] bg-[var(--bg-surface)] px-4 backdrop-blur-md">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span
-              aria-hidden="true"
-              className="h-3 w-3 rounded-full border border-black/10 bg-[#ff5f56]"
-            />
-            <span
-              aria-hidden="true"
-              className="h-3 w-3 rounded-full border border-black/10 bg-[#ffbd2e]"
-            />
-            <span
-              aria-hidden="true"
-              className="h-3 w-3 rounded-full border border-black/10 bg-[#27c93f]"
-            />
-          </div>
-          <div className="h-4 w-px bg-[var(--border-hairline)]" />
-          <div className="flex items-baseline gap-2">
-            <span className="text-[13px] font-semibold tracking-tight">
-              AeroGrid-XAI
-            </span>
-            <span className="font-mono text-[11px] text-[var(--ink-secondary)]">
-              Rev. 6 Unified Specification
-            </span>
-          </div>
+    <div className="flex h-screen w-screen bg-[var(--bg-canvas)] text-[var(--ink-primary)]">
+      <aside
+        aria-label="Primary"
+        className="flex w-64 shrink-0 flex-col overflow-y-auto border-r border-[var(--border-hairline)] bg-[var(--bg-sidebar)]"
+      >
+        <div className="flex flex-col gap-0.5 px-4 pb-3 pt-4">
+          <span className="text-[13px] font-semibold tracking-tight">
+            AeroGrid-XAI
+          </span>
+          <span className="font-mono text-[10px] text-[var(--ink-tertiary)]">
+            Rev. 6 Unified Specification
+          </span>
         </div>
 
         <nav
           aria-label="Workspace views"
-          className="segmented-track hidden lg:inline-flex"
+          className="flex flex-col gap-0.5 px-2 py-2"
         >
           {navItems.map((item) => {
             const active = activeView === item.id
@@ -98,83 +133,50 @@ export function AppShell({
                 type="button"
                 onClick={() => onViewChange(item.id)}
                 aria-current={active ? "page" : undefined}
-                className={`segmented-item ${active ? "active" : ""}`}
+                className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-[12px] transition ${
+                  active
+                    ? "bg-[var(--bg-surface)] font-semibold text-[var(--ink-primary)] shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+                    : "text-[var(--ink-secondary)] hover:bg-black/[0.04] hover:text-[var(--ink-primary)]"
+                }`}
               >
-                {item.label}
+                <span>{item.label}</span>
+                {item.tag ? (
+                  <span className="font-mono text-[10px] text-[var(--ink-tertiary)]">
+                    {item.tag}
+                  </span>
+                ) : null}
               </button>
             )
           })}
         </nav>
 
-        <div className="flex items-center gap-2.5">
-          <span
-            title="Backend static analyzer (backend/app/control/static_analyzer.py) enforces at CI that no Tier 2 function is reachable from the action interface without passing through Tier 1."
-            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1 text-[11px] font-mono text-[var(--ink-primary)]"
-          >
-            <span
-              aria-hidden="true"
-              className="h-1.5 w-1.5 rounded-full bg-[var(--status-green)]"
-            />
-            <span>Tier-2 Firewall Verified</span>
-          </span>
-          <span
-            title="Repository dual-license: AGPL-3.0 for community use, proprietary EULA for enterprise."
-            className="hidden xl:inline-flex items-center gap-1.5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1 text-[11px] font-mono text-[var(--ink-primary)]"
-          >
-            <span>AGPL-3.0</span>
-          </span>
-        </div>
-      </header>
-
-      <div className="flex flex-1 overflow-hidden">
-        <aside
-          aria-label="Primary"
-          className="flex w-60 shrink-0 flex-col gap-5 overflow-y-auto border-r border-[var(--border-hairline)] bg-[var(--bg-sidebar)] p-3"
-        >
-          <div>
-            <div className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-tertiary)]">
-              Platform modules
-            </div>
-            <div className="space-y-0.5">
-              {navItems.map((item) => {
-                const active = activeView === item.id
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => onViewChange(item.id)}
-                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[12px] transition ${
-                      active
-                        ? "bg-[color-mix(in_srgb,var(--border-hairline)_60%,transparent)] font-semibold text-[var(--ink-primary)]"
-                        : "text-[var(--ink-secondary)] hover:bg-black/[0.04] hover:text-[var(--ink-primary)]"
-                    }`}
-                  >
-                    <span>{item.label}</span>
-                    {item.tag ? (
-                      <span className="font-mono text-[10px] text-[var(--ink-tertiary)]">
-                        {item.tag}
-                      </span>
-                    ) : null}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {sidebarExtra}
-        </aside>
-
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
-
-        {inspector ? (
-          <aside
-            aria-label="Inspector"
-            className="flex w-76 shrink-0 flex-col gap-5 overflow-y-auto border-l border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-4"
-          >
-            {inspector}
-          </aside>
+        {sidebarExtra ? (
+          <div className="flex flex-col gap-3 px-3 py-2">{sidebarExtra}</div>
         ) : null}
-      </div>
+
+        <div className="mt-auto flex flex-col gap-2 p-3">
+          <InvariantBadge
+            label="Tier-2 Firewall Verified"
+            title="The backend static analyzer (backend/app/control/static_analyzer.py) is a required CI gate: no Tier 2 function is reachable from the action interface without passing through Tier 1."
+          />
+          <InvariantBadge
+            label="AGPL-3.0"
+            title="Repository dual-license: AGPL-3.0 for community use, proprietary EULA for enterprise."
+          />
+          <ThemeToggle />
+        </div>
+      </aside>
+
+      <main className="flex-1 overflow-y-auto p-6">{children}</main>
+
+      {inspector ? (
+        <aside
+          aria-label="Inspector"
+          className="flex w-72 shrink-0 flex-col gap-5 overflow-y-auto border-l border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-4"
+        >
+          {inspector}
+        </aside>
+      ) : null}
     </div>
   )
 }

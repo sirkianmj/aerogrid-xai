@@ -184,11 +184,16 @@ describe("MissionControl", () => {
     }
   })
 
-  it("renders the satellite name and orbit class", async () => {
+  it("renders the satellite name and orbit class in the SPACE stage row", async () => {
     stubFetchOk()
     renderWithProvider(<MissionControl />)
-    await waitFor(() => expect(screen.getByText(/ISS \(ZARYA\)/i)).toBeInTheDocument())
-    expect(screen.getByText(/LEO/)).toBeInTheDocument()
+    // The design(pr2) schematic renders the satellite name a second
+    // time as an SVG <text> label; the data-table title inside the
+    // SPACE stage row is the authoritative one for this assertion, so
+    // scope the lookup to that row rather than the whole tree.
+    const space = await screen.findByTestId("stage-SPACE")
+    expect(within(space).getByText(/ISS \(ZARYA\)/i)).toBeInTheDocument()
+    expect(within(space).getByText(/LEO/)).toBeInTheDocument()
   })
 
   it("renders the Z3 verdict and constraint count in the open detail", async () => {
