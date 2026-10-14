@@ -39,6 +39,8 @@ function requestFor(cfg: MissionConfig): ClearDRequest {
     max_nodes: 8,
     max_links: 6,
     use_conflict_directed: true,
+    ground_station_lat_deg: cfg.ground_lat_deg,
+    ground_station_lon_deg: cfg.ground_lon_deg,
   }
 }
 

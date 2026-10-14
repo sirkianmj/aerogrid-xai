@@ -225,6 +225,18 @@ class GeneratorConfig:
     # sphere and no LOS check is applied, reproducing the historical
     # behaviour so that an ablation study can compare the two.
 
+    ground_station_lat_deg: float | None = None
+    # When set (together with ground_station_lon_deg), every
+    # Ground_Station node sampled by this call receives this latitude
+    # instead of a uniform-on-sphere sample. UAVs anchored on a
+    # Ground_Station source are then placed in this station's visible
+    # cap, so pinning the coordinates is what lets a mission-config
+    # ground station be the anchor for a discovery run. Both fields
+    # must be set together or both left None; a partial override is
+    # rejected in __post_init__.
+
+    ground_station_lon_deg: float | None = None
+
     visible_cap_fraction: float = 0.10
     # Fraction of the source's full visible cap within which the UAV
     # is placed. The full cap half-angle for a LEO source to a ground
@@ -262,6 +274,23 @@ class GeneratorConfig:
         if not 0.0 < self.visible_cap_fraction <= 1.0:
             raise ValueError(
                 f"visible_cap_fraction must be in (0, 1]; got {self.visible_cap_fraction}"
+            )
+        if (self.ground_station_lat_deg is None) != (self.ground_station_lon_deg is None):
+            raise ValueError(
+                "ground_station_lat_deg and ground_station_lon_deg must be "
+                "set together or not at all"
+            )
+        if self.ground_station_lat_deg is not None and not (
+            -90.0 <= self.ground_station_lat_deg <= 90.0
+        ):
+            raise ValueError(
+                f"ground_station_lat_deg must be in [-90, 90]; got {self.ground_station_lat_deg}"
+            )
+        if self.ground_station_lon_deg is not None and not (
+            -180.0 <= self.ground_station_lon_deg <= 180.0
+        ):
+            raise ValueError(
+                f"ground_station_lon_deg must be in [-180, 180]; got {self.ground_station_lon_deg}"
             )
 
 
@@ -497,6 +526,17 @@ def generate_architecture(
     rng.shuffle(kinds)
 
     base_params = [_sample_node_params(rng, kind) for kind in kinds]
+
+    # If the config pins the ground-station position, override every
+    # Ground_Station node's lat/lon before the visible-cap UAV anchoring
+    # runs. That anchoring reads the anchor source's lat/lon directly
+    # from base_params, so the override propagates to UAV placement
+    # automatically.
+    if cfg.ground_station_lat_deg is not None and cfg.ground_station_lon_deg is not None:
+        for i, kind in enumerate(kinds):
+            if kind == Terminal.GROUND_STATION:
+                base_params[i]["lat_deg"] = cfg.ground_station_lat_deg
+                base_params[i]["lon_deg"] = cfg.ground_station_lon_deg
 
     uav_ids = [f"n{i}" for i, k in enumerate(kinds) if k in _UAV_KINDS]
     source_ids = [f"n{i}" for i, k in enumerate(kinds) if k in _SOURCE_KINDS]

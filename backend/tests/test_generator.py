@@ -254,3 +254,80 @@ def test_encoder_rejects_missing_parameter() -> None:
     arch = Architecture(nodes=(node_incomplete, node_ok), links=(link,))
     with pytest.raises(ValueError, match="missing required parameter"):
         encode_architecture_to_z3(arch)
+
+
+def test_generator_uses_pinned_ground_station_coordinates() -> None:
+    """When GeneratorConfig pins the ground station, every
+    Ground_Station node produced in the run carries those exact
+    coordinates instead of a uniform-on-sphere sample."""
+    pinned_lat = 51.5
+    pinned_lon = -0.1
+    seen = 0
+    for seed in range(20):
+        cfg = GeneratorConfig(
+            min_nodes=6,
+            max_nodes=8,
+            max_links=6,
+            seed=seed,
+            ground_station_lat_deg=pinned_lat,
+            ground_station_lon_deg=pinned_lon,
+        )
+        arch = generate_architecture(cfg)
+        for n in arch.nodes:
+            if n.kind == Terminal.GROUND_STATION:
+                seen += 1
+                assert abs(float(n.params["lat_deg"]) - pinned_lat) < 1e-9
+                assert abs(float(n.params["lon_deg"]) - pinned_lon) < 1e-9
+    assert seen > 0, "no Ground_Station nodes sampled in 20 seeds"
+
+
+def test_generator_default_places_ground_station_uniformly() -> None:
+    """With no pin, ground stations are scattered across the sphere."""
+    lats: list[float] = []
+    for seed in range(20):
+        arch = generate_architecture(
+            GeneratorConfig(min_nodes=6, max_nodes=8, max_links=6, seed=seed)
+        )
+        for n in arch.nodes:
+            if n.kind == Terminal.GROUND_STATION:
+                lats.append(float(n.params["lat_deg"]))
+    assert len(lats) > 0
+    # Random samples over [-90, 90] have large spread; the spread here
+    # is well above the pin precision tolerance.
+    assert max(lats) - min(lats) > 20.0
+
+
+def test_generator_config_rejects_partial_ground_station_pin() -> None:
+    with pytest.raises(ValueError, match="must be set together"):
+        GeneratorConfig(
+            min_nodes=4,
+            max_nodes=6,
+            max_links=4,
+            ground_station_lat_deg=10.0,
+        )
+    with pytest.raises(ValueError, match="must be set together"):
+        GeneratorConfig(
+            min_nodes=4,
+            max_nodes=6,
+            max_links=4,
+            ground_station_lon_deg=10.0,
+        )
+
+
+def test_generator_config_rejects_out_of_range_ground_station_pin() -> None:
+    with pytest.raises(ValueError, match="ground_station_lat_deg"):
+        GeneratorConfig(
+            min_nodes=4,
+            max_nodes=6,
+            max_links=4,
+            ground_station_lat_deg=200.0,
+            ground_station_lon_deg=0.0,
+        )
+    with pytest.raises(ValueError, match="ground_station_lon_deg"):
+        GeneratorConfig(
+            min_nodes=4,
+            max_nodes=6,
+            max_links=4,
+            ground_station_lat_deg=0.0,
+            ground_station_lon_deg=200.0,
+        )

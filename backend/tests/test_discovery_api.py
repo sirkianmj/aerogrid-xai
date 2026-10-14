@@ -162,3 +162,37 @@ def test_trace_parameter_does_not_change_loop_result() -> None:
     ]
     assert r_plain.conflict_prone_table.to_mapping() == r_traced.conflict_prone_table.to_mapping()
     assert len(trace) > 0
+
+
+def test_discovery_run_accepts_ground_station_coordinates() -> None:
+    """The endpoint passes ground station coordinates into the
+    generator; response should succeed and report the configured
+    population."""
+    r = client.post(
+        "/discovery/run",
+        json={
+            "population_size": 6,
+            "n_generations": 1,
+            "seed": 7,
+            "ground_station_lat_deg": 51.5,
+            "ground_station_lon_deg": -0.1,
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["population_size"] == 6
+
+
+def test_discovery_run_rejects_partial_ground_station_pin() -> None:
+    """The generator rejects a partial pin; the endpoint must surface
+    that as a 400, not a 500."""
+    r = client.post(
+        "/discovery/run",
+        json={
+            "population_size": 4,
+            "n_generations": 1,
+            "ground_station_lat_deg": 10.0,
+        },
+    )
+    assert r.status_code == 400
+    assert "must be set together" in r.json()["detail"]
