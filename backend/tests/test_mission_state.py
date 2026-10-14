@@ -274,3 +274,35 @@ def test_no_nan_in_numeric_fields() -> None:
         s.architecture.epsilon_bound,
     ):
         assert not math.isnan(name), name
+
+
+def test_get_mission_state_accepts_transmitter_power() -> None:
+    """The transmitter power is a mission-configurable parameter. The
+    response reports the configured value regardless of link state."""
+    r = client.get("/mission/state", params={"transmitter_power_w": 25000.0})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["transmission"]["transmitter_power_w"] == pytest.approx(25000.0)
+
+
+def test_get_mission_state_accepts_ground_station_coordinates() -> None:
+    r = client.get(
+        "/mission/state",
+        params={"ground_lat_deg": 35.0, "ground_lon_deg": -120.0},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ground_station"]["lat_deg"] == pytest.approx(35.0)
+    assert body["ground_station"]["lon_deg"] == pytest.approx(-120.0)
+
+
+def test_get_mission_state_rejects_invalid_latitude() -> None:
+    r = client.get("/mission/state", params={"ground_lat_deg": 200.0})
+    assert r.status_code == 422
+
+
+def test_get_mission_state_rejects_non_positive_transmitter_power() -> None:
+    r = client.get("/mission/state", params={"transmitter_power_w": -100.0})
+    assert r.status_code == 422
+    r = client.get("/mission/state", params={"transmitter_power_w": 0.0})
+    assert r.status_code == 422

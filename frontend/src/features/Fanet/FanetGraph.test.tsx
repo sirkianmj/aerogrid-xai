@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { FanetGraph } from "./FanetGraph"
+import { MissionProvider } from "../MissionControl/MissionProvider"
 import type { MissionState } from "../MissionControl/missionApi"
 
 const SAMPLE: MissionState = {
@@ -97,6 +98,10 @@ function stubFetchOk(payload: MissionState = SAMPLE): ReturnType<typeof vi.fn> {
   return fn
 }
 
+function renderWithProvider(ui: React.ReactElement) {
+  return render(ui, { wrapper: MissionProvider })
+}
+
 describe("FanetGraph", () => {
   afterEach(() => {
     vi.restoreAllMocks()
@@ -106,23 +111,29 @@ describe("FanetGraph", () => {
 
   it("renders the heading and a loading state on mount", () => {
     stubFetchOk()
-    render(<FanetGraph />)
+    renderWithProvider(<FanetGraph />)
     expect(
       screen.getByRole("heading", { name: /uav network \(fanet\)/i, level: 2 }),
     ).toBeInTheDocument()
     expect(screen.getByTestId("fanet-loading")).toBeInTheDocument()
   })
 
-  it("fetches on mount", async () => {
+  it("fetches the mission state on mount, with the config as query params", async () => {
     const fn = stubFetchOk()
-    render(<FanetGraph />)
+    renderWithProvider(<FanetGraph />)
     await waitFor(() => expect(fn).toHaveBeenCalledTimes(1))
-    expect(fn.mock.calls[0][0]).toBe("/api/mission/state")
+    const url = String(fn.mock.calls[0][0])
+    // The provider appends the mission configuration as query params,
+    // so the exact URL is not fixed. Assert the path prefix and that
+    // the config is present.
+    expect(url.startsWith("/api/mission/state?")).toBe(true)
+    expect(url).toContain("satellite_key=iss")
+    expect(url).toContain("transmitter_power_w=10000")
   })
 
   it("renders one SVG node per entry in node_list", async () => {
     stubFetchOk()
-    render(<FanetGraph />)
+    renderWithProvider(<FanetGraph />)
     await waitFor(() => expect(screen.getByTestId("fanet-svg")).toBeInTheDocument())
     for (const id of ["n0", "n1", "n2", "n3"]) {
       expect(screen.getByTestId(`fanet-node-${id}`)).toBeInTheDocument()
@@ -131,7 +142,7 @@ describe("FanetGraph", () => {
 
   it("renders one SVG edge per entry in link_list", async () => {
     stubFetchOk()
-    render(<FanetGraph />)
+    renderWithProvider(<FanetGraph />)
     await waitFor(() => expect(screen.getByTestId("fanet-svg")).toBeInTheDocument())
     for (const id of ["l0", "l1", "l2"]) {
       expect(screen.getByTestId(`fanet-edge-${id}`)).toBeInTheDocument()
@@ -140,7 +151,7 @@ describe("FanetGraph", () => {
 
   it("tags each node with its kind as a data attribute", async () => {
     stubFetchOk()
-    render(<FanetGraph />)
+    renderWithProvider(<FanetGraph />)
     const n0 = await screen.findByTestId("fanet-node-n0")
     expect(n0.getAttribute("data-node-kind")).toBe("UAV_Energy")
     const n1 = screen.getByTestId("fanet-node-n1")
@@ -151,7 +162,7 @@ describe("FanetGraph", () => {
 
   it("tags each edge with its link kind", async () => {
     stubFetchOk()
-    render(<FanetGraph />)
+    renderWithProvider(<FanetGraph />)
     const l0 = await screen.findByTestId("fanet-edge-l0")
     expect(l0.getAttribute("data-link-kind")).toBe("Laser_Link")
     const l1 = screen.getByTestId("fanet-edge-l1")
@@ -160,7 +171,7 @@ describe("FanetGraph", () => {
 
   it("shows the summary row with node and link counts", async () => {
     stubFetchOk()
-    render(<FanetGraph />)
+    renderWithProvider(<FanetGraph />)
     await waitFor(() => expect(screen.getByTestId("fanet-svg")).toBeInTheDocument())
     expect(screen.getByText(/4 nodes/)).toBeInTheDocument()
     expect(screen.getByText(/3 links/)).toBeInTheDocument()
@@ -170,7 +181,7 @@ describe("FanetGraph", () => {
   it("selects a node on click and shows the inspector", async () => {
     stubFetchOk()
     const user = userEvent.setup()
-    render(<FanetGraph />)
+    renderWithProvider(<FanetGraph />)
     const n0 = await screen.findByTestId("fanet-node-n0")
     await user.click(n0)
     const inspector = await screen.findByTestId("fanet-inspector")
@@ -181,7 +192,7 @@ describe("FanetGraph", () => {
   it("inspector lists the links connected to the selected node", async () => {
     stubFetchOk()
     const user = userEvent.setup()
-    render(<FanetGraph />)
+    renderWithProvider(<FanetGraph />)
     const n0 = await screen.findByTestId("fanet-node-n0")
     await user.click(n0)
     const inspector = await screen.findByTestId("fanet-inspector")
@@ -193,7 +204,7 @@ describe("FanetGraph", () => {
   it("deselects a node on second click and hides the inspector", async () => {
     stubFetchOk()
     const user = userEvent.setup()
-    render(<FanetGraph />)
+    renderWithProvider(<FanetGraph />)
     const n0 = await screen.findByTestId("fanet-node-n0")
     await user.click(n0)
     expect(await screen.findByTestId("fanet-inspector")).toBeInTheDocument()
@@ -205,7 +216,7 @@ describe("FanetGraph", () => {
 
   it("shows an error state when fetch rejects", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("network failure"))))
-    render(<FanetGraph />)
+    renderWithProvider(<FanetGraph />)
     await waitFor(() => expect(screen.getByTestId("fanet-error")).toBeInTheDocument())
     expect(screen.getByText(/network failure/)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument()
@@ -213,7 +224,7 @@ describe("FanetGraph", () => {
 
   it("renders the Section 21 simulation_result badge on success", async () => {
     stubFetchOk()
-    const { container } = render(<FanetGraph />)
+    const { container } = renderWithProvider(<FanetGraph />)
     await waitFor(() => {
       const badges = container.querySelectorAll('[data-epistemic-tag="simulation_result"]')
       expect(badges.length).toBeGreaterThanOrEqual(1)
@@ -222,7 +233,7 @@ describe("FanetGraph", () => {
 
   it("renders the artefact sub-label on success", async () => {
     stubFetchOk()
-    render(<FanetGraph />)
+    renderWithProvider(<FanetGraph />)
     await waitFor(() =>
       expect(screen.getByText(/artefact: fanet_architecture/i)).toBeInTheDocument(),
     )

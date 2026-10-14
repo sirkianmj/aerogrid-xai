@@ -21,6 +21,9 @@ async def get_mission_state(
     seed: int = Query(20261014, ge=0),
     satellite_key: str = Query("iss"),
     n_uavs: int = Query(6, ge=2, le=20),
+    ground_lat_deg: float = Query(40.798, ge=-90.0, le=90.0),
+    ground_lon_deg: float = Query(-77.860, ge=-180.0, le=180.0),
+    transmitter_power_w: float = Query(10_000.0, gt=0.0, le=1e9),
     t_utc: datetime | None = Query(
         None,
         description=(
@@ -39,7 +42,14 @@ async def get_mission_state(
     snapshot, and a Tier 1 decision trace over the UAVs.
     """
     try:
-        cfg = MissionConfig(seed=seed, satellite_key=satellite_key, n_uavs=n_uavs)
+        cfg = MissionConfig(
+            seed=seed,
+            satellite_key=satellite_key,
+            n_uavs=n_uavs,
+            ground_lat_deg=ground_lat_deg,
+            ground_lon_deg=ground_lon_deg,
+            transmitter_power_w=transmitter_power_w,
+        )
         return compute_mission_state(cfg, t_utc=t_utc)
     except KeyError as exc:
         raise HTTPException(

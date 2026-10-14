@@ -12,19 +12,10 @@
  * clickable.
  */
 
-import { useCallback, useEffect, useState } from "react"
+import { useState } from "react"
 import { TaggedOutput } from "../../components/EpistemicBadge/EpistemicBadge"
-import {
-  fetchMissionState,
-  MissionApiError,
-  type MissionState,
-  type PipelineStage,
-} from "./missionApi"
-
-type Load =
-  | { status: "loading" }
-  | { status: "ok"; data: MissionState }
-  | { status: "error"; message: string; status_code?: number }
+import type { MissionState, PipelineStage } from "./missionApi"
+import { useMission } from "./missionContext"
 
 const STATUS_COLOR: Record<string, string> = {
   wired: "var(--color-accent-teal)",
@@ -159,45 +150,7 @@ function fmtRelativeSeconds(seconds: number): string {
 }
 
 export function MissionControl() {
-  const [load, setLoad] = useState<Load>({ status: "loading" })
-
-  // Shared success/failure handling. Called only from promise callbacks,
-  // never synchronously in an effect body, which is what the React
-  // Compiler's set-state-in-effect rule requires.
-  const handleResult = useCallback(
-    (err: unknown, data: MissionState | null, signal?: AbortSignal) => {
-      if (signal?.aborted) return
-      if (err) {
-        if (err instanceof MissionApiError) {
-          setLoad({ status: "error", message: err.detail, status_code: err.status })
-        } else if (err instanceof Error) {
-          setLoad({ status: "error", message: err.message })
-        } else {
-          setLoad({ status: "error", message: String(err) })
-        }
-      } else if (data) {
-        setLoad({ status: "ok", data })
-      }
-    },
-    [],
-  )
-
-  // Effect-time load: state changes only in the promise callbacks.
-  useEffect(() => {
-    const controller = new AbortController()
-    fetchMissionState(controller.signal)
-      .then((data) => handleResult(null, data, controller.signal))
-      .catch((err: unknown) => handleResult(err, null, controller.signal))
-    return () => controller.abort()
-  }, [handleResult])
-
-  // Button-time refresh: may set the loading state synchronously.
-  const refresh = useCallback(() => {
-    setLoad({ status: "loading" })
-    fetchMissionState()
-      .then((data) => handleResult(null, data))
-      .catch((err: unknown) => handleResult(err, null))
-  }, [handleResult])
+  const { state: load, refresh } = useMission()
 
   return (
     <section aria-labelledby="mission-control-heading" className="mb-10">
