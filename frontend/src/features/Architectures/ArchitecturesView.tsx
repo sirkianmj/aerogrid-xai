@@ -37,7 +37,7 @@ type PanelState =
   | { status: "error"; message: string; status_code?: number }
 
 export function ArchitecturesView() {
-  const { config } = useMission()
+  const { config, applyConfig } = useMission()
   const [state, setState] = useState<PanelState>({ status: "idle" })
 
   async function run() {
@@ -127,7 +127,19 @@ export function ArchitecturesView() {
         <TaggedOutput tag="simulation_result">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
             {state.result.discovered.map((arch, i) => (
-              <ArchitectureCard key={i} arch={arch} index={i} />
+              <ArchitectureCard
+                key={i}
+                arch={arch}
+                index={i}
+                onLoad={(a) =>
+                  applyConfig({
+                    selected_architecture: {
+                      node_list: a.node_list,
+                      link_list: a.link_list,
+                    },
+                  })
+                }
+              />
             ))}
           </div>
           <footer className="mt-4 border-t border-[var(--border-hairline)] pt-3 font-mono text-xs text-[var(--ink-tertiary)]">
@@ -142,9 +154,11 @@ export function ArchitecturesView() {
 function ArchitectureCard({
   arch,
   index,
+  onLoad,
 }: {
   arch: DiscoveredArchitecture
   index: number
+  onLoad: (a: DiscoveredArchitecture) => void
 }) {
   return (
     <div className="apple-card p-3" data-testid={`arch-card-${index}`}>
@@ -165,6 +179,15 @@ function ArchitectureCard({
           </div>
         ))}
       </div>
+
+      <button
+        type="button"
+        onClick={() => onLoad(arch)}
+        className="mt-3 w-full rounded border border-[var(--border-hairline)] px-2 py-1 text-xs uppercase tracking-wider hover:bg-[var(--bg-subtle)]"
+        data-testid={`load-arch-${index}`}
+      >
+        Load into mission
+      </button>
     </div>
   )
 }

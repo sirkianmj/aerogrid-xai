@@ -51,6 +51,10 @@ export type DiscoveredLink = {
   kind: string
   source_id: string
   target_id: string
+  /** Link parameters (wavelength, aperture, capacity_factor, ...).
+   *  Passed through to the mission-state POST when this architecture
+   *  is loaded. */
+  params?: Record<string, number>
 }
 
 export type DiscoveredArchitecture = {

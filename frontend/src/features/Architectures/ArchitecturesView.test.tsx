@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { ArchitecturesView } from "./ArchitecturesView"
 
+const { applyConfigMock } = vi.hoisted(() => ({ applyConfigMock: vi.fn() }))
+
 vi.mock("../MissionControl/missionContext", () => ({
   useMission: () => ({
     config: {
@@ -15,9 +17,14 @@ vi.mock("../MissionControl/missionContext", () => ({
       t_utc: null,
       visibility_km: 10.0,
       cloud_factor: 0.2,
+      transmitter_aperture_m: 0.02,
+      uav_alt_m: 1000.0,
+      uav_receiver_aperture_m2: 0.5,
+      uav_receiver_type: "laser_photovoltaic" as const,
+      selected_architecture: null,
     },
     state: { status: "loading" as const },
-    applyConfig: () => {},
+    applyConfig: applyConfigMock,
     refresh: () => {},
     reset: () => {},
   }),
@@ -140,4 +147,23 @@ describe("ArchitecturesView", () => {
     // Spot check: the first objective value for C should appear.
     expect(screen.getByText("0.70")).toBeInTheDocument()
   })
+
+  it("load button calls applyConfig with the selected architecture", async () => {
+    applyConfigMock.mockClear()
+    stubRun()
+    render(<ArchitecturesView />)
+    await userEvent.click(
+      screen.getByRole("button", { name: /Discover architectures/i }),
+    )
+    await waitFor(() =>
+      expect(screen.getByTestId("arch-card-0")).toBeInTheDocument(),
+    )
+    await userEvent.click(screen.getByTestId("load-arch-0"))
+    expect(applyConfigMock).toHaveBeenCalledTimes(1)
+    const call = applyConfigMock.mock.calls[0][0]
+    expect(call).toHaveProperty("selected_architecture")
+    expect(call.selected_architecture.node_list.length).toBeGreaterThan(0)
+    expect(call.selected_architecture.link_list.length).toBeGreaterThan(0)
+  })
+
 })

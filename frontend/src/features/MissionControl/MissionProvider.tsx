@@ -16,7 +16,12 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
-import { fetchMissionState, MissionApiError } from "./missionApi"
+import {
+  fetchMissionState,
+  MissionApiError,
+  postMissionState,
+  type MissionStateRequest,
+} from "./missionApi"
 import {
   DEFAULT_CONFIG,
   MissionCtx,
@@ -66,6 +71,37 @@ function queryString(c: MissionConfig): string {
   return p.toString()
 }
 
+function requestBody(c: MissionConfig): MissionStateRequest {
+  const body: MissionStateRequest = {
+    seed: c.seed,
+    n_uavs: c.n_uavs,
+    ground_lat_deg: c.ground_lat_deg,
+    ground_lon_deg: c.ground_lon_deg,
+    transmitter_power_w: c.transmitter_power_w,
+    visibility_km: c.visibility_km,
+    cloud_factor: c.cloud_factor,
+    transmitter_aperture_m: c.transmitter_aperture_m,
+    uav_alt_m: c.uav_alt_m,
+    uav_receiver_aperture_m2: c.uav_receiver_aperture_m2,
+    uav_receiver_type: c.uav_receiver_type,
+    t_utc: c.t_utc,
+    selected_architecture: c.selected_architecture ?? null,
+  }
+  if (c.satellite_elements) {
+    body.a_km = c.satellite_elements.a_km
+    body.e = c.satellite_elements.e
+    body.i_deg = c.satellite_elements.i_deg
+    body.raan_deg = c.satellite_elements.raan_deg
+    body.argp_deg = c.satellite_elements.argp_deg
+    body.m0_deg = c.satellite_elements.m0_deg
+    body.elements_epoch_utc = c.satellite_elements.epoch_utc
+  } else {
+    body.satellite_key = c.satellite_key
+  }
+  return body
+}
+
+
 export function MissionProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<MissionConfig>(DEFAULT_CONFIG)
   const [state, setState] = useState<MissionLoad>({ status: "loading" })
@@ -77,7 +113,14 @@ export function MissionProvider({ children }: { children: ReactNode }) {
     const controller = new AbortController()
     abortRef.current = controller
     const cfgSnapshot: MissionConfig = { ...config }
-    fetchMissionState(queryString(cfgSnapshot), controller.signal)
+    // A selected architecture may contain dozens of nodes and links and
+    // cannot fit in a query string. When one is set, use POST; otherwise
+    // GET keeps the simple, cacheable, curl-friendly path.
+    const usePost = cfgSnapshot.selected_architecture !== null
+    const request = usePost
+      ? postMissionState(requestBody(cfgSnapshot), controller.signal)
+      : fetchMissionState(queryString(cfgSnapshot), controller.signal)
+    request
       .then((data) => {
         if (controller.signal.aborted) return
         setState({ status: "ok", data, configUsed: cfgSnapshot })
