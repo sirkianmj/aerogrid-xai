@@ -37,12 +37,41 @@ def test_catalogue_contains_the_three_packaged_keys() -> None:
 # --- computation: schema and determinism ----------------------------------
 
 
-def test_default_time_is_the_tle_epoch() -> None:
-    """Default (no t_utc) anchors the mission at the satellite's TLE
-    epoch. That is the only time at which a fixed TLE propagates to
-    physically meaningful altitudes."""
+def test_default_time_is_first_visible_pass() -> None:
+    """Default (no t_utc) advances to the first moment the satellite is
+    above the configured ground station's horizon, so the platform opens
+    onto a live mission rather than a geometrically offline one.
+
+    The propagation offset from the TLE epoch is bounded by the 24-hour
+    scan window. For a fresh LEO TLE, SGP4 position error over that
+    interval is on the order of kilometres, well within the model's
+    meaningful range.
+    """
     s = compute_mission_state(MissionConfig(satellite_key="iss"))
-    # The TLE epoch for the packaged ISS record is 2014-01-20.
+    assert s.transmission.modality == "laser"
+    assert s.atmosphere.transmittance > 0.0
+    epoch = datetime.fromisoformat(s.satellite.tle_epoch_utc)
+    effective = datetime.fromisoformat(s.t_utc)
+    assert effective >= epoch
+
+
+def test_default_time_falls_back_to_epoch_when_no_pass_exists() -> None:
+    """No pass within the scan window: fall back to the TLE epoch.
+
+    The ISS is inclined at 51.6 degrees, so a ground station above that
+    latitude never sees it. The scan finds no window, the default time
+    falls back to the epoch, and the mission stays offline. That is the
+    correct answer when the geometry forbids a link, and it is the
+    pre-scan behaviour preserved for exactly those cases.
+    """
+    s = compute_mission_state(
+        MissionConfig(
+            satellite_key="iss",
+            ground_lat_deg=85.0,
+            ground_lon_deg=0.0,
+        )
+    )
+    assert s.transmission.modality == "offline"
     assert s.t_utc.startswith("2014-01-20")
     assert s.satellite.tle_age_seconds == pytest.approx(0.0, abs=1.0)
 
