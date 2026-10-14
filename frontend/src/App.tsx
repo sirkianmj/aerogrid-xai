@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { EpistemicBadge } from "./components/EpistemicBadge/EpistemicBadge"
+import { SessionBar } from "./components/Session/SessionBar"
 import { ALL_TAGS, EPISTEMIC_TAGS } from "./components/EpistemicBadge/epistemic"
 import { XAITrace } from "./features/XAITrace/XAITrace"
 import { Globe } from "./features/Globe/Globe"
@@ -39,6 +40,8 @@ function App() {
           Mission Control — Sprint 7
         </p>
       </header>
+
+      <SessionBar />
 
       <section className="mb-10" aria-labelledby="backend-status-heading">
         <h2 id="backend-status-heading" className="mb-3 text-lg font-medium">

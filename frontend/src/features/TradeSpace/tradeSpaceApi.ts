@@ -43,13 +43,22 @@ export class TradeSpaceApiError extends Error {
   }
 }
 
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" }
+  if (typeof window !== "undefined") {
+    const token = window.localStorage.getItem("aerogrid.token")
+    if (token) headers["Authorization"] = `Bearer ${token}`
+  }
+  return headers
+}
+
 export async function runTradeSpace(
   request: TradeSpaceRequest = {},
   signal?: AbortSignal,
 ): Promise<TradeSpaceResponse> {
   const response = await fetch("/api/tradespace/run", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(),
     body: JSON.stringify(request),
     signal,
   })
