@@ -13,7 +13,7 @@
  * panel is wrapped in a TaggedOutput with that tag.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Canvas } from "@react-three/fiber"
 import { OrbitControls } from "@react-three/drei"
 import { TaggedOutput } from "../../components/EpistemicBadge/EpistemicBadge"
@@ -26,17 +26,7 @@ import {
   type TrackResponse,
 } from "./orbitalApi"
 import { GlobeScene, type GroundMarker } from "./GlobeScene"
-
-// Demo window for the default satellite. SGP4 is only meaningful near
-// the TLE epoch; the packaged Vanguard 1 epoch is 2000-06-28.
-const DEFAULT_SATELLITE = "vanguard_r3"
-const DEFAULT_T0 = "2000-06-28T17:00:00Z"
-const DEFAULT_T1 = "2000-06-28T19:00:00Z"
-
-const DEMO_GROUNDS: GroundMarker[] = [
-  { name: "GS-Alpha", lat_deg: 30.0, lon_deg: -60.0 },
-  { name: "GS-Beta", lat_deg: -20.0, lon_deg: 120.0 },
-]
+import { useMission } from "../MissionControl/missionContext"
 
 type PanelState =
   | { status: "loading" }
@@ -49,25 +39,22 @@ type PanelState =
   | { status: "error"; message: string; status_code?: number }
 
 /**
- * Two-hour window centered on the satellite's own TLE epoch. The
- * default satellite keeps its historical demo window so existing
- * behavior is unchanged; other satellites use their own epoch.
+ * Two-hour window centered on the satellite's own TLE epoch. SGP4 is
+ * only meaningful near the epoch, so the window is always epoch-
+ * centered regardless of which satellite is selected.
  */
 function windowFor(sat: SatelliteInfo): { t0: string; t1: string } {
-  if (sat.key === DEFAULT_SATELLITE) {
-    return { t0: DEFAULT_T0, t1: DEFAULT_T1 }
-  }
   const epoch = new Date(sat.epoch_utc)
   const t1 = new Date(epoch.getTime() + 2 * 60 * 60 * 1000)
   return { t0: epoch.toISOString(), t1: t1.toISOString() }
 }
 
 export function Globe() {
+  const { config, applyConfig } = useMission()
   const [state, setState] = useState<PanelState>({ status: "loading" })
   const [playheadIndex, setPlayheadIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [speed, setSpeed] = useState<number>(4)
-  const abortRef = useRef<AbortController | null>(null)
 
   const loadTrack = useCallback(
     async (satellite: SatelliteInfo, signal: AbortSignal) => {
@@ -90,8 +77,8 @@ export function Globe() {
       try {
         const catalog = await listSatellites(controller.signal)
         if (controller.signal.aborted) return
-        const selected = catalog.some((s) => s.key === DEFAULT_SATELLITE)
-          ? DEFAULT_SATELLITE
+        const selected = catalog.some((s) => s.key === config.satellite_key)
+          ? config.satellite_key
           : (catalog[0]?.key ?? "")
         if (!selected) {
           setState({ status: "error", message: "no satellites in catalog" })
@@ -118,42 +105,32 @@ export function Globe() {
       }
     })()
     return () => controller.abort()
-  }, [loadTrack])
+  }, [config.satellite_key, loadTrack])
 
   const selectSatellite = useCallback(
     (key: string) => {
-      if (state.status !== "ok") return
-      const sat = state.catalog.find((s) => s.key === key)
-      if (!sat) return
-      abortRef.current?.abort()
-      const controller = new AbortController()
-      abortRef.current = controller
-      setState({
-        status: "ok",
-        catalog: state.catalog,
-        selected: key,
-        track: state.track, // keep previous track visible while loading
-      })
       setIsPlaying(false)
-      ;(async () => {
-        try {
-          const track = await loadTrack(sat, controller.signal)
-          if (controller.signal.aborted) return
-          setState({ status: "ok", catalog: state.catalog, selected: key, track })
-          setPlayheadIndex(0)
-        } catch (err) {
-          if (controller.signal.aborted) return
-          if (err instanceof OrbitalApiError) {
-            setState({ status: "error", message: err.detail, status_code: err.status })
-          } else if (err instanceof Error) {
-            setState({ status: "error", message: err.message })
-          } else {
-            setState({ status: "error", message: String(err) })
-          }
-        }
-      })()
+      applyConfig({ satellite_key: key })
     },
-    [state, loadTrack],
+    [applyConfig],
+  )
+
+  const onPlaceGround = useCallback(
+    (lat_deg: number, lon_deg: number) => {
+      applyConfig({ ground_lat_deg: lat_deg, ground_lon_deg: lon_deg })
+    },
+    [applyConfig],
+  )
+
+  const grounds: GroundMarker[] = useMemo(
+    () => [
+      {
+        name: "Configured site",
+        lat_deg: config.ground_lat_deg,
+        lon_deg: config.ground_lon_deg,
+      },
+    ],
+    [config.ground_lat_deg, config.ground_lon_deg],
   )
 
   // Play loop: advance the playhead at `speed` samples per second.
@@ -241,8 +218,9 @@ export function Globe() {
               <OrbitControls enablePan={false} minDistance={1.5} maxDistance={6} />
               <GlobeScene
                 track={state.track.points}
-                grounds={DEMO_GROUNDS}
+                grounds={grounds}
                 currentPoint={currentPoint}
+                onPlaceGround={onPlaceGround}
               />
             </Canvas>
           </div>

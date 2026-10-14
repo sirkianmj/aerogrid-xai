@@ -102,6 +102,25 @@ export function magnitude(v: Vec3): number {
 }
 
 /**
+ * Inverse of geodeticToUnit for any non-zero vector in the same frame.
+ * Returns geodetic latitude and longitude in degrees; altitude is not
+ * returned (callers who need it can recover it from the vector
+ * magnitude).
+ *
+ * Throws on the zero vector.
+ */
+export function inverseGeodetic(p: Vec3): { lat_deg: number; lon_deg: number } {
+  const [x, y, z] = p
+  const r = Math.sqrt(x * x + y * y + z * z)
+  if (r === 0) {
+    throw new Error("cannot invert a zero-length vector")
+  }
+  const lat_deg = (Math.asin(y / r) * 180) / Math.PI
+  const lon_deg = (Math.atan2(z, x) * 180) / Math.PI
+  return { lat_deg, lon_deg }
+}
+
+/**
  * Interpolate between two unit-sphere points along the shorter great
  * circle. Fraction t in [0, 1] returns a point on the same sphere.
  *

@@ -18,6 +18,28 @@ vi.mock("@react-three/drei", () => ({
   Sphere: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
+// The Globe reads the selected satellite and ground station from the
+// mission context. Provide a fixed context so the test stays isolated
+// from MissionProvider's own fetch behavior. The config below matches
+// the CATALOG fixture (vanguard_r3 is present).
+vi.mock("../MissionControl/missionContext", () => ({
+  useMission: () => ({
+    config: {
+      satellite_key: "vanguard_r3",
+      ground_lat_deg: 40.798,
+      ground_lon_deg: -77.86,
+      transmitter_power_w: 10000,
+      n_uavs: 6,
+      seed: 20261014,
+      t_utc: null,
+    },
+    state: { status: "loading" as const },
+    applyConfig: () => {},
+    refresh: () => {},
+    reset: () => {},
+  }),
+}))
+
 const CATALOG: SatelliteInfo[] = [
   {
     key: "iss",

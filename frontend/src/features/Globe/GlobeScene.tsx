@@ -14,9 +14,11 @@ import { Line, Sphere } from "@react-three/drei"
 import type { TrackPoint } from "./orbitalApi"
 import {
   geodeticToUnit,
+  inverseGeodetic,
   surfaceUnitVector,
   type Vec3,
 } from "./geodetic"
+import { Continents } from "./Continents"
 
 const EARTH_SEGMENTS = 48
 
@@ -36,6 +38,10 @@ export type GlobeSceneProps = {
   /** The point the playhead is currently on. Rendered as a distinct
    *  marker so the user can see the satellite move along the track. */
   currentPoint?: TrackPoint | null
+  /** When provided, clicking the Earth places a ground station at the
+   *  clicked location. The callback receives geodetic latitude and
+   *  longitude in degrees. */
+  onPlaceGround?: (lat_deg: number, lon_deg: number) => void
 }
 
 export function GlobeScene({
@@ -43,24 +49,38 @@ export function GlobeScene({
   grounds,
   arcs = [],
   currentPoint = null,
+  onPlaceGround,
 }: GlobeSceneProps) {
   return (
     <group>
       <ambientLight intensity={0.6} />
       <directionalLight position={[5, 5, 5]} intensity={0.9} />
 
-      {/* Earth: unit sphere, translucent so far-side markers remain
-          visible. Not a textured globe because no Earth texture is
-          shipped with the repository. */}
-      <Sphere args={[1, EARTH_SEGMENTS, EARTH_SEGMENTS]}>
+      {/* Earth: unit sphere. Clicking places a ground station when
+          onPlaceGround is provided. */}
+      <mesh
+        onClick={
+          onPlaceGround
+            ? (e) => {
+                const pt = e.point
+                const { lat_deg, lon_deg } = inverseGeodetic([pt.x, pt.y, pt.z])
+                onPlaceGround(lat_deg, lon_deg)
+              }
+            : undefined
+        }
+      >
+        <sphereGeometry args={[1, EARTH_SEGMENTS, EARTH_SEGMENTS]} />
         <meshStandardMaterial
           color="#0d2a4d"
           transparent
-          opacity={0.85}
+          opacity={0.9}
           roughness={0.9}
           metalness={0.1}
         />
-      </Sphere>
+      </mesh>
+
+      {/* Vector continents. */}
+      <Continents />
 
       {/* Wireframe latitude/longitude grid at 30 degrees. */}
       <Sphere args={[1.001, 24, 24]}>
