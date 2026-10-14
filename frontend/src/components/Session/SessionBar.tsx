@@ -1,23 +1,22 @@
 /**
- * SessionBar — minimal JWT session control.
+ * SessionBar — sign-in form and session state.
  *
- * Reads the `aerogrid.token` key from localStorage. When the input is
- * empty and no token is stored, it shows a prompt. When a token is
- * stored, it shows a masked indicator with Save / Clear actions.
+ * Two modes when unauthenticated:
+ *   login  (default)  tenant slug + password via LoginForm
+ *   token  (advanced) paste-a-JWT input, kept for integration tests,
+ *                     CI, and the case where an operator has a
+ *                     pre-issued token but no password on this tenant
  *
- * The component deliberately does not validate the token itself. JWT
- * verification is the backend's responsibility; a bad token is
- * surfaced by whichever panel tries to use it (401 / 403 in the
- * payload). This keeps the component stateless about server
- * semantics.
+ * Both modes write to the same `aerogrid.token` localStorage key, so
+ * every reader of that key across the app keeps working unchanged.
  *
- * Why a component and not a full auth flow: the specification
- * (s8-7) built the admin panel superadmin-only. A real signup / login
- * UI is a separate sprint item; the SessionBar exists so that a
- * developer or operator can paste a token without opening DevTools.
+ * When a token is present, the component shows a masked indicator and
+ * a Sign out action. Sign out clears the token and reloads the page so
+ * panels that cached a fetch reject it on the next request.
  */
 
 import { useState } from "react"
+import { LoginForm } from "./LoginForm"
 
 const TOKEN_KEY = "aerogrid.token"
 
@@ -26,23 +25,24 @@ function readToken(): string | null {
   return window.localStorage.getItem(TOKEN_KEY)
 }
 
-export function SessionBar() {
-  const [draft, setDraft] = useState("")
-  const [token, setToken] = useState<string | null>(() => readToken())
+type Mode = "login" | "token"
 
-  function save() {
-    const trimmed = draft.trim()
-    if (!trimmed) return
-    window.localStorage.setItem(TOKEN_KEY, trimmed)
-    setToken(trimmed)
+export function SessionBar() {
+  const [token, setToken] = useState<string | null>(() => readToken())
+  const [mode, setMode] = useState<Mode>("login")
+  const [draft, setDraft] = useState("")
+
+  function persist(newToken: string) {
+    window.localStorage.setItem(TOKEN_KEY, newToken)
+    setToken(newToken)
     setDraft("")
-    window.location.reload()
   }
 
   function clear() {
     window.localStorage.removeItem(TOKEN_KEY)
     setToken(null)
     setDraft("")
+    setMode("login")
     window.location.reload()
   }
 
@@ -68,9 +68,11 @@ export function SessionBar() {
             onClick={clear}
             className="rounded border px-2 py-1 text-xs hover:bg-current/5"
           >
-            Clear
+            Sign out
           </button>
         </>
+      ) : mode === "login" ? (
+        <LoginForm onSuccess={persist} onSwitchToToken={() => setMode("token")} />
       ) : (
         <>
           <label htmlFor="session-token-input" className="sr-only">
@@ -82,7 +84,10 @@ export function SessionBar() {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") save()
+              if (e.key === "Enter") {
+                const t = draft.trim()
+                if (t) persist(t)
+              }
             }}
             placeholder="paste JWT to enable metered endpoints"
             className="flex-1 min-w-64 rounded border border-current/20 bg-transparent px-2 py-1 font-mono text-xs"
@@ -91,11 +96,21 @@ export function SessionBar() {
           />
           <button
             type="button"
-            onClick={save}
+            onClick={() => {
+              const t = draft.trim()
+              if (t) persist(t)
+            }}
             disabled={!draft.trim()}
             className="rounded border px-2 py-1 text-xs hover:bg-current/5 disabled:opacity-40"
           >
             Save
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("login")}
+            className="text-[0.65rem] uppercase tracking-wider opacity-60 hover:opacity-100"
+          >
+            Use sign in
           </button>
         </>
       )}
