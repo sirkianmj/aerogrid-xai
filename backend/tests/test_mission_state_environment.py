@@ -76,3 +76,28 @@ def test_same_config_is_deterministic() -> None:
     b = compute_mission_state(cfg, t_utc=_T_ABOVE_HORIZON)
     assert a.atmosphere.transmittance == b.atmosphere.transmittance
     assert a.atmosphere.extinction_coeff_per_m == b.atmosphere.extinction_coeff_per_m
+
+
+def test_default_config_opens_online() -> None:
+    """No explicit t_utc: the state should pick the next visible pass."""
+    s = compute_mission_state(MissionConfig(seed=1))
+    assert s.transmission.modality == "laser", (
+        f"expected an online default mission, got "
+        f"modality={s.transmission.modality!r} "
+        f"at t={s.t_utc}"
+    )
+    assert s.atmosphere.transmittance > 0.0
+
+
+def test_explicit_epoch_still_reports_offline() -> None:
+    """Explicit t_utc bypasses the scan and preserves the old behaviour."""
+    # The default satellite is below the horizon at its own TLE epoch
+    # from the default ground station. Passing that time explicitly
+    # must return the offline branch, so a caller who wants a specific
+    # time gets that time and not a scan substitution.
+    from app.physics.catalog import get_satellite
+
+    sat = get_satellite("iss")
+    s = compute_mission_state(MissionConfig(seed=1), t_utc=sat.epoch_utc)
+    assert s.transmission.modality == "offline"
+    assert s.atmosphere.transmittance == 0.0

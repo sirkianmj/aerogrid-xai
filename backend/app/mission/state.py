@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from pydantic import BaseModel, Field
 
@@ -34,7 +34,13 @@ from app.physics.atmosphere import (
     transmission as _kruse_kim_transmission,
 )
 from app.physics.catalog import get_satellite, list_satellite_keys
-from app.physics.orbital import StateVector, classify_orbit
+from app.physics.orbital import (
+    GroundNode,
+    Satellite,
+    StateVector,
+    classify_orbit,
+    visibility_windows,
+)
 from app.verification.architecture_encoder import encode_architecture
 
 # --- configuration --------------------------------------------------------
@@ -303,6 +309,44 @@ def _calibrate_atmosphere_surrogate(cfg: MissionConfig) -> AtmosphericSurrogate:
     return surrogate
 
 
+def _next_visible_time(sat: Satellite, cfg: MissionConfig) -> datetime:
+    """Return the first time at which ``sat`` is above the configured
+    ground station's horizon, within 24 hours of the TLE epoch.
+
+    Rationale: opening the app onto "LINK OFFLINE" is honest but
+    unhelpful. The satellite is not above the default ground station at
+    its own TLE epoch, so the default mission state reports transmittance
+    zero and every panel that depends on atmosphere reads nothing. By
+    advancing the mission time to the first geometric pass within the
+    next orbital window, the platform opens onto a live mission.
+
+    Falls back to the TLE epoch when no pass exists in the scan window
+    (for example, a geostationary satellite over a distant longitude).
+    The fallback preserves the previous behaviour for the cases where
+    it is the correct answer.
+
+    Scan parameters (60 s step, 5 degrees minimum elevation) match the
+    geometry used later in ``compute_mission_state`` to decide whether
+    the link is up. The helper is only used when the caller does not
+    supply an explicit ``t_utc``; explicit times bypass the scan.
+    """
+    ground = GroundNode(
+        name=cfg.ground_station_name,
+        lat_deg=cfg.ground_lat_deg,
+        lon_deg=cfg.ground_lon_deg,
+        alt_m=cfg.ground_alt_m,
+    )
+    windows = visibility_windows(
+        sat,
+        ground,
+        sat.epoch_utc,
+        sat.epoch_utc + timedelta(hours=24),
+        step_seconds=60.0,
+        min_elevation_deg=5.0,
+    )
+    return windows[0].start_utc if windows else sat.epoch_utc
+
+
 def compute_mission_state(
     cfg: MissionConfig | None = None, *, t_utc: datetime | None = None
 ) -> MissionState:
@@ -327,7 +371,7 @@ def compute_mission_state(
     # satellite state is marked invalid rather than producing a
     # nonsensical altitude.
     if t_utc is None:
-        t = sat.epoch_utc
+        t = _next_visible_time(sat, cfg)
     else:
         t = t_utc
         if t.tzinfo is None:
