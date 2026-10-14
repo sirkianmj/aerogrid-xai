@@ -198,4 +198,37 @@ describe("MissionConfigBar", () => {
       expect(last).toContain("transmitter_power_w=10000")
     })
   })
+
+  it("enabling the custom-orbit checkbox shows the seven element inputs", async () => {
+    renderWithProvider()
+    const user = userEvent.setup()
+    const toggle = screen.getByRole("checkbox", { name: /Enable custom orbit/i })
+    expect(toggle).not.toBeChecked()
+    await user.click(toggle)
+    expect(toggle).toBeChecked()
+    for (const name of [
+      "Epoch (UTC)",
+      "a (km)",
+      "e",
+      "i (deg)",
+      "RAAN (deg)",
+      "argp (deg)",
+      "M0 (deg)",
+    ]) {
+      expect(screen.getByLabelText(name)).toBeInTheDocument()
+    }
+  })
+
+  it("disabling the custom-orbit checkbox clears the elements", async () => {
+    renderWithProvider()
+    const user = userEvent.setup()
+    const toggle = screen.getByRole("checkbox", { name: /Enable custom orbit/i })
+    await user.click(toggle)
+    expect(toggle).toBeChecked()
+    await user.click(toggle)
+    expect(toggle).not.toBeChecked()
+    // The element inputs disappear when elements are cleared.
+    expect(screen.queryByLabelText("a (km)")).not.toBeInTheDocument()
+  })
+
 })

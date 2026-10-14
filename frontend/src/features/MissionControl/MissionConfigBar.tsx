@@ -14,6 +14,13 @@ type FieldErrors = {
   t_utc?: string
   visibility_km?: string
   cloud_factor?: string
+  satellite_elements?: string
+  a_km?: string
+  e?: string
+  i_deg?: string
+  raan_deg?: string
+  argp_deg?: string
+  m0_deg?: string
   ground_lat_deg?: string
   ground_lon_deg?: string
   transmitter_power_w?: string
@@ -44,6 +51,30 @@ function validate(c: MissionConfig): FieldErrors {
   if (c.cloud_factor < 0 || c.cloud_factor > 1) {
     e.cloud_factor = "cloud factor must be in [0, 1]"
   }
+  if (c.satellite_elements) {
+    const el = c.satellite_elements
+    if (!Number.isFinite(el.a_km) || el.a_km <= 0) {
+      e.a_km = "semi-major axis must be > 0 km"
+    }
+    if (!Number.isFinite(el.e) || el.e < 0 || el.e >= 1) {
+      e.e = "eccentricity must be in [0, 1)"
+    }
+    if (!Number.isFinite(el.i_deg) || el.i_deg < 0 || el.i_deg > 180) {
+      e.i_deg = "inclination must be in [0, 180]"
+    }
+    for (const [key, val] of [
+      ["raan_deg", el.raan_deg],
+      ["argp_deg", el.argp_deg],
+      ["m0_deg", el.m0_deg],
+    ] as const) {
+      if (!Number.isFinite(val) || val < 0 || val >= 360) {
+        e[key] = "angle must be in [0, 360)"
+      }
+    }
+    if (!el.epoch_utc) {
+      e.satellite_elements = "epoch is required"
+    }
+  }
   return e
 }
 
@@ -73,7 +104,9 @@ export function MissionConfigBar() {
     draft.seed !== config.seed ||
     draft.t_utc !== config.t_utc ||
     draft.visibility_km !== config.visibility_km ||
-    draft.cloud_factor !== config.cloud_factor
+    draft.cloud_factor !== config.cloud_factor ||
+    JSON.stringify(draft.satellite_elements ?? null) !==
+      JSON.stringify(config.satellite_elements ?? null)
 
   function set<K extends keyof MissionConfig>(key: K, value: MissionConfig[K]) {
     setDraft((prev) => ({ ...prev, [key]: value }))
@@ -127,6 +160,109 @@ export function MissionConfigBar() {
         </span>
       </div>
 
+      <details className="mb-3 rounded border border-[var(--border-hairline)] p-2 text-xs" open={!!draft.satellite_elements}>
+        <summary className="cursor-pointer text-[0.7rem] font-medium uppercase tracking-wide text-[var(--ink-secondary)]">
+          Custom orbit{draft.satellite_elements ? " — enabled" : ""}
+        </summary>
+        <div className="mt-3 space-y-2">
+          <p className="text-[0.65rem] text-[var(--ink-tertiary)]">
+            Mean Keplerian elements. When enabled, overrides the satellite
+            catalogue. Leave disabled to use a catalogue TLE.
+          </p>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              aria-label="Enable custom orbit"
+              checked={!!draft.satellite_elements}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  const nowIso = new Date().toISOString().slice(0, 19) + "Z"
+                  set("satellite_elements", {
+                    epoch_utc: nowIso,
+                    a_km: 6871.0,
+                    e: 0.0,
+                    i_deg: 51.6,
+                    raan_deg: 0.0,
+                    argp_deg: 0.0,
+                    m0_deg: 0.0,
+                  })
+                } else {
+                  set("satellite_elements", null)
+                }
+              }}
+            />
+            <span>Enable custom orbit</span>
+          </label>
+          {draft.satellite_elements && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+              {(
+                [
+                  ["epoch_utc", "Epoch (UTC)", "text"],
+                  ["a_km", "a (km)", "number"],
+                  ["e", "e", "number"],
+                  ["i_deg", "i (deg)", "number"],
+                  ["raan_deg", "RAAN (deg)", "number"],
+                  ["argp_deg", "argp (deg)", "number"],
+                  ["m0_deg", "M0 (deg)", "number"],
+                ] as const
+              ).map(([key, label, kind]) => {
+                const el = draft.satellite_elements!
+                const err =
+                  key === "epoch_utc"
+                    ? errors.satellite_elements
+                    : errors[key as keyof FieldErrors]
+                return (
+                  <label key={key} className="flex flex-col gap-1">
+                    <span className="text-[0.6rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
+                      {label}
+                    </span>
+                    {kind === "text" ? (
+                      <input
+                        type="text"
+                        aria-label={label}
+                        value={el.epoch_utc}
+                        onChange={(e) =>
+                          set("satellite_elements", {
+                            ...el,
+                            epoch_utc: e.target.value,
+                          })
+                        }
+                        className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-xs"
+                      />
+                    ) : (
+                      <input
+                        type="number"
+                        step="any"
+                        aria-label={label}
+                        value={el[key as keyof typeof el] as number}
+                        onChange={(e) =>
+                          set("satellite_elements", {
+                            ...el,
+                            [key]: num(
+                              e.target.value,
+                              el[key as keyof typeof el] as number,
+                            ),
+                          })
+                        }
+                        className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-xs"
+                      />
+                    )}
+                    {err && (
+                      <span
+                        className="text-[0.6rem]"
+                        style={{ color: "var(--status-red)" }}
+                      >
+                        {err}
+                      </span>
+                    )}
+                  </label>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </details>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <label className="flex flex-col gap-1">
           <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
@@ -149,10 +285,13 @@ export function MissionConfigBar() {
           </span>
         </label>
 
-        <label className="flex flex-col gap-1">
+        <label
+          className={`flex flex-col gap-1 ${draft.satellite_elements ? "opacity-40" : ""}`}
+        >
           <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">Satellite</span>
           <select
             aria-label="Satellite key"
+            disabled={!!draft.satellite_elements}
             value={draft.satellite_key}
             onChange={(e) => set("satellite_key", e.target.value)}
             className="rounded border border-[var(--border-hairline)] bg-transparent px-2 py-1 font-mono text-xs"

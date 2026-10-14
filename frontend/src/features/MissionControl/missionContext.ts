@@ -14,8 +14,27 @@
 import { createContext, useContext } from "react"
 import type { MissionState } from "./missionApi"
 
+/**
+ * User-supplied mean Keplerian elements. When present, override the
+ * catalogue satellite key. Fields map 1:1 to the backend
+ * SatelliteElements dataclass.
+ *
+ * Epoch is an ISO 8601 string; the backend accepts any tz.
+ */
+export type SatelliteElements = {
+  epoch_utc: string
+  a_km: number
+  e: number
+  i_deg: number
+  raan_deg: number
+  argp_deg: number
+  m0_deg: number
+}
+
 export type MissionConfig = {
   satellite_key: string
+  /** When set, overrides satellite_key with a user-defined orbit. */
+  satellite_elements?: SatelliteElements | null
   ground_lat_deg: number
   ground_lon_deg: number
   transmitter_power_w: number
@@ -38,6 +57,7 @@ export const DEFAULT_CONFIG: MissionConfig = {
   t_utc: null,
   visibility_km: 10.0,
   cloud_factor: 0.0,
+  satellite_elements: null,
 }
 
 export type MissionLoad =
