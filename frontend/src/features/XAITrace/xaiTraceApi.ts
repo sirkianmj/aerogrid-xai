@@ -24,6 +24,20 @@ export type Alternative = {
   score: number
 }
 
+export type Counterfactual = {
+  /** family_name of the rule that was removed. */
+  removed_rule: string
+  /** Action selected by the original decision. */
+  original_selected: string
+  /** Action that would be selected with that single rule removed. */
+  would_select: string
+  /** True iff would_select differs from original_selected. */
+  changed: boolean
+  original_winner_score: number
+  original_runner_up_score: number
+  ablated_winner_score: number
+}
+
 export type ChargeCandidate = {
   uav_id: number
   [key: string]: number
@@ -43,6 +57,7 @@ export type ChargeDecisionResponse = {
   alternative: Alternative | null
   confidence: number
   confidence_note: string
+  counterfactuals: Counterfactual[]
 }
 
 export type ApiError = {

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { XAITrace } from "./XAITrace"
@@ -19,6 +19,26 @@ const SAMPLE: ChargeDecisionResponse = {
   alternative: { action: "charge_uav_18", score: 4.0 },
   confidence: 0.91,
   confidence_note: "Tier 1 rule-confidence; not a physical-reality guarantee (Section 15.5).",
+  counterfactuals: [
+    {
+      removed_rule: "low_battery",
+      original_selected: "charge_uav_32",
+      would_select: "charge_uav_18",
+      changed: true,
+      original_winner_score: 9.5,
+      original_runner_up_score: 4.0,
+      ablated_winner_score: 4.8,
+    },
+    {
+      removed_rule: "thermal_headroom_ok",
+      original_selected: "charge_uav_32",
+      would_select: "charge_uav_32",
+      changed: false,
+      original_winner_score: 9.5,
+      original_runner_up_score: 4.0,
+      ablated_winner_score: 9.5,
+    },
+  ],
 }
 
 function stubFetchOk() {
@@ -79,10 +99,18 @@ describe("XAITrace", () => {
     const user = userEvent.setup()
     render(<XAITrace />)
     await user.click(screen.getByRole("button", { name: /run decision/i }))
+    // The counterfactual section also renders the action name, so scope
+    // the lookup to the Alternative block's container (the heading's
+    // parent div) rather than the whole document.
     await waitFor(() => {
-      expect(screen.getByText("charge_uav_18")).toBeInTheDocument()
+      const heading = screen.getByRole("heading", { name: /^Alternative$/i })
+      const block = heading.parentElement
+      expect(block).not.toBeNull()
+      expect(within(block!).getByText("charge_uav_18")).toBeInTheDocument()
     })
-    expect(screen.getByText(/score 4\.000/)).toBeInTheDocument()
+    const heading = screen.getByRole("heading", { name: /^Alternative$/i })
+    const block = heading.parentElement!
+    expect(within(block).getByText(/score 4\.000/)).toBeInTheDocument()
   })
 
   it("renders the Section 21 badge as simulation_result and the artefact sub-label", async () => {
@@ -137,4 +165,25 @@ describe("XAITrace", () => {
       expect(screen.getByText(/network failure/i)).toBeInTheDocument()
     })
   })
+
+  it("renders the counterfactual section with both changed and unchanged entries", async () => {
+    stubFetchOk()
+    render(<XAITrace />)
+    await userEvent.click(screen.getByRole("button", { name: /Run decision/i }))
+    await waitFor(() =>
+      expect(
+        screen.getByText(/What would change this decision/i),
+      ).toBeInTheDocument(),
+    )
+    const cfs = screen.getAllByTestId(/^counterfactual-\d+$/)
+    expect(cfs.length).toBe(2)
+    expect(cfs[0].getAttribute("data-counterfactual-changed")).toBe("true")
+    expect(cfs[1].getAttribute("data-counterfactual-changed")).toBe("false")
+    // The changed entry names the alternative action, scoped to the row
+    // so the assertion is not confused with the Alternative block above.
+    expect(within(cfs[0]).getByText("charge_uav_18")).toBeInTheDocument()
+    // The unchanged entry uses the muted label.
+    expect(within(cfs[1]).getByText(/remove .* no change/)).toBeInTheDocument()
+  })
+
 })

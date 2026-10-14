@@ -34,7 +34,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.control.explain import to_structured_dict
+from app.control.explain import rule_ablation_counterfactuals, to_structured_dict
 from app.control.tier1 import decide_charge_uav, default_charge_rule_list
 
 router = APIRouter(prefix="/decisions", tags=["decisions"])
@@ -77,6 +77,25 @@ class Alternative(BaseModel):
     score: float
 
 
+class CounterfactualModel(BaseModel):
+    """One rule-ablation counterfactual (Section 26).
+
+    Exact consequence of removing a rule from the rule list and re-running
+    the decision on the same candidates. The re-run uses the same
+    tier1.py evaluation path as the original decision; the outcome is a
+    literal fact about the model's arithmetic, not a statistical
+    approximation.
+    """
+
+    removed_rule: str
+    original_selected: str
+    would_select: str
+    changed: bool
+    original_winner_score: float
+    original_runner_up_score: float
+    ablated_winner_score: float
+
+
 class ChargeDecisionResponse(BaseModel):
     """Response body for POST /decisions/charge.
 
@@ -92,6 +111,7 @@ class ChargeDecisionResponse(BaseModel):
     alternative: Alternative | None
     confidence: float
     confidence_note: str
+    counterfactuals: list[CounterfactualModel] = Field(default_factory=list)
 
 
 @router.post("/charge", response_model=ChargeDecisionResponse)
@@ -108,12 +128,23 @@ async def decide_charge(request: ChargeDecisionRequest) -> ChargeDecisionRespons
                 detail=f"candidate at index {i} is missing required key 'uav_id'",
             )
 
+    rule_list = default_charge_rule_list()
     trace = decide_charge_uav(
         candidates=request.candidates,
-        rule_list=default_charge_rule_list(),
+        rule_list=rule_list,
         estimates=request.estimates,
     )
     structured = to_structured_dict(trace)
+
+    # Section 26 counterfactuals: one entry per rule that fired on the
+    # winner. Re-runs the decision with that single rule removed and
+    # reports whether the winner changed.
+    cfs = rule_ablation_counterfactuals(
+        trace,
+        rule_list,
+        request.candidates,
+        estimates=request.estimates,
+    )
 
     alternative: Alternative | None = None
     alt_raw = structured.get("alternative")
@@ -175,4 +206,16 @@ async def decide_charge(request: ChargeDecisionRequest) -> ChargeDecisionRespons
         alternative=alternative,
         confidence=confidence,
         confidence_note=str(structured.get("confidence_note", "")),
+        counterfactuals=[
+            CounterfactualModel(
+                removed_rule=c.removed_rule,
+                original_selected=c.original_selected,
+                would_select=c.would_select,
+                changed=c.changed,
+                original_winner_score=c.original_winner_score,
+                original_runner_up_score=c.original_runner_up_score,
+                ablated_winner_score=c.ablated_winner_score,
+            )
+            for c in cfs
+        ],
     )
