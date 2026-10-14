@@ -61,6 +61,11 @@ const SAMPLE: MissionState = {
       atmospheric_factor: 0.9,
       beam_alignment: 0.92,
       transfer_loss: 0.12,
+      delivered_power_w: 0.05,
+      received_power_w: 0.4,
+      link_slant_range_m: 740000,
+      link_elevation_deg: 31.5,
+      receiver_efficiency: 0.15,
     },
     {
       uav_id: 1,
@@ -76,6 +81,11 @@ const SAMPLE: MissionState = {
       atmospheric_factor: 0.85,
       beam_alignment: 0.88,
       transfer_loss: 0.15,
+      delivered_power_w: 0.05,
+      received_power_w: 0.4,
+      link_slant_range_m: 740000,
+      link_elevation_deg: 31.5,
+      receiver_efficiency: 0.15,
     },
   ],
   architecture: {

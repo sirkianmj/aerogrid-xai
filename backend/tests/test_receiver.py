@@ -180,21 +180,43 @@ def test_sb2se3_thermal_conductivity_is_plausible() -> None:
 # --- eta_total composition --------------------------------------------------
 
 
-def test_eta_total_is_product_of_components() -> None:
-    """eta_total = eta_PLC * eta_TE within numerical tolerance."""
+def test_eta_total_is_additive_recovery() -> None:
+    """eta_total = eta_PLC + (1 - eta_PLC) * eta_TE.
+
+    The PV-TE tandem in this project extracts power from the PLC and TE
+    layers independently. The PLC converts what it can of the incident
+    laser light; the unconverted fraction becomes heat, which the TE
+    layer recovers with its own (small) efficiency. The two outputs add
+    at the terminals.
+
+    See the eta_total docstring for why the multiplicative form in
+    Section 33.2 of the specification is a first-order placeholder and
+    not the physically correct expression for this circuit topology.
+    """
     stack = ReceiverStack.default()
     t_plc = 320.0
     t_hot = 340.0
     t_cold = 300.0
-    expected = eta_plc(t_plc, stack.plc) * eta_te(t_hot, t_cold, stack.te)
+    eta_plc_val = eta_plc(t_plc, stack.plc)
+    eta_te_val = eta_te(t_hot, t_cold, stack.te)
+    expected = eta_plc_val + (1.0 - eta_plc_val) * eta_te_val
     assert eta_total(t_plc, t_hot, t_cold, stack) == pytest.approx(expected, rel=1e-12)
 
 
-def test_eta_total_is_zero_when_plc_is_degraded() -> None:
-    """If the PLC is at or above its degradation limit, the whole stack
-    produces zero electrical output."""
+def test_eta_total_is_te_only_when_plc_is_degraded() -> None:
+    """A degraded PLC reduces the stack to the TE layer.
+
+    Above the PLC's thermal-degradation limit, eta_PLC is zero. Under
+    additive recovery that is not a total failure: the PLC still
+    absorbs the incident light and passes all of it as heat to the TE
+    layer, which converts what it can. The stack output equals the TE
+    layer's efficiency alone. This matches the physics: a dead top
+    cell does not extinguish the bottom cell, it hands it all the
+    waste heat.
+    """
     stack = ReceiverStack.default()
-    assert eta_total(400.0, 340.0, 300.0, stack) == 0.0
+    eta_te_val = eta_te(340.0, 300.0, stack.te)
+    assert eta_total(400.0, 340.0, 300.0, stack) == pytest.approx(eta_te_val, rel=1e-12)
 
 
 def test_receiver_stack_default_constructs() -> None:

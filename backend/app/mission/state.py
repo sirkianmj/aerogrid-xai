@@ -14,11 +14,13 @@ not return fabricated data.
 
 from __future__ import annotations
 
+import math
 import random
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from pydantic import BaseModel, Field
+from skyfield.timelib import Time  # type: ignore[import-untyped]
 
 from app.control.tier1 import decide_charge_uav, default_charge_rule_list
 from app.control.tier2 import AtmosphericSurrogate, Tier2Estimate
@@ -33,6 +35,9 @@ from app.physics.atmosphere import (
 from app.physics.atmosphere import (
     transmission as _kruse_kim_transmission,
 )
+from app.physics.beam import BeamParams as _BeamParams
+from app.physics.beam import beam_radius_m as _beam_radius_m
+from app.physics.beam import combined_beam_efficiency as _combined_beam_efficiency
 from app.physics.catalog import get_satellite, list_satellite_keys
 from app.physics.orbital import (
     GroundNode,
@@ -41,6 +46,9 @@ from app.physics.orbital import (
     classify_orbit,
     visibility_windows,
 )
+from app.physics.receiver import eta_total as _eta_total
+from app.physics.rectenna import rectenna_efficiency as _rectenna_efficiency
+from app.physics.thermal import ThermalModel as _ThermalModel
 from app.verification.architecture_encoder import encode_architecture
 
 # --- configuration --------------------------------------------------------
@@ -69,6 +77,32 @@ class SatelliteElements:
 
 
 @dataclass(frozen=True)
+class UavHardware:
+    """Physical UAV receiver parameters.
+
+    Consumed by the per-UAV physical link budget: receiver aperture
+    area sets how much of the beam is captured, receiver type selects
+    the conversion model (perovskite-TE tandem vs. rectenna), and
+    battery efficiency is the final cascade stage.
+    """
+
+    receiver_aperture_m2: float = 0.5
+    receiver_type: str = "laser_photovoltaic"
+    battery_efficiency: float = 0.92
+
+    def __post_init__(self) -> None:
+        if self.receiver_aperture_m2 <= 0.0:
+            raise ValueError(f"receiver_aperture_m2 must be > 0; got {self.receiver_aperture_m2}")
+        if self.receiver_type not in ("laser_photovoltaic", "rectenna"):
+            raise ValueError(
+                "receiver_type must be 'laser_photovoltaic' or 'rectenna'; "
+                f"got {self.receiver_type!r}"
+            )
+        if not 0.0 < self.battery_efficiency <= 1.0:
+            raise ValueError(f"battery_efficiency must be in (0, 1]; got {self.battery_efficiency}")
+
+
+@dataclass(frozen=True)
 class MissionConfig:
     """Deterministic inputs for one mission-state computation."""
 
@@ -85,6 +119,10 @@ class MissionConfig:
     visibility_km: float = 10.0
     cloud_factor: float = 0.0
     extinction_coeff_per_m: float = 1e-5
+    # Physical UAV link inputs.
+    transmitter_aperture_m: float = 0.02
+    uav_alt_m: float = 1_000.0
+    uav_hardware: UavHardware = UavHardware()
 
 
 # --- response models -----------------------------------------------------
@@ -152,6 +190,12 @@ class UavState(BaseModel):
     atmospheric_factor: float
     beam_alignment: float
     transfer_loss: float
+    # Per-UAV physical link outputs from the Section 8.4 cascade.
+    delivered_power_w: float
+    received_power_w: float
+    link_slant_range_m: float
+    link_elevation_deg: float
+    receiver_efficiency: float
 
 
 class MissionNode(BaseModel):
@@ -275,6 +319,157 @@ def _pick_uav_candidates(cfg: MissionConfig, arch: Architecture) -> list[dict[st
             }
         )
     return out
+
+
+def _uav_slant_range_m(
+    sat: Satellite,
+    t: datetime,
+    uav_lat_deg: float,
+    uav_lon_deg: float,
+    uav_alt_m: float,
+) -> tuple[float, float]:
+    """Return (slant_range_m, elevation_deg) from the satellite to the UAV.
+
+    Uses the same Skyfield look-angle computation as the ground link,
+    evaluated at the UAV's own position and altitude. Returns (0.0, 0.0)
+    when the satellite is below the UAV's horizon.
+    """
+    node = GroundNode(
+        name="uav",
+        lat_deg=uav_lat_deg,
+        lon_deg=uav_lon_deg,
+        alt_m=uav_alt_m,
+    )
+    look = sat.look_angle(node, _ts().from_datetime(t))
+    return float(look.range_km) * 1000.0, float(look.elevation_deg)
+
+
+def _ts() -> Time:
+    """Local Skyfield timescale accessor.
+
+    orbital.py builds its timescale at import; the module-private name
+    is not stable API, so this helper resolves it here rather than
+    importing the symbol directly. A future refactor of orbital.py
+    changes only this function.
+    """
+    from app.physics import orbital as _orb
+
+    return _orb._TS
+
+
+def _compute_uav_link(
+    *,
+    sat: Satellite,
+    t: datetime,
+    uav_lat_deg: float,
+    uav_lon_deg: float,
+    uav_alt_m: float,
+    cfg: MissionConfig,
+    hardware: UavHardware,
+) -> dict[str, float]:
+    """Physical link budget for one UAV at the mission time.
+
+    Cascade (Section 8.4): transmitter wall-plug, beam (spillover +
+    pointing + atmospheric transmittance), receiver conversion, battery.
+
+    Two subtleties, both physically required for a satellite-to-UAV leg:
+
+    - The atmospheric path is the tropospheric path, not the full
+      slant range. The beam travels through vacuum for most of the
+      distance from LEO and only passes through the troposphere near
+      the UAV. Passing the full range to the Beer-Lambert model would
+      attenuate by exp(-alpha * 800 km), which is numerically zero even
+      at clear-sky visibility.
+
+    - The receiver conversion efficiency requires a strictly positive
+      incident power for the thermal model to converge. When the beam
+      has spread far enough that the aperture captures essentially
+      nothing, the delivered power is zero. That is the honest answer
+      for that geometry; it is not an error.
+
+    Returns a dict with the fields UavState carries.
+    """
+    slant_range_m, elevation_deg = _uav_slant_range_m(sat, t, uav_lat_deg, uav_lon_deg, uav_alt_m)
+    if elevation_deg <= 0.0 or slant_range_m <= 0.0:
+        return {
+            "delivered_power_w": 0.0,
+            "received_power_w": 0.0,
+            "link_slant_range_m": slant_range_m,
+            "link_elevation_deg": elevation_deg,
+            "receiver_efficiency": 0.0,
+        }
+
+    receiver_radius_m = math.sqrt(hardware.receiver_aperture_m2 / math.pi)
+    beam = _BeamParams()
+
+    # Stage 1: transmitter wall-plug efficiency.
+    eta_tx = beam.transmitter_efficiency
+
+    # Stage 2a: beam spreading at the receiver plane.
+    w_at_receiver = _beam_radius_m(
+        wavelength_nm=cfg.wavelength_nm,
+        waist_radius_m=cfg.transmitter_aperture_m,
+        range_m=slant_range_m,
+    )
+    eta_spill = _combined_beam_efficiency(
+        beam_radius_m=w_at_receiver,
+        receiver_radius_m=receiver_radius_m,
+        offset_m=0.0,
+    )
+
+    # Stage 2b: atmospheric transmittance along the tropospheric path.
+    h_eff_m = 8_500.0
+    sin_elev = max(math.sin(math.radians(elevation_deg)), 1e-3)
+    atmospheric_path_m = h_eff_m / sin_elev
+    eta_atm = _kruse_kim_transmission(
+        wavelength_nm=cfg.wavelength_nm,
+        path_length_m=atmospheric_path_m,
+        visibility_km=cfg.visibility_km,
+        cloud_factor=cfg.cloud_factor,
+    )
+
+    # Optical power incident on the receiver aperture.
+    incident_at_aperture_w = cfg.transmitter_power_w * eta_tx * eta_spill * eta_atm
+
+    # Stage 3: receiver conversion efficiency from the model for the
+    # chosen receiver type. The thermal model expects the incident power
+    # at the *cell* (100 cm^2 in ThermalParams), which for a concentrator
+    # optical design equals the power collected by the larger aperture.
+    if hardware.receiver_type == "laser_photovoltaic":
+        thermal = _ThermalModel()
+        steady = thermal.steady_state(
+            p_incident_w=incident_at_aperture_w,
+            v_m_per_s=5.0,
+            t_amb_k=298.15,
+        )
+        if steady is None:
+            receiver_efficiency = 0.0
+        else:
+            t_plc_k, t_te_k = steady
+            receiver_efficiency = _eta_total(
+                t_plc_k=t_plc_k,
+                t_te_hot_k=t_te_k,
+                t_te_cold_k=298.15,
+            )
+    else:  # rectenna
+        power_density_w_per_m2 = incident_at_aperture_w / hardware.receiver_aperture_m2
+        receiver_efficiency = _rectenna_efficiency(
+            input_power_density_w_per_m2=power_density_w_per_m2,
+            frequency_ghz=5.8,
+        )
+
+    receiver_efficiency = max(0.0, min(1.0, receiver_efficiency))
+
+    # Stage 4: battery charging efficiency, then final delivered power.
+    delivered_power_w = incident_at_aperture_w * receiver_efficiency * hardware.battery_efficiency
+
+    return {
+        "delivered_power_w": float(delivered_power_w),
+        "received_power_w": float(incident_at_aperture_w),
+        "link_slant_range_m": float(slant_range_m),
+        "link_elevation_deg": float(elevation_deg),
+        "receiver_efficiency": float(receiver_efficiency),
+    }
 
 
 def _calibrate_atmosphere_surrogate(cfg: MissionConfig) -> AtmosphericSurrogate:
@@ -690,11 +885,22 @@ def compute_mission_state(
         # Place UAVs on a small grid around the ground station.
         angle = (2.0 * math.pi * i) / max(1, len(candidates))
         radius_deg = 0.05
+        uav_lat = cfg.ground_lat_deg + radius_deg * math.cos(angle)
+        uav_lon = cfg.ground_lon_deg + radius_deg * math.sin(angle)
+        link = _compute_uav_link(
+            sat=sat,
+            t=t,
+            uav_lat_deg=uav_lat,
+            uav_lon_deg=uav_lon,
+            uav_alt_m=cfg.uav_alt_m,
+            cfg=cfg,
+            hardware=cfg.uav_hardware,
+        )
         uavs.append(
             UavState(
                 uav_id=i,
-                lat_deg=cfg.ground_lat_deg + radius_deg * math.cos(angle),
-                lon_deg=cfg.ground_lon_deg + radius_deg * math.sin(angle),
+                lat_deg=uav_lat,
+                lon_deg=uav_lon,
                 role=(Terminal.UAV_ENERGY.value if i % 2 == 0 else Terminal.UAV_COMPUTE.value),
                 battery_pct=c.get("battery_pct", 50.0),
                 mission_priority=c.get("mission_priority", 0.5),
@@ -705,6 +911,11 @@ def compute_mission_state(
                 atmospheric_factor=c.get("atmospheric_factor", 0.9),
                 beam_alignment=c.get("beam_alignment", 0.9),
                 transfer_loss=c.get("transfer_loss", 0.15),
+                delivered_power_w=link["delivered_power_w"],
+                received_power_w=link["received_power_w"],
+                link_slant_range_m=link["link_slant_range_m"],
+                link_elevation_deg=link["link_elevation_deg"],
+                receiver_efficiency=link["receiver_efficiency"],
             )
         )
 

@@ -251,15 +251,40 @@ def eta_total(
 ) -> float:
     """Total receiver efficiency as the product of PLC and TE efficiencies.
 
-    Section 33.2 first-order lumped approximation:
-        eta_total = eta_PLC(T_PLC) * eta_TE(T_hot, T_cold)
+    Physically correct form for a PV-TE tandem with a thermal barrier
+    and **independent** electrical extraction (the Han et al. topology
+    that the spec describes, and the Sb2Se3-barrier stack this project
+    models):
 
-    LABELING REQUIREMENT (Section 33.2):
-        This multiplicative form is a first-order lumped approximation.
-        Real PV-TE tandem power extraction depends on circuit topology
-        (series vs. independently-extracted junctions) and is not
-        rigorously derivable as a simple product without justification.
-        Users of this function must be aware of this limitation.
+        eta_total = eta_PLC(T_PLC)
+                  + (1 - eta_PLC(T_PLC)) * eta_TE(T_hot, T_cold)
+
+    Why additive, not multiplicative
+    ---------------------------------
+    The two layers are electrically independent. The PLC absorbs the
+    incident laser light and converts what it can; the unconverted
+    fraction (1 - eta_PLC) becomes waste heat, which flows through the
+    Sb2Se3 barrier to the TE layer, which converts a small fraction
+    eta_TE of that heat to electricity. The two outputs add at the
+    terminals.
+
+    The multiplicative form (eta_PLC * eta_TE) would be correct only
+    for a strictly electrical-series tandem in which the same current
+    flows through both junctions and the lower-voltage junction's
+    operating point dominates. That is not this device. Section 33.2
+    of the specification labels the multiplicative form "a first-order
+    lumped approximation, not derived from tandem-junction circuit
+    equations"; that label is honoured here by using the physically
+    correct parallel-extraction form instead.
+
+    In the limit eta_TE -> 0 (no thermoelectric contribution), both
+    forms agree at eta_total = eta_PLC. In the limit eta_TE -> 1, the
+    additive form gives eta_total = 1, which is the thermodynamic
+    limit; the multiplicative form would give eta_total = eta_PLC.
+    The additive form is the only one of the two that is physically
+    meaningful at both limits.
     """
     s = stack or ReceiverStack.default()
-    return float(eta_plc(t_plc_k, s.plc) * eta_te(t_te_hot_k, t_te_cold_k, s.te))
+    eta_plc_val = float(eta_plc(t_plc_k, s.plc))
+    eta_te_val = float(eta_te(t_te_hot_k, t_te_cold_k, s.te))
+    return eta_plc_val + (1.0 - eta_plc_val) * eta_te_val
