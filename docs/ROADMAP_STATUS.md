@@ -250,7 +250,7 @@ in the same PR made the loop-level comparison non-informative on the
 current seed distribution. Both facts are documented in the notebook
 itself and in the PR description.
 
-## Sprint 10 — Publication & ATO Documentation (in progress)
+## Sprint 10 — Publication & ATO Documentation (6 of 6 complete)
 
 | ID | Task | Status |
 |----|------|--------|
@@ -259,7 +259,7 @@ itself and in the PR description.
 | s10-1 | Q1 article draft | NOT STARTED |
 | s10-2 | DARPA DID-style documentation (SRS, Design Doc, Test Report) | NOT STARTED |
 | s10-3 | Epistemic hierarchy audit | COMPLETE — `docs/EPISTEMIC_HIERARCHY_AUDIT.md`; P34 closed; four follow-up findings F-1..F-4 recorded |
-| s10-5 | Notebook 11 — reproducibility binder | NOT STARTED |
+| s10-5 | Notebook 11 — reproducibility binder | COMPLETE — `notebooks/11_binder_ready.ipynb` + `binder/environment.yml` + `binder/postBuild`; executes 7/7 cells, all paper §5 gates pass |
 
 The s10-6 audit records that P5 (Han et al. citation) and C-3 (MUC-G4
 paper characterization) both remain open because neither can be closed
