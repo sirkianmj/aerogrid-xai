@@ -75,11 +75,35 @@ class TraceEventModel(BaseModel):
     conflict_prone: list[str]
 
 
+class NodeInstanceModel(BaseModel):
+    """One node of a discovered architecture.
+
+    Fields mirror the pydantic MissionNode in app.mission.state; they
+    are declared locally rather than imported to avoid a circular
+    dependency (mission.state imports from discovery).
+    """
+
+    node_id: str
+    kind: str
+    params: dict[str, float] = Field(default_factory=dict)
+
+
+class LinkInstanceModel(BaseModel):
+    """One link of a discovered architecture."""
+
+    link_id: str
+    kind: str
+    source_id: str
+    target_id: str
+
+
 class DiscoveredArchitectureModel(BaseModel):
     generation: int
     nodes: int
     links: int
     objectives: list[float]
+    node_list: list[NodeInstanceModel] = Field(default_factory=list)
+    link_list: list[LinkInstanceModel] = Field(default_factory=list)
 
 
 class RunResponse(BaseModel):
@@ -179,6 +203,23 @@ async def run(request: RunRequest) -> RunResponse:
                 nodes=len(ind.architecture.nodes),
                 links=len(ind.architecture.links),
                 objectives=list(ind.objectives.values),
+                node_list=[
+                    NodeInstanceModel(
+                        node_id=n.node_id,
+                        kind=n.kind.value,
+                        params={k: float(v) for k, v in n.params.items()},
+                    )
+                    for n in ind.architecture.nodes
+                ],
+                link_list=[
+                    LinkInstanceModel(
+                        link_id=ln.link_id,
+                        kind=ln.kind.value,
+                        source_id=ln.source_id,
+                        target_id=ln.target_id,
+                    )
+                    for ln in ind.architecture.links
+                ],
             )
             for ind in result.final_population
         ],

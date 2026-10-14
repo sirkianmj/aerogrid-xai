@@ -49,8 +49,22 @@ const SAMPLE: ClearDResponse = {
   ],
   trace_truncated: false,
   discovered: [
-    { generation: 0, nodes: 6, links: 4, objectives: [0.8, 0.5, 0.3, 0.9, 0.6, 0.2] },
-    { generation: 2, nodes: 7, links: 5, objectives: [0.9, 0.6, 0.2, 1.0, 0.7, 0.1] },
+    {
+      generation: 0,
+      nodes: 6,
+      links: 4,
+      objectives: [0.8, 0.5, 0.3, 0.9, 0.6, 0.2],
+      node_list: [],
+      link_list: [],
+    },
+    {
+      generation: 2,
+      nodes: 7,
+      links: 5,
+      objectives: [0.9, 0.6, 0.2, 1.0, 0.7, 0.1],
+      node_list: [],
+      link_list: [],
+    },
   ],
 }
 

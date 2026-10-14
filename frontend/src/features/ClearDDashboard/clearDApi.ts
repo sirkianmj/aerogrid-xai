@@ -40,11 +40,28 @@ export type TraceEvent = {
   conflict_prone: string[]
 }
 
+export type DiscoveredNode = {
+  node_id: string
+  kind: string
+  params: Record<string, number>
+}
+
+export type DiscoveredLink = {
+  link_id: string
+  kind: string
+  source_id: string
+  target_id: string
+}
+
 export type DiscoveredArchitecture = {
   generation: number
   nodes: number
   links: number
   objectives: number[]
+  /** Node instances for this architecture, from the discovery engine. */
+  node_list: DiscoveredNode[]
+  /** Directed links for this architecture. */
+  link_list: DiscoveredLink[]
 }
 
 export type ClearDResponse = {

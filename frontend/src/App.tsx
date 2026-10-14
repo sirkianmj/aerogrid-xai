@@ -4,6 +4,7 @@ import { EpistemicBadge } from "./components/EpistemicBadge/EpistemicBadge"
 import { ALL_TAGS, EPISTEMIC_TAGS } from "./components/EpistemicBadge/epistemic"
 import { SessionBar } from "./components/Session/SessionBar"
 import { AdminPanel } from "./features/AdminPanel/AdminPanel"
+import { ArchitecturesView } from "./features/Architectures/ArchitecturesView"
 import { ClearDDashboard } from "./features/ClearDDashboard/ClearDDashboard"
 import { DigitalTwin } from "./features/DigitalTwin/DigitalTwin"
 import { FanetGraph } from "./features/Fanet/FanetGraph"
@@ -88,6 +89,7 @@ function App() {
         {activeView === "cleard" && (
           <div className="mx-auto max-w-5xl space-y-6">
             <ClearDDashboard />
+            <ArchitecturesView />
             <FanetGraph />
           </div>
         )}
