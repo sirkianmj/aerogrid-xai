@@ -5,11 +5,18 @@
  * either a user parameter or a documented ratio. Constants and their
  * sources:
  *
- *   solar cell specific power  408 W/m^2 (triple-junction at AM0,
- *                              30 % cell efficiency; see beam.py for
- *                              the transmitter wall-plug figure).
+ *   Effective array specific power  329.6 W/m^2, derived from:
+ *       I_AM0                    1361 W/m^2  (AM0 solar constant)
+ *       eta_cell                 0.30       (triple-junction at BOL)
+ *       packing factor           0.85       (cell area / panel area)
+ *       PSE efficiency           0.95       (MPPT, regulation, harness)
+ *   Cell geometry              80 mm x 80 mm cell, 2 mm gap,
+ *                              82 mm pitch, triple-junction.
+ *   Panel chord                12 cells across the panel width
+ *                              = 12 x 0.082 = 0.984 m.
+ *   Panel aspect ratio         2 : 1 (length : width).
+ *   Panels per side            3.
  *   bus body                   1.8 m x 1.6 m (modest power satellite).
- *   panel chord                1.0 m.
  *   hinge gap                  0.05 m.
  *   yoke length                0.4 m.
  *   star tracker tube          0.6 m (typical baffled unit).
@@ -39,11 +46,47 @@ import { ScaleBar } from "./ScaleBar"
 import { DrawingFrame } from "./DrawingFrame"
 import { Callout } from "./Callout"
 
-// --- Physical constants -----------------------------------------------
-const W_PER_M2 = 408.0
+// --- Solar array design chain (documented) ----------------------------
+// AM0 solar constant at 1 AU, 1361 W/m^2 (WRC 2016, consolidated
+// space solar irradiance).
+const I_AM0_W_PER_M2 = 1361.0
+// Triple-junction (InGaP/GaAs/Ge) cell efficiency at BOL, 28 degrees C.
+// Space-qualified cells achieve 28 to 32 percent today; 30 percent is
+// the conservative design point.
+const ETA_CELL = 0.30
+// Packing factor: fraction of panel area covered by cells. The
+// remainder is cell gap, interconnects, bus bars, and frame.
+const PACKING_FACTOR = 0.85
+// Power system electronics: MPPT, regulation, harness. Space-qualified
+// PSE runs 0.93 to 0.97; 0.95 is the design point.
+const PSE_EFFICIENCY = 0.95
+// Effective array power per square metre of panel area:
+//   1361 * 0.30 * 0.85 * 0.95 = 329.6 W/m^2
+const EFFECTIVE_SPECIFIC_POWER_W_PER_M2 =
+  I_AM0_W_PER_M2 * ETA_CELL * PACKING_FACTOR * PSE_EFFICIENCY
+
+// Cell geometry. 80 mm x 80 mm cell with a 2 mm gap between cells:
+// 82 mm pitch. These are standard space-qualified dimensions.
+const CELL_SIZE_M = 0.080
+const CELL_GAP_M = 0.002
+const CELL_PITCH_M = CELL_SIZE_M + CELL_GAP_M  // 0.082 m
+
+// Panel chord: 12 cells across the panel width.
+const PANEL_CELLS_ACROSS_CHORD = 12
+const PANEL_CHORD_M = PANEL_CELLS_ACROSS_CHORD * CELL_PITCH_M  // ~0.984 m
+
+// Panels per side and hinge gap between adjacent panels.
 const N_PANELS_PER_SIDE = 3
-const PANEL_CHORD_M = 1.0
 const PANEL_GAP_M = 0.05
+
+// Density cap for the drawn cell grid. Real panels may hold hundreds
+// of cells per row; drawing them all would produce a solid dark rect
+// at any realistic display size. The drawn grid is the true pitch
+// capped at this many lines; the annotation carries the real count.
+const MAX_CELLS_DRAWN_ACROSS = 24
+const MAX_CELLS_DRAWN_DOWN = 12
+
+// --- Other structural constants ---------------------------------------
 const BUS_W_M = 1.8
 const BUS_H_M = 1.6
 const YOKE_M = 0.4
@@ -72,12 +115,40 @@ export function SatelliteProfileSVG({
 }: SatelliteProfileSVGProps) {
   const svgRef = useRef<SVGSVGElement | null>(null)
 
-  // --- Derived physical dimensions (metres) ---------------------------
-  const totalAreaM2 = transmitter_power_w / W_PER_M2
-  const perSideAreaM2 = totalAreaM2 / 2
-  const panelLenM = perSideAreaM2 / N_PANELS_PER_SIDE / PANEL_CHORD_M
+  // --- Solar array design chain (metres) ------------------------------
+  // The array must supply transmitter_power_w / PSE_EFFICIENCY watts
+  // of electrical power out of the array. The required panel area is
+  // that output divided by the effective specific power.
+  const arrayOutputW = transmitter_power_w / PSE_EFFICIENCY
+  const totalArrayAreaM2 = arrayOutputW / EFFECTIVE_SPECIFIC_POWER_W_PER_M2
+  const perSideAreaM2 = totalArrayAreaM2 / 2
+  const perPanelAreaM2 = perSideAreaM2 / N_PANELS_PER_SIDE
+
+  // Panel length from area and chord (chord is fixed at 12 cells).
+  const panelLenM = perPanelAreaM2 / PANEL_CHORD_M
+
+  // Number of cells along the panel length. Rounded up so the real
+  // panel is at least as large as the required area.
+  const cellsAcross = Math.max(1, Math.ceil(panelLenM / CELL_PITCH_M))
+  const cellsDown = PANEL_CELLS_ACROSS_CHORD
+  const cellsPerPanel = cellsAcross * cellsDown
+  const cellsTotal = cellsPerPanel * N_PANELS_PER_SIDE * 2
+
+  // Real panel length after rounding to integer cell counts. This is
+  // what gets drawn and what the dimension line reports.
+  const panelLenMReal = cellsAcross * CELL_PITCH_M
+  const panelRealAreaM2 = panelLenMReal * PANEL_CHORD_M * cellsDown / cellsDown
+
+  // Cells drawn per axis, density limited for legibility.
+  const cellsDrawnAcross = Math.min(cellsAcross, MAX_CELLS_DRAWN_ACROSS)
+  const cellsDrawnDown = Math.min(cellsDown, MAX_CELLS_DRAWN_DOWN)
+
+  // Array extent along the hinge axis.
   const arrayPerSideM =
-    N_PANELS_PER_SIDE * panelLenM + (N_PANELS_PER_SIDE - 1) * PANEL_GAP_M
+    N_PANELS_PER_SIDE * panelLenMReal + (N_PANELS_PER_SIDE - 1) * PANEL_GAP_M
+  const totalArraySpanM = 2 * arrayPerSideM
+
+  // --- Dish, bus, geometry -------------------------------------------
   const dishDiamM = 0.3 + 1.2 * Math.sqrt(transmitter_power_w / 100_000)
   const dishR_M = dishDiamM / 2
   const halfWidthM = BUS_W_M / 2 + YOKE_M + arrayPerSideM
@@ -128,13 +199,53 @@ export function SatelliteProfileSVG({
     const startX = side * (BUS_W_M / 2 + YOKE_M)
     const panelEls: ReactElement[] = []
     for (let i = 0; i < N_PANELS_PER_SIDE; i++) {
-      const pxM = startX + side * i * (panelLenM + PANEL_GAP_M)
-      const drawXm = side > 0 ? pxM : pxM - panelLenM
+      const pxM = startX + side * i * (panelLenMReal + PANEL_GAP_M)
+      const drawXm = side > 0 ? pxM : pxM - panelLenMReal
       const [px, py] = toPx(drawXm, PANEL_CHORD_M / 2)
-      const pw = w(panelLenM)
+      const pw = w(panelLenMReal)
       const ph = w(PANEL_CHORD_M)
+
+      // Cell grid: drawn at the true relative pitch, capped at
+      // MAX_CELLS_DRAWN_ACROSS / DOWN so a 300-cell row does not
+      // become a solid black bar. The annotation carries the real
+      // count.
+      const cellW = pw / cellsDrawnAcross
+      const cellH = ph / cellsDrawnDown
+      const cellEls: ReactElement[] = []
+      // Vertical cell boundaries (across the panel length).
+      for (let c = 1; c < cellsDrawnAcross; c++) {
+        cellEls.push(
+          <line
+            key={`cv${c}`}
+            x1={px + c * cellW}
+            y1={py}
+            x2={px + c * cellW}
+            y2={py + ph}
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_HAIR}
+            opacity={0.75}
+          />,
+        )
+      }
+      // Horizontal cell boundaries (across the panel chord).
+      for (let r = 1; r < cellsDrawnDown; r++) {
+        cellEls.push(
+          <line
+            key={`ch${r}`}
+            x1={px}
+            y1={py + r * cellH}
+            x2={px + pw}
+            y2={py + r * cellH}
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_HAIR}
+            opacity={0.75}
+          />,
+        )
+      }
+
       panelEls.push(
         <g key={i}>
+          {/* Panel body */}
           <rect
             x={px}
             y={py}
@@ -144,36 +255,25 @@ export function SatelliteProfileSVG({
             stroke="var(--ink-secondary)"
             strokeWidth={SW_MED}
           />
-          {/* Cell divisions: 6 columns */}
-          {Array.from({ length: 5 }).map((_, k) => {
-            const cx = px + ((k + 1) * pw) / 6
-            return (
-              <line
-                key={k}
-                x1={cx}
-                y1={py}
-                x2={cx}
-                y2={py + ph}
-                stroke="var(--ink-tertiary)"
-                strokeWidth={SW_HAIR}
-              />
-            )
-          })}
-          {/* Midline */}
-          <line
-            x1={px}
-            y1={py + ph / 2}
-            x2={px + pw}
-            y2={py + ph / 2}
+          {/* Cell grid */}
+          {cellEls}
+          {/* Inner frame line (panel rim structure) */}
+          <rect
+            x={px + 2}
+            y={py + 2}
+            width={Math.max(0, pw - 4)}
+            height={Math.max(0, ph - 4)}
+            fill="none"
             stroke="var(--ink-tertiary)"
             strokeWidth={SW_HAIR}
+            opacity={0.6}
           />
-          {/* Hinge brackets at the inner edge */}
+          {/* Hinge brackets at the inboard edge (between panels) */}
           {i > 0 && (
             <g>
               <circle
                 cx={side > 0 ? px : px + pw}
-                cy={py + ph * 0.22}
+                cy={py + ph * 0.2}
                 r={2.4}
                 fill="var(--bg-surface)"
                 stroke="var(--ink-primary)"
@@ -181,7 +281,7 @@ export function SatelliteProfileSVG({
               />
               <circle
                 cx={side > 0 ? px : px + pw}
-                cy={py + ph * 0.78}
+                cy={py + ph * 0.8}
                 r={2.4}
                 fill="var(--bg-surface)"
                 stroke="var(--ink-primary)"
@@ -574,14 +674,17 @@ export function SatelliteProfileSVG({
 
   // 1. Solar array (far left)
   {
-    const [ax, ay] = toPx(-(BUS_W_M / 2 + YOKE_M + panelLenM * 0.5), PANEL_CHORD_M * 0.6)
+    const [ax, ay] = toPx(
+      -(BUS_W_M / 2 + YOKE_M + panelLenMReal * 0.5),
+      PANEL_CHORD_M * 0.6,
+    )
     callouts.push({
       ax,
       ay,
       lx: leftLabelX,
       ly: 100,
       label: "SOLAR ARRAY",
-      sublabel: `3 panels / wing · ${totalAreaM2.toFixed(1)} m² total`,
+      sublabel: `${N_PANELS_PER_SIDE} panels / wing · ${totalArrayAreaM2.toFixed(1)} m² · ${cellsTotal.toLocaleString()} cells`,
       side: "left",
     })
   }
@@ -768,6 +871,84 @@ export function SatelliteProfileSVG({
         </text>
 
         {/* Callouts */}
+        {/* Design chain info box. Every row is a real number from the
+            solar array design chain, not a displayed constant. */}
+        <g>
+          <rect
+            x={70}
+            y={338}
+            width={420}
+            height={118}
+            fill="var(--bg-surface)"
+            stroke="var(--ink-secondary)"
+            strokeWidth={SW_THIN}
+          />
+          <text
+            x={78}
+            y={352}
+            fontFamily="ui-monospace, monospace"
+            fontSize={9}
+            fontWeight={600}
+            fill="var(--ink-primary)"
+          >
+            SOLAR ARRAY DESIGN CHAIN
+          </text>
+          <line
+            x1={70}
+            y1={358}
+            x2={490}
+            y2={358}
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_HAIR}
+          />
+          {(() => {
+            const rowY0 = 370
+            const rowStep = 12
+            const rows: Array<[string, string]> = [
+              ["I_AM0", `${I_AM0_W_PER_M2.toFixed(0)} W/m²`],
+              ["η_cell · packing · PSE", `${ETA_CELL.toFixed(2)} · ${PACKING_FACTOR.toFixed(2)} · ${PSE_EFFICIENCY.toFixed(2)}`],
+              ["effective", `${EFFECTIVE_SPECIFIC_POWER_W_PER_M2.toFixed(1)} W/m²`],
+              ["array area", `${totalArrayAreaM2.toFixed(1)} m² (2 wings)`],
+              ["panel", `${panelLenMReal.toFixed(2)} × ${PANEL_CHORD_M.toFixed(2)} m · ${panelRealAreaM2.toFixed(2)} m²`],
+              ["cells/panel", `${cellsAcross} × ${cellsDown} = ${cellsPerPanel.toLocaleString()}`],
+              ["span · total cells", `${totalArraySpanM.toFixed(1)} m · ${cellsTotal.toLocaleString()}`],
+            ]
+            return rows.map(([k, v], i) => (
+              <g key={k}>
+                <text
+                  x={78}
+                  y={rowY0 + i * rowStep}
+                  fontFamily="ui-monospace, monospace"
+                  fontSize={8}
+                  fill="var(--ink-tertiary)"
+                >
+                  {k}
+                </text>
+                <text
+                  x={300}
+                  y={rowY0 + i * rowStep}
+                  textAnchor="end"
+                  fontFamily="ui-monospace, monospace"
+                  fontSize={8}
+                  fill="var(--ink-primary)"
+                >
+                  {v}
+                </text>
+              </g>
+            ))
+          })()}
+          <text
+            x={484}
+            y={394}
+            textAnchor="end"
+            fontFamily="ui-monospace, monospace"
+            fontSize={7}
+            fill="var(--ink-tertiary)"
+          >
+            {`${CELL_SIZE_M * 1000}mm cell · ${CELL_GAP_M * 1000}mm gap · ${(CELL_PITCH_M * 1000).toFixed(0)}mm pitch`}
+          </text>
+        </g>
+
         {callouts.map((c, i) => (
           <Callout
             key={i}
