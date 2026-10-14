@@ -15,6 +15,8 @@ export type ClearDRequest = {
   max_nodes?: number
   max_links?: number
   use_conflict_directed?: boolean
+  ground_station_lat_deg?: number
+  ground_station_lon_deg?: number
 }
 
 export type GenerationStat = {

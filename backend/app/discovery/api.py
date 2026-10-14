@@ -50,6 +50,8 @@ class RunRequest(BaseModel):
     max_nodes: int = Field(8, ge=2, le=30)
     max_links: int = Field(6, ge=1, le=40)
     use_conflict_directed: bool = True
+    ground_station_lat_deg: float | None = Field(None, ge=-90.0, le=90.0)
+    ground_station_lon_deg: float | None = Field(None, ge=-180.0, le=180.0)
 
 
 class GenerationStatModel(BaseModel):
@@ -115,6 +117,8 @@ async def run(request: RunRequest) -> RunResponse:
                         max_nodes=request.max_nodes,
                         max_links=request.max_links,
                         seed=request.seed + i,
+                        ground_station_lat_deg=request.ground_station_lat_deg,
+                        ground_station_lon_deg=request.ground_station_lon_deg,
                     )
                 )
             )
