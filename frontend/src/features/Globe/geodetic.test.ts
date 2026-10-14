@@ -1,12 +1,5 @@
 import { describe, expect, it } from "vitest"
-import {
-  EARTH_RADIUS_M,
-  geodeticToUnit,
-  greatCircleInterpolate,
-  magnitude,
-  surfaceUnitVector,
-  type Vec3,
-} from "./geodetic"
+import { EARTH_RADIUS_M, geodeticToUnit, greatCircleInterpolate, inverseGeodetic, magnitude, surfaceUnitVector, type Vec3 } from "./geodetic"
 
 describe("EARTH_RADIUS_M", () => {
   it("matches the backend spherical Earth radius", () => {
@@ -186,5 +179,28 @@ describe("geodeticToUnit: agreement with backend positions", () => {
     expect(fx).toBeCloseTo(bx / EARTH_RADIUS_M, 12)
     expect(fy).toBeCloseTo(bz / EARTH_RADIUS_M, 12)
     expect(fz).toBeCloseTo(by / EARTH_RADIUS_M, 12)
+  })
+})
+
+describe("inverseGeodetic", () => {
+  it("round-trips through geodeticToUnit", () => {
+    const cases: [number, number][] = [
+      [0, 0],
+      [45, 90],
+      [-30, -120],
+      [89.9, 179.9],
+      [-89.9, -179.9],
+      [40.798, -77.86],
+    ]
+    for (const [lat, lon] of cases) {
+      const v = geodeticToUnit(lat, lon, 0)
+      const back = inverseGeodetic(v)
+      expect(back.lat_deg).toBeCloseTo(lat, 4)
+      expect(back.lon_deg).toBeCloseTo(lon, 4)
+    }
+  })
+
+  it("throws on the zero vector", () => {
+    expect(() => inverseGeodetic([0, 0, 0])).toThrow()
   })
 })
