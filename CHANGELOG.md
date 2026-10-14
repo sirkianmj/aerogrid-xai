@@ -5,6 +5,46 @@ This project adheres to Semantic Versioning.
 
 ## [Unreleased]
 
+### Added (Instrument — PRs #80 through #102)
+
+UI and API work after Sprint 10 that turned the platform into the
+instrument Section 4 of the specification describes:
+
+- `GET /mission/state` — a coherent scenario composed from the real
+  SGP4 propagation, Kruse-Kim transmittance, Z3 SAT/UNSAT verdict on
+  a generated architecture, a one-generation CLEAR-D snapshot, and a
+  Tier 1 decision trace. New router mounted in `backend/app/main.py`.
+- Mission Control panel — the Section 4 pipeline rendered as a live
+  vertical instrument with per-stage status pills (`wired` / `partial`
+  / `pending` / `offline`).
+- CLEAR-D Discovery dashboard — the loop's unsat-core-to-grammar
+  attribution trace exposed via `POST /discovery/run` and rendered in
+  the UI. `run_clear_d_loop` gained an optional `trace` parameter
+  (default `None`, existing callers unchanged).
+- Animated Globe — satellite picker, time scrubber, play/pause, and
+  speed selector. Uses the existing `/orbital/track` endpoint with
+  caller-controlled `t_start` / `t_end` / `step_seconds`.
+- FANET graph — layered topology rendered from the architecture's
+  `node_list` and `link_list`. `ArchitectureSummary` extended with
+  both (additive, empty defaults).
+- Mission configuration bar + `MissionProvider` context — one source
+  of truth for the mission, driving every panel that consumes it.
+  `/mission/state` gained `ground_lat_deg`, `ground_lon_deg`,
+  `transmitter_power_w` query parameters.
+- Ground-anchored CLEAR-D — `GeneratorConfig` gained
+  `ground_station_lat_deg` / `ground_station_lon_deg` so the loop's
+  architectures are rooted at the configured ground station.
+- Tier 2 uncertainty bands — the calibrated interval around
+  atmospheric transmittance is surfaced in the mission state and
+  rendered in Mission Control.
+
+The TradeSpace frontend client was fixed to send its `Authorization`
+header (previously 401 after s8-6 required auth on `/tradespace/run`).
+A `SessionBar` was added so a JWT can be pasted without opening
+DevTools.
+
+Backend test count 990 -> 1106. Frontend 163 -> 224.
+
 ### Added (Sprint 8 - PRs #71 through #79)
 - PostgreSQL row-level security on `missions` (PR #71). Application
   role `aerogrid_app` with NOSUPERUSER NOBYPASSRLS; `tenant_session`

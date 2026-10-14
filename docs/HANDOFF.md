@@ -1,7 +1,7 @@
 # Handoff Document — AeroGrid-XAI (next AI agent)
 
-**Written:** 2026-10-13. Original at `33d94f9`; section 12 appended for `faa9cab`.
-**Repository state:** `main` at commit `faa9cab`. Sections 0-11 remain valid
+**Written:** 2026-10-13. Section 12 updated 2026-10-14 for `043ef8e`.
+**Repository state:** `main` at commit `043ef8e`. Sections 0-11 remain valid
 for the deep technical content (CLEAR-D pipeline structure, physics constants,
 attributions, tooling facts). Section 12 supersedes any state claim in
 sections 0-9.
@@ -467,17 +467,19 @@ update it.
 
 ---
 
-## 12. Post-Sprint-7 Update — state at `6871f39`
+## 12. Post-Sprint-7 Update — state at `043ef8e`
 
 This section supersedes the state claims in sections 0-9 of this document.
 Written 2026-10-13 after Sprint 8 s8-6 merged (PR #75).
 
 ### Current position
 
-    main HEAD           6871f39  (PR #79, Sprint 8 complete 9/9)
-    tests backend       990 passed  (before 004 migration; test counts
-                        below are CI-verified on main at 6871f39)
-    tests frontend      163 passed
+    main HEAD           043ef8e  (PR #102, Tier 2 atmospheric bands)
+    tests backend       1106 passed, 0 skipped
+    tests frontend      224 passed
+    CI jobs             6: backend, frontend, formal-verification,
+                        cla-check, rls-isolation, master-test
+    branch protection   all six above are required contexts
     CI jobs             5: backend, frontend, formal-verification,
                         cla-check, rls-isolation
     branch protection   all five above are required contexts

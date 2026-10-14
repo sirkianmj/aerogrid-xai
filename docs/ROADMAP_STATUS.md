@@ -265,6 +265,44 @@ The s10-6 audit records that P5 (Han et al. citation) and C-3 (MUC-G4
 paper characterization) both remain open because neither can be closed
 without external access to the sources. Neither is hidden.
 
+## Instrument — post-Sprint-10 UI work (2026-10-14)
+
+After Sprint 10, eight UI PRs (merges #95–#102) turned the platform from
+a collection of independent panels into an instrument that matches
+Section 4 of the specification. All are on `main` at `043ef8e`; the six
+required CI contexts are green throughout.
+
+| Capability | Merged | What it added |
+|---|---|---|
+| Mission state endpoint | #95 | `GET /mission/state` — one coherent scenario from real primitives |
+| Pipeline view | #95 | Section 4 rendered as a live vertical instrument |
+| CLEAR-D live dashboard | #96 | Trace of unsat-core→grammar attribution, visible in the UI |
+| Animated Globe + time control | #97 | Satellite picker, play/pause, time scrubber, speed |
+| FANET graph | #98 | Layered topology of the architecture's node_list/link_list |
+| Mission configuration | #99 | `MissionProvider` + config bar driving all mission-state panels |
+| Ground-anchored CLEAR-D | #101 | Architectures rooted at the user's ground station |
+| Tier 2 uncertainty bands | #102 | Calibrated interval on atmospheric transmittance |
+
+Current test counts at `043ef8e`: backend 1106, frontend 224.
+
+### Remaining instrument work
+
+- **Real sign-in flow.** Replace the paste-a-JWT SessionBar with a
+  login form and a `POST /auth/token` endpoint. Backend needs a
+  password bootstrap path.
+- **What-If simulation (spec §22).** Modify environment, observe
+  consequences, diff against baseline.
+
+### Closed findings during this work
+
+- **P34** (Sprint 7 s7-7/s7-9 partial): closed by `docs/EPISTEMIC_HIERARCHY_AUDIT.md` (s10-3, PR #92).
+- **Baseline red** at the start of s8-6: `**/quota.py` needed a B008 per-file-ignore; fixed in PR #75.
+- **Missing auth in TradeSpace client:** the frontend never sent an `Authorization` header after s8-6 required one; fixed in PR #94.
+- **`consume()` ignored its own `now` parameter** when computing `Retry-After`; fixed in PR #75.
+- **Two physical bugs in the new mission-state code** found during development and fixed before merge: (a) atmospheric path length used the full slant range to orbit instead of `8.5 km / sin(elev)`; (b) SGP4 propagation of 2014 TLEs to 2026 produced nonsensical altitudes, now marked `valid=false` with a reason rather than crashing.
+- **`GeneratorConfig` could not be anchored on a specific ground station**; added in PR #101.
+- **oxlint `set-state-in-effect` warnings** (three, carried from Sprint 7): resolved as a side effect of the MissionConfigBar effect removal in PR #99.
+
 ## Phase 2 — Multi-Modal Wireless Power Model (in progress)
 
 This is Phase 2 of the specification's Development Phases (Section 25),
@@ -307,7 +345,7 @@ Sprint 8 (multi-tenant SaaS) at `faa9cab`:
 | s8-8 Notebook 09 (multi-tenant isolation) | COMPLETE | #78 |
 | s8-9 Scientific gate: DB-level isolation audit | COMPLETE | #77 |
 
-Sprint 8 closed at `6871f39`. Test counts: backend 990, frontend 163.
+Sprint 8 closed at `6871f39`.
 The `rls-isolation` CI job runs five DB-backed test modules
 (test_rls_isolation, test_saas_routes, test_saas_billing_routes,
 test_saas_quota, test_saas_admin_routes) against an ephemeral
@@ -328,7 +366,7 @@ fails on any skip.
 ## Documentation drift resolved
 
 - `docs/HANDOFF.md` written from the verified state at commit `aab8a42`.
-- `CHANGELOG.md` updated through Sprint 10.
+- `CHANGELOG.md` updated through PR #102.
 - This file's prior "Sprints 4–12 not started" statement is corrected above.
 
 ## Outstanding
