@@ -19,6 +19,7 @@ const SAMPLE_RESPONSE: ChargeDecisionResponse = {
   alternative: { action: "charge_uav_18", score: 4.0 },
   confidence: 0.9,
   confidence_note: "Tier 1 rule-confidence; not a physical-reality guarantee (Section 15.5).",
+  counterfactuals: [],
 }
 
 describe("postChargeDecision", () => {

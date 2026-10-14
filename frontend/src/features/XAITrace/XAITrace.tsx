@@ -145,6 +145,46 @@ function TraceView({ trace }: { trace: ChargeDecisionResponse }) {
         </div>
       )}
 
+      {trace.counterfactuals.length > 0 && (
+        <div className="mb-4">
+          <h3 className="mb-2 text-sm font-medium">
+            What would change this decision?
+          </h3>
+          <p className="mb-2 text-xs opacity-60">
+            Each row shows the outcome if a single rule that fired on the
+            winner had been removed. A change means the removed rule was
+            decisive: the model would have selected a different action.
+            Section 26 rule-ablation counterfactual — exact consequence
+            of the Tier 1 rule arithmetic, not a physical prediction.
+          </p>
+          <ul className="m-0 list-none space-y-1 p-0 text-sm">
+            {trace.counterfactuals.map((cf, i) => (
+              <li
+                key={`${cf.removed_rule}-${i}`}
+                className="flex items-baseline gap-3"
+                data-testid={`counterfactual-${i}`}
+                data-counterfactual-changed={cf.changed ? "true" : "false"}
+              >
+                <span className="font-mono text-xs opacity-70">
+                  {cf.removed_rule}
+                </span>
+                {cf.changed ? (
+                  <span>
+                    <span className="opacity-70">remove &rarr; would select </span>
+                    <span className="font-mono">{cf.would_select}</span>
+                    <span className="ml-2 text-xs opacity-60">
+                      (score {cf.ablated_winner_score.toFixed(3)})
+                    </span>
+                  </span>
+                ) : (
+                  <span className="opacity-60">remove &rarr; no change</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <details>
         <summary className="cursor-pointer text-sm font-medium">
           Consulted rules ({trace.consulted_rules.length})
