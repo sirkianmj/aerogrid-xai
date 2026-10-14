@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { ClearDDashboard } from "./ClearDDashboard"
+import { MissionProvider } from "../MissionControl/MissionProvider"
 import type { ClearDResponse } from "./clearDApi"
 
 const SAMPLE: ClearDResponse = {
@@ -65,6 +66,10 @@ function stubFetchOk(payload: ClearDResponse = SAMPLE): ReturnType<typeof vi.fn>
   return fn
 }
 
+function renderWithProvider(ui: React.ReactElement) {
+  return render(ui, { wrapper: MissionProvider })
+}
+
 describe("ClearDDashboard", () => {
   afterEach(() => {
     vi.restoreAllMocks()
@@ -74,7 +79,7 @@ describe("ClearDDashboard", () => {
 
   it("renders the heading and idle state on mount", () => {
     stubFetchOk()
-    render(<ClearDDashboard />)
+    renderWithProvider(<ClearDDashboard />)
     expect(
       screen.getByRole("heading", { name: /clear-d discovery/i, level: 2 }),
     ).toBeInTheDocument()
@@ -82,30 +87,40 @@ describe("ClearDDashboard", () => {
     expect(screen.getByRole("button", { name: /run clear-d/i })).toBeEnabled()
   })
 
-  it("does not fetch on mount", () => {
+  it("does not trigger a CLEAR-D run on mount", () => {
+    // The MissionProvider fetches /mission/state on mount; the panel
+    // itself must not trigger a CLEAR-D run until the user clicks.
     const fetchMock = vi.fn()
     vi.stubGlobal("fetch", fetchMock)
-    render(<ClearDDashboard />)
-    expect(fetchMock).not.toHaveBeenCalled()
+    renderWithProvider(<ClearDDashboard />)
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]))
+    expect(urls.some((u) => u.includes("/discovery/run"))).toBe(false)
   })
 
   it("runs CLEAR-D when the user clicks the button", async () => {
     const fn = stubFetchOk()
     const user = userEvent.setup()
-    render(<ClearDDashboard />)
+    renderWithProvider(<ClearDDashboard />)
     await user.click(screen.getByRole("button", { name: /run clear-d/i }))
-    await waitFor(() => expect(fn).toHaveBeenCalledTimes(1))
-    const init = fn.mock.calls[0][1] as RequestInit
+    await waitFor(() => {
+      const urls = fn.mock.calls.map((c) => String(c[0]))
+      expect(urls.some((u) => u.includes("/discovery/run"))).toBe(true)
+    })
+    const discoveryCall = fn.mock.calls.find((c) =>
+      String(c[0]).includes("/discovery/run"),
+    )
+    const init = discoveryCall![1] as RequestInit
     const body = JSON.parse(init.body as string) as Record<string, unknown>
-    expect(body.population_size).toBe(12)
-    expect(body.n_generations).toBe(10)
+    // Default mission config has n_uavs=6, seed=20261014.
+    expect(body.population_size).toBe(6)
+    expect(body.seed).toBe(20261014)
     expect(body.use_conflict_directed).toBe(true)
   })
 
   it("renders the generation table with one row per generation", async () => {
     stubFetchOk()
     const user = userEvent.setup()
-    render(<ClearDDashboard />)
+    renderWithProvider(<ClearDDashboard />)
     await user.click(screen.getByRole("button", { name: /run clear-d/i }))
     await waitFor(() =>
       expect(screen.getByText(/per-generation progress/i)).toBeInTheDocument(),
@@ -118,7 +133,7 @@ describe("ClearDDashboard", () => {
   it("renders the conflict-prone features with counts", async () => {
     stubFetchOk()
     const user = userEvent.setup()
-    render(<ClearDDashboard />)
+    renderWithProvider(<ClearDDashboard />)
     await user.click(screen.getByRole("button", { name: /run clear-d/i }))
     await waitFor(() =>
       expect(screen.getByText(/conflict-prone grammar features/i)).toBeInTheDocument(),
@@ -131,7 +146,7 @@ describe("ClearDDashboard", () => {
   it("renders one trace line per UNSAT event and lists its mapped features", async () => {
     stubFetchOk()
     const user = userEvent.setup()
-    render(<ClearDDashboard />)
+    renderWithProvider(<ClearDDashboard />)
     await user.click(screen.getByRole("button", { name: /run clear-d/i }))
     await waitFor(() =>
       expect(screen.getByText(/attribution trace — unsat events/i)).toBeInTheDocument(),
@@ -149,7 +164,7 @@ describe("ClearDDashboard", () => {
   it("renders SAT and UNSAT totals", async () => {
     stubFetchOk()
     const user = userEvent.setup()
-    render(<ClearDDashboard />)
+    renderWithProvider(<ClearDDashboard />)
     await user.click(screen.getByRole("button", { name: /run clear-d/i }))
     await waitFor(() =>
       expect(screen.getByTestId("stat-sat-value")).toBeInTheDocument(),
@@ -173,7 +188,7 @@ describe("ClearDDashboard", () => {
       ),
     )
     const user = userEvent.setup()
-    render(<ClearDDashboard />)
+    renderWithProvider(<ClearDDashboard />)
     await user.click(screen.getByRole("button", { name: /run clear-d/i }))
     await waitFor(() =>
       expect(
@@ -185,7 +200,7 @@ describe("ClearDDashboard", () => {
   it("shows a network error when fetch rejects", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("network failure"))))
     const user = userEvent.setup()
-    render(<ClearDDashboard />)
+    renderWithProvider(<ClearDDashboard />)
     await user.click(screen.getByRole("button", { name: /run clear-d/i }))
     await waitFor(() => expect(screen.getByText(/network failure/i)).toBeInTheDocument())
   })
@@ -202,7 +217,7 @@ describe("ClearDDashboard", () => {
       ),
     )
     const user = userEvent.setup()
-    render(<ClearDDashboard />)
+    renderWithProvider(<ClearDDashboard />)
     await user.click(screen.getByRole("button", { name: /run clear-d/i }))
     expect(screen.getByRole("button", { name: /running/i })).toBeDisabled()
     resolver.current?.({
@@ -212,25 +227,104 @@ describe("ClearDDashboard", () => {
     } as Response)
   })
 
-  it("sends Authorization: Bearer when a token is stored", async () => {
+  it("sends Authorization: Bearer on the CLEAR-D run when a token is stored", async () => {
     window.localStorage.setItem("aerogrid.token", "test-token")
     const fn = stubFetchOk()
     const user = userEvent.setup()
-    render(<ClearDDashboard />)
+    renderWithProvider(<ClearDDashboard />)
     await user.click(screen.getByRole("button", { name: /run clear-d/i }))
-    await waitFor(() => expect(fn).toHaveBeenCalled())
-    const init = fn.mock.calls[0][1] as RequestInit
+    await waitFor(() => {
+      const urls = fn.mock.calls.map((c) => String(c[0]))
+      expect(urls.some((u) => u.includes("/discovery/run"))).toBe(true)
+    })
+    const discoveryCall = fn.mock.calls.find((c) =>
+      String(c[0]).includes("/discovery/run"),
+    )
+    const init = discoveryCall![1] as RequestInit
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer test-token")
   })
 
   it("renders the Section 21 simulation_result badge on success", async () => {
     stubFetchOk()
     const user = userEvent.setup()
-    const { container } = render(<ClearDDashboard />)
+    const { container } = renderWithProvider(<ClearDDashboard />)
     await user.click(screen.getByRole("button", { name: /run clear-d/i }))
     await waitFor(() => {
       const badges = container.querySelectorAll('[data-epistemic-tag="simulation_result"]')
       expect(badges.length).toBeGreaterThanOrEqual(1)
     })
+  })
+
+  it("builds its run request from the mission config", async () => {
+    // The provider fetches /mission/state on mount, then the CLEAR-D
+    // run posts to /discovery/run. Stub both so we can inspect the POST
+    // body. The default mission config has n_uavs=6 and seed=20261014,
+    // so the CLEAR-D run must use population_size>=4 (6 here) and
+    // seed=20261014.
+    const fn = vi.fn()
+    fn.mockImplementation((url: string) => {
+      if (String(url).startsWith("/api/mission/state")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              // minimal MissionState — the ClearDDashboard panel does
+              // not read from the mission state, so a stub suffices.
+              t_utc: "2014-01-20T22:23:04+00:00",
+              seed: 20261014,
+              satellite: {
+                key: "iss", name: "ISS (ZARYA)", orbit_class: "LEO",
+                tle_epoch_utc: "2014-01-20T22:23:04+00:00", tle_age_seconds: 0,
+                valid: true, invalid_reason: "", period_seconds: 5580,
+                lat_deg: 0, lon_deg: 0, alt_km: 400, in_eclipse: false,
+                epistemic_tag: "validated_physical_model",
+              },
+              ground_station: { name: "GS", lat_deg: 0, lon_deg: 0, alt_m: 0 },
+              transmission: { modality: "offline", wavelength_nm: 1064,
+                transmitter_power_w: 10000, slant_range_m: 0,
+                atmospheric_path_m: 0, elevation_deg: -90 },
+              atmosphere: { transmittance: 0, visibility_km: 10,
+                cloud_factor: 0.2, extinction_coeff_per_m: 1e-5 },
+              uavs: [],
+              architecture: { nodes: 0, links: 0, node_kinds: {}, link_kinds: {},
+                sat_verdict: "sat", n_constraints: 0, epsilon_bound: 0,
+                node_list: [], link_list: [] },
+              cleard: { population_size: 0, n_generations: 0, feasible_final: 0,
+                infeasible_final: 0, conflict_prone_features: 0,
+                use_conflict_directed: true, epistemic_tag: "simulation_result" },
+              tier1: { selected_action: "", decision_kind: "charge", score: 0,
+                alternative_action: "", alternative_score: 0, confidence: 1,
+                epistemic_tag: "tier1_decision_trace" },
+              pipeline_stages: [],
+              epistemic_tag: "simulation_result",
+            }),
+        } as Response)
+      }
+      // /discovery/run
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(SAMPLE),
+      } as Response)
+    })
+    vi.stubGlobal("fetch", fn)
+
+    const user = userEvent.setup()
+    renderWithProvider(<ClearDDashboard />)
+    await user.click(screen.getByRole("button", { name: /run clear-d/i }))
+    await waitFor(() => {
+      const urls = fn.mock.calls.map((c) => String(c[0]))
+      expect(urls.some((u) => u.includes("/discovery/run"))).toBe(true)
+    })
+    const discoveryCall = fn.mock.calls.find((c) =>
+      String(c[0]).includes("/discovery/run"),
+    )
+    expect(discoveryCall).toBeDefined()
+    const init = discoveryCall![1] as RequestInit
+    const body = JSON.parse(init.body as string) as Record<string, unknown>
+    // Default mission config: n_uavs=6, seed=20261014.
+    expect(body.population_size).toBe(6)
+    expect(body.seed).toBe(20261014)
   })
 })
