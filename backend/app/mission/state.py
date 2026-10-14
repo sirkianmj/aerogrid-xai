@@ -18,7 +18,7 @@ import random
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.control.tier1 import decide_charge_uav, default_charge_rule_list
 from app.discovery.attribution import ConflictProneTable, attribute_and_mark
@@ -109,6 +109,27 @@ class UavState(BaseModel):
     transfer_loss: float
 
 
+class MissionNode(BaseModel):
+    """One node in the discovered architecture.
+
+    The full graph is exposed so the frontend can render the UAV
+    network topology, not just aggregate counts.
+    """
+
+    node_id: str
+    kind: str
+    params: dict[str, float] = Field(default_factory=dict)
+
+
+class MissionLink(BaseModel):
+    """One directed link in the discovered architecture."""
+
+    link_id: str
+    kind: str
+    source_id: str
+    target_id: str
+
+
 class ArchitectureSummary(BaseModel):
     nodes: int
     links: int
@@ -117,6 +138,8 @@ class ArchitectureSummary(BaseModel):
     sat_verdict: str
     n_constraints: int
     epsilon_bound: float
+    node_list: list[MissionNode] = Field(default_factory=list)
+    link_list: list[MissionLink] = Field(default_factory=list)
 
 
 class ClearDSnapshot(BaseModel):
@@ -392,6 +415,28 @@ def compute_mission_state(
     for ln in arch.links:
         link_kinds[ln.kind.value] = link_kinds.get(ln.kind.value, 0) + 1
 
+    node_list = [
+        MissionNode(
+            node_id=n.node_id,
+            kind=n.kind.value,
+            params={
+                k: float(v)
+                for k, v in n.params.items()
+                if isinstance(v, (int, float)) and not isinstance(v, bool)
+            },
+        )
+        for n in arch.nodes
+    ]
+    link_list = [
+        MissionLink(
+            link_id=ln.link_id,
+            kind=ln.kind.value,
+            source_id=ln.source_id,
+            target_id=ln.target_id,
+        )
+        for ln in arch.links
+    ]
+
     architecture = ArchitectureSummary(
         nodes=len(arch.nodes),
         links=len(arch.links),
@@ -400,6 +445,8 @@ def compute_mission_state(
         sat_verdict=str(attribution.status),
         n_constraints=len(constraints),
         epsilon_bound=float(epsilon_bound),
+        node_list=node_list,
+        link_list=link_list,
     )
 
     # --- CLEAR-D one-generation snapshot ------------------------------

@@ -82,6 +82,21 @@ const SAMPLE: MissionState = {
     sat_verdict: "sat",
     n_constraints: 20,
     epsilon_bound: 3.281e-3,
+    node_list: [
+      { node_id: "n0", kind: "UAV_Energy", params: { battery_pct: 45 } },
+      { node_id: "n1", kind: "UAV_Compute", params: { battery_pct: 30 } },
+      { node_id: "n2", kind: "UAV_Energy", params: { battery_pct: 60 } },
+      { node_id: "n3", kind: "UAV_Compute", params: { battery_pct: 20 } },
+      { node_id: "n4", kind: "UAV_Energy", params: { battery_pct: 50 } },
+      { node_id: "n5", kind: "Ground_Station", params: {} },
+    ],
+    link_list: [
+      { link_id: "l0", kind: "Laser_Link", source_id: "n0", target_id: "n1" },
+      { link_id: "l1", kind: "Laser_Link", source_id: "n0", target_id: "n2" },
+      { link_id: "l2", kind: "Laser_Link", source_id: "n1", target_id: "n3" },
+      { link_id: "l3", kind: "Laser_Link", source_id: "n2", target_id: "n4" },
+      { link_id: "l4", kind: "Laser_Link", source_id: "n5", target_id: "n0" },
+    ],
   },
   cleard: {
     population_size: 6,
