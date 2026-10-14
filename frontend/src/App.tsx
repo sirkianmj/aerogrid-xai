@@ -3,6 +3,7 @@ import { EpistemicBadge } from "./components/EpistemicBadge/EpistemicBadge"
 import { SessionBar } from "./components/Session/SessionBar"
 import { MissionControl } from "./features/MissionControl/MissionControl"
 import { ClearDDashboard } from "./features/ClearDDashboard/ClearDDashboard"
+import { FanetGraph } from "./features/Fanet/FanetGraph"
 import { ALL_TAGS, EPISTEMIC_TAGS } from "./components/EpistemicBadge/epistemic"
 import { XAITrace } from "./features/XAITrace/XAITrace"
 import { Globe } from "./features/Globe/Globe"
@@ -48,6 +49,8 @@ function App() {
       <MissionControl />
 
       <ClearDDashboard />
+
+      <FanetGraph />
 
       <section className="mb-10" aria-labelledby="backend-status-heading">
         <h2 id="backend-status-heading" className="mb-3 text-lg font-medium">

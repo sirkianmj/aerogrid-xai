@@ -63,6 +63,19 @@ export type UavState = {
   transfer_loss: number
 }
 
+export type MissionNode = {
+  node_id: string
+  kind: string
+  params: Record<string, number>
+}
+
+export type MissionLink = {
+  link_id: string
+  kind: string
+  source_id: string
+  target_id: string
+}
+
 export type ArchitectureSummary = {
   nodes: number
   links: number
@@ -71,6 +84,8 @@ export type ArchitectureSummary = {
   sat_verdict: string
   n_constraints: number
   epsilon_bound: number
+  node_list: MissionNode[]
+  link_list: MissionLink[]
 }
 
 export type ClearDSnapshot = {
