@@ -180,6 +180,7 @@ export type MissionStateRequest = {
   ground_lat_deg: number
   ground_lon_deg: number
   transmitter_power_w: number
+  wavelength_nm: number
   visibility_km: number
   cloud_factor: number
   transmitter_aperture_m: number
@@ -188,6 +189,17 @@ export type MissionStateRequest = {
   uav_receiver_type: string
   t_utc?: string | null
   selected_architecture?: SelectedArchitecture | null
+  uav_hardware_list?: UavHardware[] | null
+}
+
+export type UavHardware = {
+  receiver_aperture_m2: number
+  receiver_type: string
+  battery_efficiency: number
+  mass_kg: number
+  wingspan_m: number
+  battery_wh: number
+  thermal_limit_c: number
 }
 
 export class MissionApiError extends Error {

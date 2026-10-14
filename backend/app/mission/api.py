@@ -42,6 +42,7 @@ async def get_mission_state(
     ground_lat_deg: float = Query(40.798, ge=-90.0, le=90.0),
     ground_lon_deg: float = Query(-77.860, ge=-180.0, le=180.0),
     transmitter_power_w: float = Query(10_000.0, gt=0.0, le=1e9),
+    wavelength_nm: float = Query(1064.0, gt=0.0, le=10_000.0),
     visibility_km: float = Query(
         10.0,
         gt=0.0,
@@ -126,6 +127,7 @@ async def get_mission_state(
             ground_lat_deg=ground_lat_deg,
             ground_lon_deg=ground_lon_deg,
             transmitter_power_w=transmitter_power_w,
+            wavelength_nm=wavelength_nm,
             visibility_km=visibility_km,
             cloud_factor=cloud_factor,
         )
@@ -169,6 +171,18 @@ class SelectedArchitectureBody(BaseModel):
     link_list: list[SelectedLinkBody]
 
 
+class UavHardwareBody(BaseModel):
+    """Per-UAV hardware sent from the design studio."""
+
+    receiver_aperture_m2: float = 0.5
+    receiver_type: str = "laser_photovoltaic"
+    battery_efficiency: float = 0.92
+    mass_kg: float = 5.0
+    wingspan_m: float = 2.0
+    battery_wh: float = 100.0
+    thermal_limit_c: float = 80.0
+
+
 class MissionStateRequest(BaseModel):
     """Body for POST /mission/state. Mirrors the GET query parameters."""
 
@@ -185,6 +199,7 @@ class MissionStateRequest(BaseModel):
     ground_lat_deg: float = 40.798
     ground_lon_deg: float = -77.860
     transmitter_power_w: float = 10_000.0
+    wavelength_nm: float = 1064.0
     visibility_km: float = 10.0
     cloud_factor: float = 0.0
     transmitter_aperture_m: float = 0.02
@@ -193,6 +208,7 @@ class MissionStateRequest(BaseModel):
     uav_receiver_type: str = "laser_photovoltaic"
     t_utc: datetime | None = None
     selected_architecture: SelectedArchitectureBody | None = None
+    uav_hardware_list: list[UavHardwareBody] | None = None
 
 
 def _default_params_for_kind(
@@ -308,6 +324,7 @@ async def post_mission_state(req: MissionStateRequest) -> MissionState:
         ground_lat_deg=req.ground_lat_deg,
         ground_lon_deg=req.ground_lon_deg,
         transmitter_power_w=req.transmitter_power_w,
+        wavelength_nm=req.wavelength_nm,
         visibility_km=req.visibility_km,
         cloud_factor=req.cloud_factor,
         transmitter_aperture_m=req.transmitter_aperture_m,
@@ -315,6 +332,22 @@ async def post_mission_state(req: MissionStateRequest) -> MissionState:
         uav_hardware=UavHardware(
             receiver_aperture_m2=req.uav_receiver_aperture_m2,
             receiver_type=req.uav_receiver_type,
+        ),
+        uav_hardware_list=(
+            tuple(
+                UavHardware(
+                    receiver_aperture_m2=h.receiver_aperture_m2,
+                    receiver_type=h.receiver_type,
+                    battery_efficiency=h.battery_efficiency,
+                    mass_kg=h.mass_kg,
+                    wingspan_m=h.wingspan_m,
+                    battery_wh=h.battery_wh,
+                    thermal_limit_c=h.thermal_limit_c,
+                )
+                for h in req.uav_hardware_list
+            )
+            if req.uav_hardware_list is not None
+            else None
         ),
         selected_architecture=selected,
     )

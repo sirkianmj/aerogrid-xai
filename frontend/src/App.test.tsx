@@ -54,6 +54,9 @@ vi.mock("./features/Architectures/ArchitecturesView", () => ({
 vi.mock("./features/Sensitivity/SensitivityPanel", () => ({
   SensitivityPanel: () => <div data-testid="panel-sensitivity" />,
 }))
+vi.mock("./features/DesignStudio/DesignStudio", () => ({
+  DesignStudio: () => <div data-testid="panel-design" />,
+}))
 
 import App from "./App"
 
@@ -165,10 +168,10 @@ describe("App shell", () => {
     expect(screen.getByText("AeroGrid-XAI")).toBeInTheDocument()
   })
 
-  it("renders the six module navigation items", () => {
+  it("renders the seven module navigation items", () => {
     render(<App />)
     const nav = screen.getByRole("navigation", { name: /workspace views/i })
-    expect(within(nav).getAllByRole("button").length).toBe(6)
+    expect(within(nav).getAllByRole("button").length).toBe(7)
   })
 
   it("renders the Tier-2 firewall invariant badge", () => {

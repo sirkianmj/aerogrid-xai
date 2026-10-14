@@ -38,6 +38,8 @@ export type MissionConfig = {
   ground_lat_deg: number
   ground_lon_deg: number
   transmitter_power_w: number
+  /** Transmitter wavelength in nm. */
+  wavelength_nm: number
   n_uavs: number
   seed: number
   t_utc: string | null
@@ -56,6 +58,21 @@ export type MissionConfig = {
   /** When set, the mission uses this topology instead of generating
    *  one. Loaded from the architecture explorer. */
   selected_architecture?: SelectedArchitecture | null
+  /** Per-UAV hardware, index-aligned with the UAVs the mission places.
+   *  When null, every UAV uses the uniform `uav_receiver_*` values
+   *  above. Set by the Design Studio. */
+  uav_hardware_list?: UavHardware[] | null
+}
+
+/** One UAV's hardware. Mirrors the backend UavHardware dataclass. */
+export type UavHardware = {
+  receiver_aperture_m2: number
+  receiver_type: "laser_photovoltaic" | "rectenna"
+  battery_efficiency: number
+  mass_kg: number
+  wingspan_m: number
+  battery_wh: number
+  thermal_limit_c: number
 }
 
 export const DEFAULT_CONFIG: MissionConfig = {
@@ -63,6 +80,7 @@ export const DEFAULT_CONFIG: MissionConfig = {
   ground_lat_deg: 40.798,
   ground_lon_deg: -77.86,
   transmitter_power_w: 10000,
+  wavelength_nm: 1064.0,
   n_uavs: 6,
   seed: 20261014,
   t_utc: null,
@@ -74,6 +92,7 @@ export const DEFAULT_CONFIG: MissionConfig = {
   uav_receiver_aperture_m2: 0.5,
   uav_receiver_type: "laser_photovoltaic",
   selected_architecture: null,
+  uav_hardware_list: null,
 }
 
 export type MissionLoad =
