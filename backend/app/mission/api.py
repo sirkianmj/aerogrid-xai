@@ -181,6 +181,7 @@ class UavHardwareBody(BaseModel):
     wingspan_m: float = 2.0
     battery_wh: float = 100.0
     thermal_limit_c: float = 80.0
+    airframe: str = "fixed_wing"
 
 
 class MissionStateRequest(BaseModel):
@@ -343,6 +344,7 @@ async def post_mission_state(req: MissionStateRequest) -> MissionState:
                     wingspan_m=h.wingspan_m,
                     battery_wh=h.battery_wh,
                     thermal_limit_c=h.thermal_limit_c,
+                    airframe=h.airframe,
                 )
                 for h in req.uav_hardware_list
             )

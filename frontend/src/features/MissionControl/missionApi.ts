@@ -200,6 +200,7 @@ export type UavHardware = {
   wingspan_m: number
   battery_wh: number
   thermal_limit_c: number
+  airframe: string
 }
 
 export class MissionApiError extends Error {

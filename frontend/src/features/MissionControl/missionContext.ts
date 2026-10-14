@@ -73,6 +73,7 @@ export type UavHardware = {
   wingspan_m: number
   battery_wh: number
   thermal_limit_c: number
+  airframe: "fixed_wing" | "multirotor"
 }
 
 export const DEFAULT_CONFIG: MissionConfig = {
