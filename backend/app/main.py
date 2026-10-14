@@ -14,6 +14,7 @@ from app.discovery.api import router as discovery_router
 from app.mission.api import router as mission_router
 from app.physics.api import router as physics_router
 from app.saas.admin_routes import router as saas_admin_router
+from app.saas.auth_routes import router as auth_router
 from app.saas.billing_routes import router as saas_billing_router
 from app.saas.routes import router as saas_router
 from app.telemetry.api import router as telemetry_router
@@ -40,6 +41,7 @@ app.include_router(mission_router)
 app.include_router(telemetry_router)
 app.include_router(tradespace_router)
 app.include_router(saas_router)
+app.include_router(auth_router)
 app.include_router(saas_billing_router)
 app.include_router(saas_admin_router)
 
