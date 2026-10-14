@@ -33,9 +33,17 @@ export type GlobeSceneProps = {
   grounds: GroundMarker[]
   /** Optional link arcs between ground and satellite positions. */
   arcs?: [GroundMarker, TrackPoint][]
+  /** The point the playhead is currently on. Rendered as a distinct
+   *  marker so the user can see the satellite move along the track. */
+  currentPoint?: TrackPoint | null
 }
 
-export function GlobeScene({ track, grounds, arcs = [] }: GlobeSceneProps) {
+export function GlobeScene({
+  track,
+  grounds,
+  arcs = [],
+  currentPoint = null,
+}: GlobeSceneProps) {
   return (
     <group>
       <ambientLight intensity={0.6} />
@@ -98,6 +106,28 @@ export function GlobeScene({ track, grounds, arcs = [] }: GlobeSceneProps) {
           </mesh>
         )
       })}
+
+      {/* Current playhead position: a larger emissive marker so the
+          animated satellite is visually distinct from the static
+          track history. */}
+      {currentPoint && (
+        <mesh
+          position={
+            geodeticToUnit(
+              currentPoint.lat_deg,
+              currentPoint.lon_deg,
+              currentPoint.alt_m,
+            ) as Vec3
+          }
+        >
+          <sphereGeometry args={[0.028, 16, 16]} />
+          <meshStandardMaterial
+            color="#f97316"
+            emissive="#f97316"
+            emissiveIntensity={0.8}
+          />
+        </mesh>
+      )}
 
       {/* Link arcs from ground to satellite. Rendered as a two-segment
           lifted great-circle path, no spline library needed. */}

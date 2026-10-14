@@ -1,23 +1,23 @@
 /**
- * Globe — Section 7 orbital-mechanics panel.
+ * Globe — Section 7 orbital-mechanics panel with time control.
  *
- * Fetches the satellite catalog and one satellite's track on demand,
- * renders the track in a Three.js scene (GlobeScene), and displays the
- * track metadata in a table. The panel is deliberately minimal: it
- * shows what the backend computed and does not interpolate or
- * extrapolate.
+ * Fetches the satellite catalog, one satellite's track over a window
+ * centered on its TLE epoch, and exposes a time scrubber, satellite
+ * picker, play/pause, and speed selector. The playhead advances over
+ * the pre-computed track points; no re-fetch happens during playback.
  *
  * Epistemic tagging
  * -----------------
- * The rendered track is a model output: SGP4/SDP4 propagation of a TLE
- * by the backend. Section 21 category: simulation_result. The panel is
- * wrapped in a TaggedOutput with that tag.
+ * The rendered track is a model output: SGP4/SDP4 propagation of a
+ * TLE by the backend. Section 21 category: simulation_result. The
+ * panel is wrapped in a TaggedOutput with that tag.
  */
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Canvas } from "@react-three/fiber"
 import { OrbitControls } from "@react-three/drei"
 import { TaggedOutput } from "../../components/EpistemicBadge/EpistemicBadge"
+import { GlobeControls } from "./GlobeControls"
 import {
   fetchTrack,
   listSatellites,
@@ -27,17 +27,12 @@ import {
 } from "./orbitalApi"
 import { GlobeScene, type GroundMarker } from "./GlobeScene"
 
-// The demo TLEs shipped in the repository. Newest epochs first so the
-// default selection propagates near-epoch positions.
+// Demo window for the default satellite. SGP4 is only meaningful near
+// the TLE epoch; the packaged Vanguard 1 epoch is 2000-06-28.
 const DEFAULT_SATELLITE = "vanguard_r3"
-
-// Fixed demo window centered on the Vanguard 1 TLE epoch (2000-06-28).
-// SGP4 is only meaningful within a few weeks of the TLE epoch.
 const DEFAULT_T0 = "2000-06-28T17:00:00Z"
 const DEFAULT_T1 = "2000-06-28T19:00:00Z"
 
-// A ground site for the demo. Chosen to be in view for a low-inclination
-// orbit for part of the window.
 const DEMO_GROUNDS: GroundMarker[] = [
   { name: "GS-Alpha", lat_deg: 30.0, lon_deg: -60.0 },
   { name: "GS-Beta", lat_deg: -20.0, lon_deg: 120.0 },
@@ -53,9 +48,42 @@ type PanelState =
     }
   | { status: "error"; message: string; status_code?: number }
 
+/**
+ * Two-hour window centered on the satellite's own TLE epoch. The
+ * default satellite keeps its historical demo window so existing
+ * behavior is unchanged; other satellites use their own epoch.
+ */
+function windowFor(sat: SatelliteInfo): { t0: string; t1: string } {
+  if (sat.key === DEFAULT_SATELLITE) {
+    return { t0: DEFAULT_T0, t1: DEFAULT_T1 }
+  }
+  const epoch = new Date(sat.epoch_utc)
+  const t1 = new Date(epoch.getTime() + 2 * 60 * 60 * 1000)
+  return { t0: epoch.toISOString(), t1: t1.toISOString() }
+}
+
 export function Globe() {
   const [state, setState] = useState<PanelState>({ status: "loading" })
+  const [playheadIndex, setPlayheadIndex] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [speed, setSpeed] = useState<number>(4)
+  const abortRef = useRef<AbortController | null>(null)
 
+  const loadTrack = useCallback(
+    async (satellite: SatelliteInfo, signal: AbortSignal) => {
+      const { t0, t1 } = windowFor(satellite)
+      return fetchTrack({
+        satellite: satellite.key,
+        tStartIso: t0,
+        tEndIso: t1,
+        stepSeconds: 30,
+        signal,
+      })
+    },
+    [],
+  )
+
+  // Mount: fetch the catalog once, then the default satellite's track.
   useEffect(() => {
     const controller = new AbortController()
     ;(async () => {
@@ -69,15 +97,15 @@ export function Globe() {
           setState({ status: "error", message: "no satellites in catalog" })
           return
         }
-        const track = await fetchTrack({
-          satellite: selected,
-          tStartIso: DEFAULT_T0,
-          tEndIso: DEFAULT_T1,
-          stepSeconds: 30,
-          signal: controller.signal,
-        })
+        const sat = catalog.find((s) => s.key === selected)
+        if (!sat) {
+          setState({ status: "error", message: "selected satellite not in catalog" })
+          return
+        }
+        const track = await loadTrack(sat, controller.signal)
         if (controller.signal.aborted) return
         setState({ status: "ok", catalog, selected, track })
+        setPlayheadIndex(0)
       } catch (err) {
         if (controller.signal.aborted) return
         if (err instanceof OrbitalApiError) {
@@ -90,12 +118,70 @@ export function Globe() {
       }
     })()
     return () => controller.abort()
-  }, [])
+  }, [loadTrack])
+
+  const selectSatellite = useCallback(
+    (key: string) => {
+      if (state.status !== "ok") return
+      const sat = state.catalog.find((s) => s.key === key)
+      if (!sat) return
+      abortRef.current?.abort()
+      const controller = new AbortController()
+      abortRef.current = controller
+      setState({
+        status: "ok",
+        catalog: state.catalog,
+        selected: key,
+        track: state.track, // keep previous track visible while loading
+      })
+      setIsPlaying(false)
+      ;(async () => {
+        try {
+          const track = await loadTrack(sat, controller.signal)
+          if (controller.signal.aborted) return
+          setState({ status: "ok", catalog: state.catalog, selected: key, track })
+          setPlayheadIndex(0)
+        } catch (err) {
+          if (controller.signal.aborted) return
+          if (err instanceof OrbitalApiError) {
+            setState({ status: "error", message: err.detail, status_code: err.status })
+          } else if (err instanceof Error) {
+            setState({ status: "error", message: err.message })
+          } else {
+            setState({ status: "error", message: String(err) })
+          }
+        }
+      })()
+    },
+    [state, loadTrack],
+  )
+
+  // Play loop: advance the playhead at `speed` samples per second.
+  // Loops to the start after the last point so the animation is
+  // continuous. No re-fetch occurs; the track is fully in memory.
+  useEffect(() => {
+    if (!isPlaying) return
+    if (state.status !== "ok") return
+    const n = state.track.points.length
+    if (n < 2) return
+    const intervalMs = Math.max(16, Math.floor(1000 / speed))
+    const handle = setInterval(() => {
+      setPlayheadIndex((i) => (i + 1) % n)
+    }, intervalMs)
+    return () => clearInterval(handle)
+  }, [isPlaying, speed, state])
 
   const satellite = useMemo(() => {
     if (state.status !== "ok") return null
     return state.catalog.find((s) => s.key === state.selected) ?? null
   }, [state])
+
+  const currentPoint = useMemo(() => {
+    if (state.status !== "ok") return null
+    const points = state.track.points
+    if (points.length === 0) return null
+    return points[Math.min(playheadIndex, points.length - 1)] ?? null
+  }, [state, playheadIndex])
 
   return (
     <section aria-labelledby="globe-heading" className="mb-10">
@@ -128,15 +214,47 @@ export function Globe() {
             </span>
           </header>
 
+          <GlobeControls
+            catalog={state.catalog}
+            selected={state.selected}
+            onSelect={selectSatellite}
+            playheadIndex={playheadIndex}
+            totalPoints={state.track.points.length}
+            onScrub={setPlayheadIndex}
+            isPlaying={isPlaying}
+            onTogglePlay={() => setIsPlaying((v) => !v)}
+            speed={speed}
+            onSpeedChange={setSpeed}
+            onReset={() => {
+              setIsPlaying(false)
+              setPlayheadIndex(0)
+            }}
+            currentTimeIso={currentPoint?.time_utc ?? state.track.t_start}
+            disabled={false}
+          />
+
           <div className="mb-4 rounded" style={{ height: 420 }}>
             <Canvas
               camera={{ position: [0, 0, 3], fov: 45 }}
               style={{ background: "var(--color-bg)" }}
             >
               <OrbitControls enablePan={false} minDistance={1.5} maxDistance={6} />
-              <GlobeScene track={state.track.points} grounds={DEMO_GROUNDS} />
+              <GlobeScene
+                track={state.track.points}
+                grounds={DEMO_GROUNDS}
+                currentPoint={currentPoint}
+              />
             </Canvas>
           </div>
+
+          {currentPoint && (
+            <div className="mb-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+              <Readout label="time_utc" value={currentPoint.time_utc} />
+              <Readout label="lat_deg" value={currentPoint.lat_deg.toFixed(3)} />
+              <Readout label="lon_deg" value={currentPoint.lon_deg.toFixed(3)} />
+              <Readout label="alt_m" value={currentPoint.alt_m.toFixed(0)} />
+            </div>
+          )}
 
           <div className="mb-3 flex flex-wrap gap-3 text-xs opacity-70">
             <span>
@@ -170,8 +288,14 @@ export function Globe() {
                   </tr>
                 </thead>
                 <tbody>
-                  {state.track.points.map((p) => (
-                    <tr key={p.time_utc} className="border-t border-current/10">
+                  {state.track.points.map((p, i) => (
+                    <tr
+                      key={p.time_utc}
+                      className={
+                        "border-t border-current/10" +
+                        (i === playheadIndex ? " bg-current/[0.06]" : "")
+                      }
+                    >
                       <td className="py-1 font-mono">{p.time_utc}</td>
                       <td className="py-1 font-mono">{p.lat_deg.toFixed(3)}</td>
                       <td className="py-1 font-mono">{p.lon_deg.toFixed(3)}</td>
@@ -191,5 +315,14 @@ export function Globe() {
         </TaggedOutput>
       )}
     </section>
+  )
+}
+
+function Readout({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded border border-current/10 px-3 py-2">
+      <div className="text-[0.65rem] uppercase tracking-wide opacity-50">{label}</div>
+      <div className="font-mono text-xs">{value}</div>
+    </div>
   )
 }

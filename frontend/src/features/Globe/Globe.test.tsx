@@ -93,7 +93,9 @@ describe("Globe", () => {
     stubFetch()
     render(<Globe />)
     await waitFor(() => {
-      expect(screen.getByText("VANGUARD 1")).toBeInTheDocument()
+      // "VANGUARD 1" appears in the header AND in the satellite picker
+      // option list; both are correct. Assert at least one occurrence.
+      expect(screen.getAllByText("VANGUARD 1").length).toBeGreaterThanOrEqual(1)
     })
     expect(screen.getByText("LEO")).toBeInTheDocument()
     expect(screen.getByText(/3 points @ 30s/)).toBeInTheDocument()
