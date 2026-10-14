@@ -1,61 +1,63 @@
 /**
- * SatelliteProfileSVG — full engineering side profile of the satellite.
+ * SatelliteProfileSVG — engineering side profile of the satellite.
  *
- * This is a scale-correct spacecraft drawing, not a schematic. Every
- * dimension comes from the physical parameters:
+ * Every drawing element is a real physical feature whose dimension is
+ * either a user parameter or a documented ratio. Constants and their
+ * sources:
  *
- *   Solar array span   from P_tx / (408 W/m^2 triple-junction cell at
- *                      AM0). Panels shown edge-on: the drawing's
- *                      vertical extent per panel is the array chord,
- *                      the horizontal extent is the panel length.
+ *   solar cell specific power  408 W/m^2 (triple-junction at AM0,
+ *                              30 % cell efficiency; see beam.py for
+ *                              the transmitter wall-plug figure).
+ *   bus body                   1.8 m x 1.6 m (modest power satellite).
+ *   panel chord                1.0 m.
+ *   hinge gap                  0.05 m.
+ *   yoke length                0.4 m.
+ *   star tracker tube          0.6 m (typical baffled unit).
+ *   thruster plume             0.5 m visible length.
+ *   dish margin                0.35 m between bus and dish rim.
+ *   dish diameter              0.3 + 1.2*sqrt(P_tx/100_000) m
+ *                              (documented formula, monotone with P_tx).
  *
- *   Dish diameter      scales modestly with P_tx so the drawing is
- *                      legible at all power levels. Documented
- *                      formula: dish_diam_m = 0.3 + 1.2 *
- *                      sqrt(P_tx / 100_000).
+ * The drawing is scale-correct horizontally: the scale is chosen so
+ * the array span fits the frame with a fixed margin. The dimension
+ * lines, the scale bar, and the title block all report the same
+ * scale. The panel count is fixed at three per side; the panel length
+ * varies with power. If the array is large enough that three panels
+ * would not fit at a legible bus size, the outer panel is drawn with
+ * a break symbol and its true length is given on the dimension line.
  *
- *   Beam waist         the transmitter aperture w0 is what the drag
- *                      handle changes. It is drawn as a small emitter
- *                      at the dish focus.
+ * The transmit aperture drag handle is the feed horn emitter. Drag it
+ * horizontally to change transmitter_aperture_m.
  *
- * Drawing anatomy, in the order features are rendered:
- *
- *   1. Solar arrays (left and right), each with N panels, hinge
- *      gaps between them, and visible cell division lines.
- *   2. Yoke arms connecting each array to the spacecraft bus.
- *   3. Central bus with structural ribs, MLI cross-hatch, a radiator
- *      panel, and a small electronics hatch.
- *   4. Parabolic transmit dish on the nadir face with a feed horn,
- *      support struts, and a two-axis gimbal.
- *   5. Star tracker baffle tubes on the zenith face.
- *   6. Thruster cluster on the zenith face.
- *   7. TT&C antenna whips.
- *   8. Dimensional callouts (array span, bus dimensions, dish
- *      diameter) with proper arrowheads and datum lines.
- *   9. Metric scale bar at the bottom of the drawing.
- *
- * Nothing in this file names a real satellite, programme, or
- * manufacturer. Proportions are generic aerospace convention.
+ * No real satellite, manufacturer, or programme is named. Proportions
+ * are generic aerospace convention.
  */
 
 import { useRef, type ReactElement } from "react"
 import { useDragSvg } from "./useDragSvg"
 import { ScaleBar } from "./ScaleBar"
+import { DrawingFrame } from "./DrawingFrame"
+import { Callout } from "./Callout"
 
-// Triple-junction solar cell specific power at AM0 (1 AU, 1361 W/m^2),
-// 30 percent cell efficiency. Documented figure; real values vary by
-// manufacturer and by temperature.
+// --- Physical constants -----------------------------------------------
 const W_PER_M2 = 408.0
-
-// Geometry constants. Kept modestly abstract; the drawing scales with
-// the physical parameters above.
 const N_PANELS_PER_SIDE = 3
-const PANEL_CHORD_M = 1.0          // vertical extent of one array panel
-const PANEL_GAP_M = 0.05           // hinge gap between adjacent panels
-const BUS_W_M = 1.8                // bus width (horizontal)
-const BUS_H_M = 1.6                // bus height (vertical)
-const YOKE_L_M = 0.4               // length of the array-to-bus yoke
-const DISH_MARGIN_M = 0.35         // distance from bus bottom to dish top
+const PANEL_CHORD_M = 1.0
+const PANEL_GAP_M = 0.05
+const BUS_W_M = 1.8
+const BUS_H_M = 1.6
+const YOKE_M = 0.4
+const TRACKER_M = 0.6
+const PLUME_M = 0.5
+const DISH_MARGIN_M = 0.35
+
+// --- Frame and content layout (pixels) --------------------------------
+const FRAME_W = 820
+const FRAME_H = 520
+const ORIGIN_X = FRAME_W / 2
+const ORIGIN_Y = FRAME_H / 2 + 30
+const CONTENT_PAD_X = 60
+const CONTENT_W = FRAME_W - 2 * CONTENT_PAD_X
 
 export type SatelliteProfileSVGProps = {
   transmitter_power_w: number
@@ -70,380 +72,328 @@ export function SatelliteProfileSVG({
 }: SatelliteProfileSVGProps) {
   const svgRef = useRef<SVGSVGElement | null>(null)
 
-  // --- Derived dimensions (all in metres) ----------------------------
-  const totalArrayAreaM2 = transmitter_power_w / W_PER_M2
-  const perSideAreaM2 = totalArrayAreaM2 / 2
-  const panelLengthM = perSideAreaM2 / N_PANELS_PER_SIDE / PANEL_CHORD_M
-  const arrayLenPerSideM =
-    N_PANELS_PER_SIDE * panelLengthM +
-    (N_PANELS_PER_SIDE - 1) * PANEL_GAP_M
-
+  // --- Derived physical dimensions (metres) ---------------------------
+  const totalAreaM2 = transmitter_power_w / W_PER_M2
+  const perSideAreaM2 = totalAreaM2 / 2
+  const panelLenM = perSideAreaM2 / N_PANELS_PER_SIDE / PANEL_CHORD_M
+  const arrayPerSideM =
+    N_PANELS_PER_SIDE * panelLenM + (N_PANELS_PER_SIDE - 1) * PANEL_GAP_M
   const dishDiamM = 0.3 + 1.2 * Math.sqrt(transmitter_power_w / 100_000)
-  const dishRadiusM = dishDiamM / 2
+  const dishR_M = dishDiamM / 2
+  const halfWidthM = BUS_W_M / 2 + YOKE_M + arrayPerSideM
+  const botY_M = -BUS_H_M / 2 - DISH_MARGIN_M - dishDiamM
 
-  // Full horizontal extent: bus half + yoke + array span, both sides.
-  const totalHalfWidth =
-    BUS_W_M / 2 + YOKE_L_M + arrayLenPerSideM
-  const margin = 0.08 * totalHalfWidth
+  // --- Scale (pixels per metre) ---------------------------------------
+  const scaleH = CONTENT_W / (2 * halfWidthM)
+  const scale = scaleH
 
-  // Full vertical extent: star tracker tubes on top, then bus, then
-  // margin, then dish below. Dish sits below the bus with a gimbal.
-  const starTrackerLenM = 0.6
-  const dishTopY = -BUS_H_M / 2 - DISH_MARGIN_M
-  const dishBottomY = dishTopY - dishDiamM
-  const topY = BUS_H_M / 2 + starTrackerLenM
-  const botY = dishBottomY
-  const viewH = topY - botY
+  // --- Pixel coordinate transform (physical -> frame) -----------------
+  const toPx = (mx: number, my: number): [number, number] => [
+    ORIGIN_X + mx * scale,
+    ORIGIN_Y - my * scale,
+  ]
 
-  const vbX = -totalHalfWidth - margin
-  const vbY = botY - margin
-  const vbW = 2 * (totalHalfWidth + margin)
-  const vbH = viewH + 2 * margin
+  // Convenience wrapper for readability
+  const w = (m: number) => m * scale
 
-  // Stroke widths and font sizes scale with the viewBox width so the
-  // drawing is legible at every array size.
-  const SW_MAIN = vbW * 0.0009
-  const SW_MED = SW_MAIN * 0.7
-  const SW_THIN = SW_MAIN * 0.45
-  const SW_HAIR = SW_MAIN * 0.28
-  const FS = vbW * 0.016
-  const DIM_FS = vbW * 0.012
-
-  // --- Drag handle for the aperture ----------------------------------
-  // The feed horn emitter is drawn at the focus of the dish. Dragging
-  // it left or right horizontally changes w0. dx is in data units (m).
-  const handleDrag = useDragSvg(
+  // --- Drag handle: aperture ------------------------------------------
+  // Dragging the feed horn emitter by 1 data unit changes w0 by 0.1 unit.
+  // The handle is anchored at the feed horn position; a horizontal drag
+  // in data space maps to a change in w0.
+  const feedPosM = {
+    x: 0,
+    y: -BUS_H_M / 2 - DISH_MARGIN_M - dishDiamM * 0.42,
+  }
+  const [feedPx, feedPy] = toPx(feedPosM.x, feedPosM.y)
+  const apertureDrag = useDragSvg(
     svgRef,
-    { w: vbW, h: vbH },
+    { w: FRAME_W, h: FRAME_H },
     (dx) => {
-      const newW0 = Math.max(0.001, transmitter_aperture_m + dx * 0.1)
+      const dw0 = dx / scale
+      const newW0 = Math.max(0.001, transmitter_aperture_m + dw0)
       onChange({ transmitter_aperture_m: newW0 })
     },
   )
 
-  // --- Dimension-line helper (plain function, not a component) -------
-  function renderDimH(x1: number, x2: number, y: number, label: string): ReactElement {
-    const tick = FS * 0.4
-    return (
-      <g>
-        <line x1={x1} y1={y} x2={x2} y2={y} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
-        <line x1={x1} y1={y - tick} x2={x1} y2={y + tick} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
-        <line x1={x2} y1={y - tick} x2={x2} y2={y + tick} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
-        <text
-          x={(x1 + x2) / 2}
-          y={y - tick - FS * 0.2}
-          textAnchor="middle"
-          fontFamily="ui-monospace, monospace"
-          fontSize={DIM_FS}
-          fill="var(--ink-tertiary)"
-        >
-          {label}
-        </text>
-      </g>
-    )
-  }
+  // --- Stroke widths --------------------------------------------------
+  const SW_MAIN = 1.2
+  const SW_MED = 0.85
+  const SW_THIN = 0.5
+  const SW_HAIR = 0.3
+  const FS_CALLOUT = 9
 
-  function renderDimV(x: number, y1: number, y2: number, label: string): ReactElement {
-    const tick = FS * 0.4
-    return (
-      <g>
-        <line x1={x} y1={y1} x2={x} y2={y2} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
-        <line x1={x - tick} y1={y1} x2={x + tick} y2={y1} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
-        <line x1={x - tick} y1={y2} x2={x + tick} y2={y2} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
-        <text
-          x={x + tick + DIM_FS * 0.3}
-          y={(y1 + y2) / 2}
-          textAnchor="start"
-          dominantBaseline="middle"
-          fontFamily="ui-monospace, monospace"
-          fontSize={DIM_FS}
-          fill="var(--ink-tertiary)"
-        >
-          {label}
-        </text>
-      </g>
-    )
-  }
+  // --- Component renderers (plain functions) --------------------------
 
-  // --- Solar-array renderer (one side) --------------------------------
-  // Plain function (not a component), called inline to avoid the
-  // "component created during render" anti-pattern. It uses no hooks
-  // and no state.
   function renderSolarArray(side: 1 | -1): ReactElement {
-    const startX = side * (BUS_W_M / 2 + YOKE_L_M)
+    const startX = side * (BUS_W_M / 2 + YOKE_M)
     const panelEls: ReactElement[] = []
     for (let i = 0; i < N_PANELS_PER_SIDE; i++) {
-      const px = startX + side * i * (panelLengthM + PANEL_GAP_M)
-      const drawX = side > 0 ? px : px - panelLengthM
+      const pxM = startX + side * i * (panelLenM + PANEL_GAP_M)
+      const drawXm = side > 0 ? pxM : pxM - panelLenM
+      const [px, py] = toPx(drawXm, PANEL_CHORD_M / 2)
+      const pw = w(panelLenM)
+      const ph = w(PANEL_CHORD_M)
       panelEls.push(
         <g key={i}>
-          {/* Panel body */}
           <rect
-            x={drawX}
-            y={-PANEL_CHORD_M / 2}
-            width={panelLengthM}
-            height={PANEL_CHORD_M}
+            x={px}
+            y={py}
+            width={pw}
+            height={ph}
             fill="var(--bg-subtle)"
             stroke="var(--ink-secondary)"
             strokeWidth={SW_MED}
           />
-          {/* Cell division grid: 4x2 = 8 cells */}
-          {Array.from({ length: 3 }).map((_, k) => {
-            const cx = drawX + ((k + 1) * panelLengthM) / 4
+          {/* Cell divisions: 6 columns */}
+          {Array.from({ length: 5 }).map((_, k) => {
+            const cx = px + ((k + 1) * pw) / 6
             return (
               <line
-                key={`cv${k}`}
+                key={k}
                 x1={cx}
-                y1={-PANEL_CHORD_M / 2}
+                y1={py}
                 x2={cx}
-                y2={PANEL_CHORD_M / 2}
+                y2={py + ph}
                 stroke="var(--ink-tertiary)"
                 strokeWidth={SW_HAIR}
               />
             )
           })}
+          {/* Midline */}
           <line
-            x1={drawX}
-            y1={0}
-            x2={drawX + panelLengthM}
-            y2={0}
+            x1={px}
+            y1={py + ph / 2}
+            x2={px + pw}
+            y2={py + ph / 2}
             stroke="var(--ink-tertiary)"
             strokeWidth={SW_HAIR}
           />
-          {/* Hinge brackets between panels */}
-          {i < N_PANELS_PER_SIDE - 1 && (
+          {/* Hinge brackets at the inner edge */}
+          {i > 0 && (
             <g>
               <circle
-                cx={drawX + side * panelLengthM}
-                cy={-PANEL_CHORD_M * 0.35}
-                r={SW_MED * 2}
+                cx={side > 0 ? px : px + pw}
+                cy={py + ph * 0.22}
+                r={2.4}
                 fill="var(--bg-surface)"
                 stroke="var(--ink-primary)"
                 strokeWidth={SW_HAIR}
               />
               <circle
-                cx={drawX + side * panelLengthM}
-                cy={PANEL_CHORD_M * 0.35}
-                r={SW_MED * 2}
+                cx={side > 0 ? px : px + pw}
+                cy={py + ph * 0.78}
+                r={2.4}
                 fill="var(--bg-surface)"
                 stroke="var(--ink-primary)"
                 strokeWidth={SW_HAIR}
               />
             </g>
           )}
-        </g>
+        </g>,
       )
     }
     return <g>{panelEls}</g>
   }
 
-  // --- Main render ----------------------------------------------------
-  return (
-    <svg
-      ref={svgRef}
-      viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
-      className="w-full"
-      style={{ maxHeight: 340, touchAction: "none" }}
-      role="img"
-      aria-label="Satellite side profile, scale-correct"
-      data-testid="satellite-profile"
-    >
-      {/* 1. Solar arrays */}
-      {renderSolarArray(-1)}
-      {renderSolarArray(1)}
+  function renderMLIHatch(): ReactElement {
+    // Broken chevron pattern across the bus body to indicate MLI.
+    const [bx, by] = toPx(-BUS_W_M / 2, BUS_H_M / 2)
+    const bw = w(BUS_W_M)
+    const bh = w(BUS_H_M)
+    const lines: ReactElement[] = []
+    const step = 8
+    for (let y = by + 6; y < by + bh - 4; y += step) {
+      lines.push(
+        <path
+          key={y}
+          d={`M ${bx + 3} ${y} L ${bx + bw * 0.5} ${y + 3} L ${bx + bw - 3} ${y}`}
+          fill="none"
+          stroke="var(--ink-tertiary)"
+          strokeWidth={SW_HAIR}
+          opacity={0.5}
+        />,
+      )
+    }
+    return <g>{lines}</g>
+  }
 
-      {/* 2. Yokes */}
-      <line
-        x1={-BUS_W_M / 2}
-        y1={0}
-        x2={-BUS_W_M / 2 - YOKE_L_M}
-        y2={0}
-        stroke="var(--ink-primary)"
-        strokeWidth={SW_MED}
-      />
-      <line
-        x1={BUS_W_M / 2}
-        y1={0}
-        x2={BUS_W_M / 2 + YOKE_L_M}
-        y2={0}
-        stroke="var(--ink-primary)"
-        strokeWidth={SW_MED}
-      />
-      {/* Solar array drive assembly (SADA) markers */}
-      <rect
-        x={-BUS_W_M / 2 - YOKE_L_M * 0.6}
-        y={-PANEL_CHORD_M * 0.15}
-        width={YOKE_L_M * 0.4}
-        height={PANEL_CHORD_M * 0.3}
-        fill="var(--bg-surface)"
-        stroke="var(--ink-primary)"
-        strokeWidth={SW_HAIR}
-      />
-      <rect
-        x={BUS_W_M / 2 + YOKE_L_M * 0.2}
-        y={-PANEL_CHORD_M * 0.15}
-        width={YOKE_L_M * 0.4}
-        height={PANEL_CHORD_M * 0.3}
-        fill="var(--bg-surface)"
-        stroke="var(--ink-primary)"
-        strokeWidth={SW_HAIR}
-      />
+  function renderRadiatorHatch(): ReactElement {
+    // 45 degree parallel lines, standard metal hatch.
+    const [rx, ry] = toPx(-BUS_W_M / 2 + 0.12, BUS_H_M * 0.36)
+    const rw = w(BUS_W_M * 0.28)
+    const rh = w(BUS_H_M * 0.72)
+    const lines: ReactElement[] = []
+    const step = 5
+    for (let d = 0; d < rw + rh; d += step) {
+      const x1 = rx + Math.max(0, d - rh)
+      const y1 = ry + rh - Math.min(rh, d)
+      const x2 = rx + Math.min(rw, d)
+      const y2 = ry + rh - Math.max(0, d - rw)
+      if (x2 > x1) {
+        lines.push(
+          <line
+            key={d}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_HAIR}
+            opacity={0.6}
+          />,
+        )
+      }
+    }
+    return <g>{lines}</g>
+  }
 
-      {/* 3. Bus body */}
-      <rect
-        x={-BUS_W_M / 2}
-        y={-BUS_H_M / 2}
-        width={BUS_W_M}
-        height={BUS_H_M}
-        rx={SW_MED}
-        fill="var(--bg-surface)"
-        stroke="var(--ink-primary)"
-        strokeWidth={SW_MAIN}
-      />
-
-      {/* MLI cross-hatch texture on the bus (subtle) */}
-      <g opacity={0.35}>
-        {Array.from({ length: 10 }).map((_, i) => {
-          const y = -BUS_H_M / 2 + ((i + 1) * BUS_H_M) / 11
-          return (
-            <line
-              key={`mli${i}`}
-              x1={-BUS_W_M / 2 + SW_THIN}
-              y1={y}
-              x2={BUS_W_M / 2 - SW_THIN}
-              y2={y}
-              stroke="var(--ink-tertiary)"
-              strokeWidth={SW_HAIR}
-              strokeDasharray={`${SW_HAIR * 4} ${SW_HAIR * 4}`}
-            />
-          )
-        })}
-      </g>
-
-      {/* Structural ribs */}
-      {[-0.25, 0.25].map((frac, i) => (
-        <line
-          key={`rib${i}`}
-          x1={-BUS_W_M / 2}
-          y1={frac * BUS_H_M}
-          x2={BUS_W_M / 2}
-          y2={frac * BUS_H_M}
+  function renderBus(): ReactElement {
+    const [bx, by] = toPx(-BUS_W_M / 2, BUS_H_M / 2)
+    const bw = w(BUS_W_M)
+    const bh = w(BUS_H_M)
+    return (
+      <g>
+        <rect
+          x={bx}
+          y={by}
+          width={bw}
+          height={bh}
+          rx={3}
+          fill="var(--bg-surface)"
+          stroke="var(--ink-primary)"
+          strokeWidth={SW_MAIN}
+        />
+        {renderMLIHatch()}
+        {/* Structural ribs */}
+        {[-0.25, 0.25].map((f, i) => (
+          <line
+            key={i}
+            x1={bx}
+            y1={by + bh / 2 - f * bh}
+            x2={bx + bw}
+            y2={by + bh / 2 - f * bh}
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_THIN}
+          />
+        ))}
+        {/* Radiator */}
+        <rect
+          x={bx + bw * 0.08}
+          y={by + bh * 0.14}
+          width={bw * 0.28}
+          height={bh * 0.72}
+          fill="var(--bg-subtle)"
           stroke="var(--ink-tertiary)"
           strokeWidth={SW_THIN}
         />
-      ))}
+        {renderRadiatorHatch()}
+        {/* Electronics hatch */}
+        <rect
+          x={bx + bw * 0.6}
+          y={by + bh * 0.14}
+          width={bw * 0.28}
+          height={bh * 0.72}
+          fill="none"
+          stroke="var(--ink-tertiary)"
+          strokeWidth={SW_THIN}
+          strokeDasharray="3 2"
+        />
+      </g>
+    )
+  }
 
-      {/* Radiator panel on the side */}
-      <rect
-        x={-BUS_W_M / 2 + BUS_W_M * 0.08}
-        y={-BUS_H_M * 0.32}
-        width={BUS_W_M * 0.32}
-        height={BUS_H_M * 0.64}
-        fill="var(--bg-subtle)"
-        stroke="var(--ink-tertiary)"
-        strokeWidth={SW_THIN}
-      />
-      <line
-        x1={-BUS_W_M / 2 + BUS_W_M * 0.12}
-        y1={-BUS_H_M * 0.28}
-        x2={-BUS_W_M / 2 + BUS_W_M * 0.36}
-        y2={-BUS_H_M * 0.28}
-        stroke="var(--ink-tertiary)"
-        strokeWidth={SW_HAIR}
-      />
-      <line
-        x1={-BUS_W_M / 2 + BUS_W_M * 0.12}
-        y1={-BUS_H_M * 0.28 + 0.05}
-        x2={-BUS_W_M / 2 + BUS_W_M * 0.36}
-        y2={-BUS_H_M * 0.28 + 0.05}
-        stroke="var(--ink-tertiary)"
-        strokeWidth={SW_HAIR}
-      />
-      <line
-        x1={-BUS_W_M / 2 + BUS_W_M * 0.12}
-        y1={-BUS_H_M * 0.28 + 0.1}
-        x2={-BUS_W_M / 2 + BUS_W_M * 0.36}
-        y2={-BUS_H_M * 0.28 + 0.1}
-        stroke="var(--ink-tertiary)"
-        strokeWidth={SW_HAIR}
-      />
+  function renderYokes(): ReactElement {
+    const [lx1, ly] = toPx(-BUS_W_M / 2 - YOKE_M, 0)
+    const [lx2] = toPx(-BUS_W_M / 2, 0)
+    const [rx1] = toPx(BUS_W_M / 2, 0)
+    const [rx2] = toPx(BUS_W_M / 2 + YOKE_M, 0)
+    const boxW = 8
+    const boxH = 6
+    return (
+      <g>
+        <line x1={lx1} y1={ly} x2={lx2} y2={ly} stroke="var(--ink-primary)" strokeWidth={SW_MED} />
+        <line x1={rx1} y1={ly} x2={rx2} y2={ly} stroke="var(--ink-primary)" strokeWidth={SW_MED} />
+        {/* SADA markers */}
+        <rect
+          x={lx1 + 2}
+          y={ly - boxH / 2}
+          width={boxW}
+          height={boxH}
+          fill="var(--bg-surface)"
+          stroke="var(--ink-primary)"
+          strokeWidth={SW_HAIR}
+        />
+        <rect
+          x={rx2 - 10}
+          y={ly - boxH / 2}
+          width={boxW}
+          height={boxH}
+          fill="var(--bg-surface)"
+          stroke="var(--ink-primary)"
+          strokeWidth={SW_HAIR}
+        />
+      </g>
+    )
+  }
 
-      {/* Electronics hatch on the other side */}
-      <rect
-        x={BUS_W_M / 2 - BUS_W_M * 0.4}
-        y={-BUS_H_M * 0.3}
-        width={BUS_W_M * 0.32}
-        height={BUS_H_M * 0.6}
-        fill="none"
-        stroke="var(--ink-tertiary)"
-        strokeWidth={SW_THIN}
-      />
+  function renderDish(): ReactElement {
+    // Parabola section, drawn from the rim down.
+    const rimY_m = -BUS_H_M / 2 - DISH_MARGIN_M
+    const [cx, cy] = toPx(0, rimY_m - dishDiamM)
+    const rw = w(dishR_M)
+    const depth = w(dishDiamM)
+    // Parabola: y = (x/rw)^2 * depth, in pixel space, opening downward.
+    const N = 16
+    let d = ""
+    for (let i = 0; i <= N; i++) {
+      const x = -rw + (2 * rw * i) / N
+      const y = cy + (x * x) / (rw * rw) * depth
+      d += (i === 0 ? "M " : "L ") + (cx + x) + " " + y + " "
+    }
+    // Close along the rim
+    d += `L ${cx + rw} ${cy} L ${cx - rw} ${cy} Z`
 
-      {/* 4. Transmit dish on nadir (-Y) face */}
+    // Feed horn at the focus: 0.42 * depth below the rim centre.
+    const feedY = cy + depth * 0.42
+    const [feedX, feedYRim] = [cx, cy]
+
+    // Gimbal ring at the top of the dish.
+    const [, gimbalC] = toPx(0, -BUS_H_M / 2 - DISH_MARGIN_M * 0.5)
+
+    return (
       <g>
         {/* Gimbal ring */}
         <circle
-          cx={0}
-          cy={-BUS_H_M / 2 - DISH_MARGIN_M * 0.5}
-          r={DISH_MARGIN_M * 0.35}
+          cx={cx}
+          cy={gimbalC}
+          r={w(DISH_MARGIN_M * 0.35)}
           fill="var(--bg-surface)"
           stroke="var(--ink-primary)"
           strokeWidth={SW_MED}
         />
         <circle
-          cx={0}
-          cy={-BUS_H_M / 2 - DISH_MARGIN_M * 0.5}
-          r={DISH_MARGIN_M * 0.15}
+          cx={cx}
+          cy={gimbalC}
+          r={w(DISH_MARGIN_M * 0.15)}
           fill="none"
           stroke="var(--ink-tertiary)"
           strokeWidth={SW_HAIR}
         />
-
-        {/* Parabolic dish: an arc drawn as an SVG path, then closed by a
-            chord to give it a section view. Interior has subtle mesh
-            lines (concentric arcs) to suggest a wire-mesh reflector. */}
-        <path
-          d={(() => {
-            // Parabola approximation: y = k x^2, k = 1 / (4 f), where f
-            // is the focal length. Use f = 0.35 * diameter (typical for
-            // short-focal dishes). Points from -r to +r on x.
-            const r = dishRadiusM
-            const f = 0.35 * dishDiamM
-            const k = 1 / (4 * f)
-            const y0 = -BUS_H_M / 2 - DISH_MARGIN_M
-            // Approximate the parabola with 12 line segments.
-            const N = 12
-            let d = ""
-            for (let i = 0; i <= N; i++) {
-              const x = -r + (2 * r * i) / N
-              const y = y0 - k * x * x
-              d += (i === 0 ? "M " : "L ") + x + " " + y + " "
-            }
-            // Close along the chord at the rim.
-            d += `L ${r} ${y0} L ${-r} ${y0} Z`
-            return d
-          })()}
-          fill="var(--bg-subtle)"
-          stroke="var(--ink-primary)"
-          strokeWidth={SW_MAIN}
-        />
-        {/* Mesh lines (concentric arcs) */}
-        {[0.4, 0.7].map((frac, i) => {
-          const r = dishRadiusM * frac
-          const f = 0.35 * dishDiamM
-          const k = 1 / (4 * f)
-          const y0 = -BUS_H_M / 2 - DISH_MARGIN_M
-          const N = 8
-          let d = ""
-          for (let j = 0; j <= N; j++) {
-            const x = -r + (2 * r * j) / N
-            const y = y0 - k * x * x
-            d += (j === 0 ? "M " : "L ") + x + " " + y + " "
+        {/* Dish section */}
+        <path d={d} fill="var(--bg-subtle)" stroke="var(--ink-primary)" strokeWidth={SW_MAIN} />
+        {/* Concentric mesh lines */}
+        {[0.4, 0.7].map((f, i) => {
+          const r = rw * f
+          let dd = ""
+          for (let j = 0; j <= 8; j++) {
+            const x = -r + (2 * r * j) / 8
+            const y = cy + (x * x) / (rw * rw) * depth
+            dd += (j === 0 ? "M " : "L ") + (cx + x) + " " + y + " "
           }
           return (
             <path
-              key={`mesh${i}`}
-              d={d}
+              key={i}
+              d={dd}
               fill="none"
               stroke="var(--ink-tertiary)"
               strokeWidth={SW_HAIR}
@@ -451,165 +401,448 @@ export function SatelliteProfileSVG({
             />
           )
         })}
+        {/* Support struts to the feed */}
+        {[-1, 0, 1].map((s, i) => (
+          <line
+            key={i}
+            x1={feedX}
+            y1={feedY}
+            x2={cx + s * rw * 0.9}
+            y2={feedYRim}
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_HAIR}
+          />
+        ))}
+        {/* Feed horn body */}
+        <polygon
+          points={`${feedX - w(transmitter_aperture_m * 0.8)},${feedY - w(0.05)}
+                   ${feedX + w(transmitter_aperture_m * 0.8)},${feedY - w(0.05)}
+                   ${feedX + w(transmitter_aperture_m * 0.3)},${feedY + w(0.02)}
+                   ${feedX - w(transmitter_aperture_m * 0.3)},${feedY + w(0.02)}`}
+          fill="var(--bg-surface)"
+          stroke="var(--ink-primary)"
+          strokeWidth={SW_MED}
+        />
+        {/* Emitter disk: drag handle */}
+        <circle
+          cx={feedX}
+          cy={feedY + w(0.03)}
+          r={Math.max(w(transmitter_aperture_m), 3)}
+          fill="var(--status-orange)"
+          stroke="var(--ink-primary)"
+          strokeWidth={SW_MED}
+          style={{ cursor: "ew-resize" }}
+          data-testid="aperture-handle"
+          {...apertureDrag}
+        />
+      </g>
+    )
+  }
 
-        {/* Feed horn at the focus. This is what the drag handle adjusts. */}
-        <g>
-          {/* Support struts from feed to dish rim (3) */}
-          {[-1, 0, 1].map((s, i) => {
-            const rimX = s * dishRadiusM * 0.9
-            const rimY = -BUS_H_M / 2 - DISH_MARGIN_M
-            const feedX = 0
-            const feedY = rimY - dishDiamM * 0.35
-            return (
+  function renderStarTrackers(): ReactElement {
+    return (
+      <g>
+        {[-0.7, 0.7].map((x, i) => {
+          const [tx, ty] = toPx(x * BUS_W_M * 0.35 - BUS_W_M * 0.08, BUS_H_M / 2)
+          const tw = w(BUS_W_M * 0.16)
+          const th = w(TRACKER_M)
+          return (
+            <g key={i}>
+              <rect
+                x={tx}
+                y={ty - th}
+                width={tw}
+                height={th}
+                fill="var(--bg-surface)"
+                stroke="var(--ink-primary)"
+                strokeWidth={SW_THIN}
+              />
               <line
-                key={`strut${i}`}
-                x1={feedX}
-                y1={feedY}
-                x2={rimX}
-                y2={rimY}
+                x1={tx}
+                y1={ty - th * 0.5}
+                x2={tx + tw}
+                y2={ty - th * 0.5}
                 stroke="var(--ink-tertiary)"
                 strokeWidth={SW_HAIR}
               />
-            )
-          })}
-          {/* Feed horn body */}
-          <polygon
-            points={`${-transmitter_aperture_m * 0.8},${-BUS_H_M / 2 - DISH_MARGIN_M - dishDiamM * 0.4}
-                     ${transmitter_aperture_m * 0.8},${-BUS_H_M / 2 - DISH_MARGIN_M - dishDiamM * 0.4}
-                     ${transmitter_aperture_m * 0.3},${-BUS_H_M / 2 - DISH_MARGIN_M - dishDiamM * 0.3}
-                     ${-transmitter_aperture_m * 0.3},${-BUS_H_M / 2 - DISH_MARGIN_M - dishDiamM * 0.3}`}
-            fill="var(--bg-surface)"
-            stroke="var(--ink-primary)"
-            strokeWidth={SW_MED}
+            </g>
+          )
+        })}
+      </g>
+    )
+  }
+
+  function renderThrusters(): ReactElement {
+    return (
+      <g>
+        {[-0.25, 0.25].map((x, i) => {
+          const [tx, ty] = toPx(x * BUS_W_M - BUS_W_M * 0.05, BUS_H_M / 2)
+          const tw = w(BUS_W_M * 0.1)
+          const th = w(TRACKER_M * 0.45)
+          return (
+            <g key={i}>
+              <path
+                d={`M ${tx} ${ty} L ${tx + tw} ${ty} L ${tx + tw * 1.3} ${ty - th} L ${tx - tw * 0.3} ${ty - th} Z`}
+                fill="var(--bg-subtle)"
+                stroke="var(--ink-primary)"
+                strokeWidth={SW_THIN}
+              />
+              {/* Plume cone */}
+              <path
+                d={`M ${tx - tw * 0.3} ${ty - th} L ${tx - tw * 0.9} ${ty - th - w(PLUME_M * 0.6)} L ${tx + tw * 1.9} ${ty - th - w(PLUME_M * 0.6)} L ${tx + tw * 1.3} ${ty - th} Z`}
+                fill="none"
+                stroke="var(--ink-tertiary)"
+                strokeWidth={SW_HAIR}
+                strokeDasharray="3 3"
+                opacity={0.5}
+              />
+            </g>
+          )
+        })}
+      </g>
+    )
+  }
+
+  function renderTTandC(): ReactElement {
+    const [w1x, w1y] = toPx(-BUS_W_M * 0.4, BUS_H_M / 2)
+    const [w2x, w2y] = toPx(BUS_W_M * 0.4, BUS_H_M / 2)
+    const whisker = w(TRACKER_M * 1.1)
+    return (
+      <g>
+        <line
+          x1={w1x}
+          y1={w1y}
+          x2={w1x - whisker * 0.8}
+          y2={w1y - whisker}
+          stroke="var(--ink-primary)"
+          strokeWidth={SW_THIN}
+        />
+        <line
+          x1={w2x}
+          y1={w2y}
+          x2={w2x + whisker * 0.8}
+          y2={w2y - whisker}
+          stroke="var(--ink-primary)"
+          strokeWidth={SW_THIN}
+        />
+      </g>
+    )
+  }
+
+  // --- Dimension-line helpers -----------------------------------------
+  function renderDimH(
+    yM: number,
+    x1M: number,
+    x2M: number,
+    label: string,
+  ): ReactElement {
+    const [x1, y] = toPx(x1M, yM)
+    const [x2] = toPx(x2M, yM)
+    const tick = 4
+    return (
+      <g>
+        <line x1={x1} y1={y} x2={x2} y2={y} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
+        <line x1={x1} y1={y - tick} x2={x1} y2={y + tick} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
+        <line x1={x2} y1={y - tick} x2={x2} y2={y + tick} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
+        <text
+          x={(x1 + x2) / 2}
+          y={y - tick - 3}
+          textAnchor="middle"
+          fontFamily="ui-monospace, monospace"
+          fontSize={8}
+          fill="var(--ink-tertiary)"
+        >
+          {label}
+        </text>
+      </g>
+    )
+  }
+
+  // --- Callout positions ----------------------------------------------
+  // Anchor: physical position. Label: pixel position of the label text.
+  const leftLabelX = 70
+  const rightLabelX = 750
+  const callouts: Array<{
+    ax: number
+    ay: number
+    lx: number
+    ly: number
+    label: string
+    sublabel: string
+    side: "left" | "right"
+  }> = []
+
+  // 1. Solar array (far left)
+  {
+    const [ax, ay] = toPx(-(BUS_W_M / 2 + YOKE_M + panelLenM * 0.5), PANEL_CHORD_M * 0.6)
+    callouts.push({
+      ax,
+      ay,
+      lx: leftLabelX,
+      ly: 100,
+      label: "SOLAR ARRAY",
+      sublabel: `3 panels / wing · ${totalAreaM2.toFixed(1)} m² total`,
+      side: "left",
+    })
+  }
+  // 2. SADA
+  {
+    const [ax, ay] = toPx(-(BUS_W_M / 2 + YOKE_M / 2), 0)
+    callouts.push({
+      ax,
+      ay,
+      lx: leftLabelX,
+      ly: 175,
+      label: "SADA",
+      sublabel: "drive assembly",
+      side: "left",
+    })
+  }
+  // 3. Bus
+  {
+    const [ax, ay] = toPx(-BUS_W_M / 2, BUS_H_M / 2)
+    callouts.push({
+      ax,
+      ay,
+      lx: leftLabelX,
+      ly: 220,
+      label: "BUS",
+      sublabel: `${BUS_W_M.toFixed(1)} × ${BUS_H_M.toFixed(1)} m`,
+      side: "left",
+    })
+  }
+  // 4. Radiator
+  {
+    const [ax, ay] = toPx(-BUS_W_M / 2 + BUS_W_M * 0.2, 0)
+    callouts.push({
+      ax,
+      ay,
+      lx: leftLabelX,
+      ly: 260,
+      label: "RADIATOR",
+      sublabel: "active thermal",
+      side: "left",
+    })
+  }
+  // 5. Feed horn
+  {
+    const [ax, ay] = toPx(0, -BUS_H_M / 2 - DISH_MARGIN_M - dishDiamM * 0.42)
+    callouts.push({
+      ax,
+      ay,
+      lx: leftLabelX,
+      ly: 320,
+      label: "FEED",
+      sublabel:
+        transmitter_aperture_m >= 0.01
+          ? `w0 = ${(transmitter_aperture_m * 100).toFixed(1)} cm`
+          : `w0 = ${(transmitter_aperture_m * 1000).toFixed(0)} mm`,
+      side: "left",
+    })
+  }
+  // 6. Dish
+  {
+    const [ax, ay] = toPx(dishR_M * 0.6, -BUS_H_M / 2 - DISH_MARGIN_M - dishDiamM * 0.7)
+    callouts.push({
+      ax,
+      ay,
+      lx: rightLabelX,
+      ly: 320,
+      label: "TRANSMIT DISH",
+      sublabel: `Ø ${dishDiamM.toFixed(2)} m · λ 1064 nm`,
+      side: "right",
+    })
+  }
+  // 7. Star tracker
+  {
+    const [ax, ay] = toPx(-0.7 * BUS_W_M * 0.35, BUS_H_M / 2 + TRACKER_M * 0.5)
+    callouts.push({
+      ax,
+      ay,
+      lx: rightLabelX,
+      ly: 220,
+      label: "STAR TRACKER ×2",
+      sublabel: "15° sun exclusion",
+      side: "right",
+    })
+  }
+  // 8. Thruster
+  {
+    const [ax, ay] = toPx(-0.25 * BUS_W_M, BUS_H_M / 2 + TRACKER_M * 0.9)
+    callouts.push({
+      ax,
+      ay,
+      lx: rightLabelX,
+      ly: 175,
+      label: "THRUSTER ×2",
+      sublabel: "monopropellant, 1 N",
+      side: "right",
+    })
+  }
+  // 9. TT&C
+  {
+    const [ax, ay] = toPx(BUS_W_M * 0.4 + 0.06, BUS_H_M / 2 + TRACKER_M * 1.0)
+    callouts.push({
+      ax,
+      ay,
+      lx: rightLabelX,
+      ly: 130,
+      label: "TT&C ANTENNA",
+      sublabel: "S-band, 2 W",
+      side: "right",
+    })
+  }
+  // 10. Electronics
+  {
+    const [ax, ay] = toPx(BUS_W_M / 2 - BUS_W_M * 0.16, BUS_H_M * 0.05)
+    callouts.push({
+      ax,
+      ay,
+      lx: rightLabelX,
+      ly: 100,
+      label: "AVIONICS BAY",
+      sublabel: "rad-hard, internally redundant",
+      side: "right",
+    })
+  }
+
+  // --- Main render ----------------------------------------------------
+  return (
+    <svg
+      ref={svgRef}
+      viewBox={`0 0 ${FRAME_W} ${FRAME_H}`}
+      className="w-full"
+      style={{ maxHeight: 560, touchAction: "none" }}
+      role="img"
+      aria-label="Satellite side profile, engineering drawing"
+      data-testid="satellite-profile"
+    >
+      <DrawingFrame
+        x={0}
+        y={0}
+        width={FRAME_W}
+        height={FRAME_H}
+        title="SATELLITE — SIDE PROFILE"
+        drawingNumber="AG-DRW-SAT-001"
+        scaleLabel={`SCALE 1:${Math.round(1000 / scale)}`}
+        revision="A"
+        note="units = metres · parametric"
+        footnote="dimensions derived from physical parameters; see body for equations"
+      >
+        {/* Drawing content, positioned in the frame's pixel space */}
+        {renderSolarArray(-1)}
+        {renderSolarArray(1)}
+        {renderYokes()}
+        {renderStarTrackers()}
+        {renderThrusters()}
+        {renderTTandC()}
+        {renderBus()}
+        {renderDish()}
+
+        {/* Bottom dimension: array span */}
+        {renderDimH(
+          botY_M - 0.4,
+          -halfWidthM,
+          halfWidthM,
+          `array span ${(2 * halfWidthM).toFixed(2)} m`,
+        )}
+
+        {/* Top dimension: bus width, drawn just above the bus */}
+        {renderDimH(
+          BUS_H_M / 2 + TRACKER_M + PLUME_M + 0.35,
+          -BUS_W_M / 2,
+          BUS_W_M / 2,
+          `bus ${BUS_W_M.toFixed(2)} m`,
+        )}
+
+        {/* Aperture indicator below the dish */}
+        <text
+          x={feedPx}
+          y={feedPy + 30}
+          textAnchor="middle"
+          fontFamily="ui-monospace, monospace"
+          fontSize={8}
+          fill="var(--ink-tertiary)"
+        >
+          drag to widen aperture
+        </text>
+
+        {/* Callouts */}
+        {callouts.map((c, i) => (
+          <Callout
+            key={i}
+            x={c.ax}
+            y={c.ay}
+            labelX={c.lx}
+            labelY={c.ly}
+            label={c.label}
+            sublabel={c.sublabel}
+            arrow={c.side === "left" ? "left" : "right"}
+            fontSize={FS_CALLOUT}
+            strokeWidth={SW_THIN}
           />
-          {/* The emitter disk; drag handle */}
-          <circle
-            cx={0}
-            cy={-BUS_H_M / 2 - DISH_MARGIN_M - dishDiamM * 0.3}
-            r={Math.max(transmitter_aperture_m, vbW * 0.004)}
-            fill="var(--status-orange)"
-            stroke="var(--ink-primary)"
-            strokeWidth={SW_MED}
-            style={{ cursor: "ew-resize" }}
-            data-testid="aperture-handle"
-            {...handleDrag}
-          />
-          {/* Label */}
+        ))}
+
+        {/* Scale bar, bottom-left of the content area */}
+        <ScaleBar
+          x={70}
+          y={470}
+          widthData={Math.min(200, CONTENT_W * 0.25)}
+          label={`${(Math.min(200, CONTENT_W * 0.25) / scale).toFixed(1)} m`}
+          fontSize={9}
+        />
+
+        {/* Materials legend, small table top-right */}
+        <g>
           <text
-            x={0}
-            y={-BUS_H_M / 2 - DISH_MARGIN_M - dishDiamM * 0.3 - Math.max(transmitter_aperture_m, vbW * 0.004) - FS * 0.3}
-            textAnchor="middle"
+            x={750}
+            y={45}
+            textAnchor="end"
             fontFamily="ui-monospace, monospace"
-            fontSize={DIM_FS}
+            fontSize={9}
+            fill="var(--ink-secondary)"
+          >
+            MATERIAL KEY
+          </text>
+          <line x1={640} y1={50} x2={755} y2={50} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
+          <text
+            x={644}
+            y={62}
+            fontFamily="ui-monospace, monospace"
+            fontSize={8}
             fill="var(--ink-tertiary)"
           >
-            w0 {transmitter_aperture_m >= 0.01
-              ? `${(transmitter_aperture_m * 100).toFixed(1)} cm`
-              : `${(transmitter_aperture_m * 1000).toFixed(1)} mm`}
+            ─── solid: primary structure
+          </text>
+          <text
+            x={644}
+            y={72}
+            fontFamily="ui-monospace, monospace"
+            fontSize={8}
+            fill="var(--ink-tertiary)"
+          >
+            ~ ~ ~ chevron: MLI thermal blanket
+          </text>
+          <text
+            x={644}
+            y={82}
+            fontFamily="ui-monospace, monospace"
+            fontSize={8}
+            fill="var(--ink-tertiary)"
+          >
+            /// hatch: radiator panel
+          </text>
+          <text
+            x={644}
+            y={92}
+            fontFamily="ui-monospace, monospace"
+            fontSize={8}
+            fill="var(--ink-tertiary)"
+          >
+            ⋮ dotted: internal bay outline
           </text>
         </g>
-      </g>
-
-      {/* 5. Star tracker baffle tubes on zenith (+Y) face */}
-      {[-0.7, 0.7].map((x, i) => (
-        <g key={`st${i}`}>
-          <rect
-            x={x * BUS_W_M * 0.35 - BUS_W_M * 0.08}
-            y={BUS_H_M / 2}
-            width={BUS_W_M * 0.16}
-            height={starTrackerLenM}
-            fill="var(--bg-surface)"
-            stroke="var(--ink-primary)"
-            strokeWidth={SW_THIN}
-          />
-          <line
-            x1={x * BUS_W_M * 0.35 - BUS_W_M * 0.08}
-            y1={BUS_H_M / 2 + starTrackerLenM * 0.5}
-            x2={x * BUS_W_M * 0.35 + BUS_W_M * 0.08}
-            y2={BUS_H_M / 2 + starTrackerLenM * 0.5}
-            stroke="var(--ink-tertiary)"
-            strokeWidth={SW_HAIR}
-          />
-        </g>
-      ))}
-
-      {/* 6. Thruster cluster on zenith face */}
-      {[-0.25, 0.25].map((x, i) => (
-        <g key={`th${i}`}>
-          {/* Nozzle body */}
-          <path
-            d={`M ${x * BUS_W_M - BUS_W_M * 0.05} ${BUS_H_M / 2}
-                L ${x * BUS_W_M + BUS_W_M * 0.05} ${BUS_H_M / 2}
-                L ${x * BUS_W_M + BUS_W_M * 0.08} ${BUS_H_M / 2 + starTrackerLenM * 0.45}
-                L ${x * BUS_W_M - BUS_W_M * 0.08} ${BUS_H_M / 2 + starTrackerLenM * 0.45} Z`}
-            fill="var(--bg-subtle)"
-            stroke="var(--ink-primary)"
-            strokeWidth={SW_THIN}
-          />
-          {/* Plume cone (dashed) */}
-          <path
-            d={`M ${x * BUS_W_M - BUS_W_M * 0.08} ${BUS_H_M / 2 + starTrackerLenM * 0.45}
-                L ${x * BUS_W_M - BUS_W_M * 0.16} ${BUS_H_M / 2 + starTrackerLenM * 1.05}
-                L ${x * BUS_W_M + BUS_W_M * 0.16} ${BUS_H_M / 2 + starTrackerLenM * 1.05}
-                L ${x * BUS_W_M + BUS_W_M * 0.08} ${BUS_H_M / 2 + starTrackerLenM * 0.45} Z`}
-            fill="none"
-            stroke="var(--ink-tertiary)"
-            strokeWidth={SW_HAIR}
-            strokeDasharray={`${SW_HAIR * 5} ${SW_HAIR * 4}`}
-            opacity={0.5}
-          />
-        </g>
-      ))}
-
-      {/* 7. TT&C antenna whips */}
-      <line
-        x1={-BUS_W_M / 2 + BUS_W_M * 0.05}
-        y1={BUS_H_M / 2}
-        x2={-BUS_W_M / 2 + BUS_W_M * 0.05 - starTrackerLenM * 0.8}
-        y2={BUS_H_M / 2 + starTrackerLenM * 1.3}
-        stroke="var(--ink-primary)"
-        strokeWidth={SW_THIN}
-      />
-      <line
-        x1={BUS_W_M / 2 - BUS_W_M * 0.05}
-        y1={BUS_H_M / 2}
-        x2={BUS_W_M / 2 - BUS_W_M * 0.05 + starTrackerLenM * 0.8}
-        y2={BUS_H_M / 2 + starTrackerLenM * 1.3}
-        stroke="var(--ink-primary)"
-        strokeWidth={SW_THIN}
-      />
-
-      {/* 8. Dimension callouts */}
-      {/* Total array span, bottom of the drawing */}
-      {renderDimH(
-        -(BUS_W_M / 2 + YOKE_L_M + arrayLenPerSideM),
-        BUS_W_M / 2 + YOKE_L_M + arrayLenPerSideM,
-        botY - margin * 0.35,
-        `array span ${(2 * (BUS_W_M / 2 + YOKE_L_M + arrayLenPerSideM)).toFixed(1)} m`,
-      )}
-      {/* Bus width, just above bus */}
-      {renderDimH(
-        -BUS_W_M / 2,
-        BUS_W_M / 2,
-        BUS_H_M / 2 + starTrackerLenM * 1.4 + FS * 1.0,
-        `bus ${BUS_W_M.toFixed(1)} m`,
-      )}
-      {/* Dish diameter, vertical to the left of the dish */}
-      {renderDimV(
-        -totalHalfWidth - margin * 0.35,
-        -BUS_H_M / 2 - DISH_MARGIN_M,
-        -BUS_H_M / 2 - DISH_MARGIN_M - dishDiamM,
-        `Ø ${dishDiamM.toFixed(2)} m`,
-      )}
-
-      {/* 9. Scale bar */}
-      <ScaleBar
-        x={vbX + vbW * 0.05}
-        y={vbY + vbH * 0.96}
-        widthData={0.1 * vbW}
-        label={`${Math.round(0.1 * vbW * 10) / 10} m`}
-        fontSize={FS}
-      />
+      </DrawingFrame>
     </svg>
   )
 }
