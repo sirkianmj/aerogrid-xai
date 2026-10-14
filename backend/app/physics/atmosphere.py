@@ -106,6 +106,17 @@ class AtmosphereConfig:
             strongly nonlinear and depends on cloud type and liquid
             water path; a fuller model uses a radiative transfer code
             with a cloud microphysics parameterization.
+
+            This coefficient is a placeholder. It is deliberately not
+            replaced with another single scalar because doing so would
+            swap one unvalidated number for another. The correct fix is
+            a per-cloud-type table (cirrus / stratus / cumulus /
+            cumulonimbus) with cloud fraction as a modifier on which
+            type dominates, sourced against libRadtran or SMARTS
+            output per specification Section 9.2. Until that table
+            exists, the platform's default scenario is clear-sky
+            (cloud_factor = 0.0), and cloud cover is a user-editable
+            knob whose effect is visible but not cited.
         use_kim_refinement: If True (default), use the Kim et al.
             (2001) q-exponent refinement for visibilities below 6 km.
             If False, use the original three-branch Kruse (1962)

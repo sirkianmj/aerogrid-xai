@@ -35,7 +35,7 @@ async def get_mission_state(
         ),
     ),
     cloud_factor: float = Query(
-        0.2,
+        0.0,
         ge=0.0,
         le=1.0,
         description=(

@@ -60,7 +60,7 @@ class MissionConfig:
     transmitter_power_w: float = 10_000.0
     wavelength_nm: float = 1064.0
     visibility_km: float = 10.0
-    cloud_factor: float = 0.2
+    cloud_factor: float = 0.0
     extinction_coeff_per_m: float = 1e-5
 
 

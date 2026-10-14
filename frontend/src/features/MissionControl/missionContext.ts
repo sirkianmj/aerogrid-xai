@@ -37,7 +37,7 @@ export const DEFAULT_CONFIG: MissionConfig = {
   seed: 20261014,
   t_utc: null,
   visibility_km: 10.0,
-  cloud_factor: 0.2,
+  cloud_factor: 0.0,
 }
 
 export type MissionLoad =
