@@ -45,6 +45,14 @@ export type MissionConfig = {
   visibility_km: number
   /** Cloud cover fraction in [0, 1]; feeds attenuation. */
   cloud_factor: number
+  /** Transmitter beam waist radius, metres. */
+  transmitter_aperture_m: number
+  /** UAV altitude above the ground station, metres. */
+  uav_alt_m: number
+  /** UAV receiver aperture area, square metres. */
+  uav_receiver_aperture_m2: number
+  /** UAV receiver conversion model: laser_photovoltaic or rectenna. */
+  uav_receiver_type: "laser_photovoltaic" | "rectenna"
 }
 
 export const DEFAULT_CONFIG: MissionConfig = {
@@ -58,6 +66,10 @@ export const DEFAULT_CONFIG: MissionConfig = {
   visibility_km: 10.0,
   cloud_factor: 0.0,
   satellite_elements: null,
+  transmitter_aperture_m: 0.02,
+  uav_alt_m: 1000.0,
+  uav_receiver_aperture_m2: 0.5,
+  uav_receiver_type: "laser_photovoltaic",
 }
 
 export type MissionLoad =

@@ -105,6 +105,10 @@ export function MissionConfigBar() {
     draft.t_utc !== config.t_utc ||
     draft.visibility_km !== config.visibility_km ||
     draft.cloud_factor !== config.cloud_factor ||
+    draft.transmitter_aperture_m !== config.transmitter_aperture_m ||
+    draft.uav_alt_m !== config.uav_alt_m ||
+    draft.uav_receiver_aperture_m2 !== config.uav_receiver_aperture_m2 ||
+    draft.uav_receiver_type !== config.uav_receiver_type ||
     JSON.stringify(draft.satellite_elements ?? null) !==
       JSON.stringify(config.satellite_elements ?? null)
 
@@ -260,6 +264,84 @@ export function MissionConfigBar() {
               })}
             </div>
           )}
+        </div>
+      </details>
+
+      <details className="mb-3 rounded border border-[var(--border-hairline)] p-2 text-xs" open>
+        <summary className="cursor-pointer text-[0.7rem] font-medium uppercase tracking-wide text-[var(--ink-secondary)]">
+          Transmitter &amp; UAV receiver
+        </summary>
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <label className="flex flex-col gap-1">
+            <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
+              Transmitter aperture (m)
+            </span>
+            <input
+              type="number"
+              step="0.005"
+              min={0.001}
+              max={1}
+              aria-label="Transmitter aperture"
+              value={draft.transmitter_aperture_m}
+              onChange={(e) =>
+                set("transmitter_aperture_m", num(e.target.value, draft.transmitter_aperture_m))
+              }
+              className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-xs"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
+              UAV altitude (m)
+            </span>
+            <input
+              type="number"
+              step="100"
+              min={10}
+              max={20000}
+              aria-label="UAV altitude"
+              value={draft.uav_alt_m}
+              onChange={(e) =>
+                set("uav_alt_m", num(e.target.value, draft.uav_alt_m))
+              }
+              className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-xs"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
+              Receiver aperture (m²)
+            </span>
+            <input
+              type="number"
+              step="0.1"
+              min={0.01}
+              max={100}
+              aria-label="Receiver aperture"
+              value={draft.uav_receiver_aperture_m2}
+              onChange={(e) =>
+                set("uav_receiver_aperture_m2", num(e.target.value, draft.uav_receiver_aperture_m2))
+              }
+              className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-xs"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
+              Receiver type
+            </span>
+            <select
+              aria-label="Receiver type"
+              value={draft.uav_receiver_type}
+              onChange={(e) =>
+                set(
+                  "uav_receiver_type",
+                  e.target.value as MissionConfig["uav_receiver_type"],
+                )
+              }
+              className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-xs"
+            >
+              <option value="laser_photovoltaic">laser photovoltaic (perovskite-TE)</option>
+              <option value="rectenna">rectenna (RF)</option>
+            </select>
+          </label>
         </div>
       </details>
 

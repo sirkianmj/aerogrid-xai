@@ -64,6 +64,16 @@ export type UavState = {
   atmospheric_factor: number
   beam_alignment: number
   transfer_loss: number
+  /** Electrical power delivered to the UAV battery, watts. */
+  delivered_power_w: number
+  /** Optical power incident on the UAV receiver aperture, watts. */
+  received_power_w: number
+  /** Distance from the satellite to the UAV, metres. */
+  link_slant_range_m: number
+  /** Elevation angle at the UAV, degrees. */
+  link_elevation_deg: number
+  /** Receiver DC-to-DC conversion efficiency at the incident power. */
+  receiver_efficiency: number
 }
 
 export type MissionNode = {

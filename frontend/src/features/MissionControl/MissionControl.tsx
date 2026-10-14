@@ -79,6 +79,13 @@ function fmtDeg(v: number, axis: "lat" | "lon"): string {
   return `${Math.abs(v).toFixed(3)}° ${hemi}`
 }
 
+function formatPower(w: number): string {
+  if (w >= 1.0) return `${w.toFixed(2)} W`
+  if (w >= 1e-3) return `${(w * 1e3).toFixed(1)} mW`
+  if (w >= 1e-6) return `${(w * 1e6).toFixed(1)} µW`
+  return `${w.toExponential(2)} W`
+}
+
 function fmtRelativeSeconds(seconds: number): string {
   const days = seconds / 86400
   if (Math.abs(days) < 1) return `${seconds.toFixed(0)} s`
@@ -423,9 +430,16 @@ function StageTable({ data }: { data: MissionState }) {
       >
         {s.uavs.slice(0, 6).map((u) => (
           <KV
-            key={u.uav_id}
+            key={`state-${u.uav_id}`}
             label={`uav-${u.uav_id}`}
             value={`${u.role} · ${u.battery_pct.toFixed(0)}% · ΔT ${u.thermal_headroom_c.toFixed(0)}°C`}
+          />
+        ))}
+        {s.uavs.slice(0, 6).map((u) => (
+          <KV
+            key={`power-${u.uav_id}`}
+            label={`uav-${u.uav_id} power`}
+            value={`${formatPower(u.delivered_power_w)} · η=${(u.receiver_efficiency * 100).toFixed(1)}% · ${u.link_elevation_deg.toFixed(1)}°`}
           />
         ))}
       </StageRow>

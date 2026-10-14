@@ -58,6 +58,10 @@ function queryString(c: MissionConfig): string {
   p.set("transmitter_power_w", String(c.transmitter_power_w))
   p.set("visibility_km", String(c.visibility_km))
   p.set("cloud_factor", String(c.cloud_factor))
+  p.set("transmitter_aperture_m", String(c.transmitter_aperture_m))
+  p.set("uav_alt_m", String(c.uav_alt_m))
+  p.set("uav_receiver_aperture_m2", String(c.uav_receiver_aperture_m2))
+  p.set("uav_receiver_type", c.uav_receiver_type)
   if (c.t_utc) p.set("t_utc", c.t_utc)
   return p.toString()
 }
