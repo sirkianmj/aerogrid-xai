@@ -197,8 +197,8 @@ export function MultirotorDetail({
           <path d={path} fill="var(--bg-subtle)" stroke="var(--ink-secondary)" strokeWidth={SW_MED} />
           {/* Motor mounting plate under the motor (small rect) */}
           <rect
-            x={P(planT, ex - motorR * 1.2, ey + motorR * 1.2)[0]}
-            y={P(planT, ex - motorR * 1.2, ey + motorR * 1.2)[1]}
+            x={planT(ex - motorR * 1.2, ey + motorR * 1.2)[0]}
+            y={planT(ex - motorR * 1.2, ey + motorR * 1.2)[1]}
             width={motorR * 2.4 * scale}
             height={motorR * 2.4 * scale}
             fill="none"
@@ -215,8 +215,8 @@ export function MultirotorDetail({
         <g key={`motor${idx}`}>
           {/* Motor housing, outer ring */}
           <circle
-            cx={P(planT, m.x, m.y)[0]}
-            cy={P(planT, m.x, m.y)[1]}
+            cx={planT(m.x, m.y)[0]}
+            cy={planT(m.x, m.y)[1]}
             r={motorR * scale}
             fill="var(--bg-surface)"
             stroke="var(--ink-primary)"
@@ -230,10 +230,10 @@ export function MultirotorDetail({
             return (
               <line
                 key={i}
-                x1={P(planT, m.x + Math.cos(a) * r1, m.y + Math.sin(a) * r1)[0]}
-                y1={P(planT, m.x + Math.cos(a) * r1, m.y + Math.sin(a) * r1)[1]}
-                x2={P(planT, m.x + Math.cos(a) * r2, m.y + Math.sin(a) * r2)[0]}
-                y2={P(planT, m.x + Math.cos(a) * r2, m.y + Math.sin(a) * r2)[1]}
+                x1={planT(m.x + Math.cos(a) * r1, m.y + Math.sin(a) * r1)[0]}
+                y1={planT(m.x + Math.cos(a) * r1, m.y + Math.sin(a) * r1)[1]}
+                x2={planT(m.x + Math.cos(a) * r2, m.y + Math.sin(a) * r2)[0]}
+                y2={planT(m.x + Math.cos(a) * r2, m.y + Math.sin(a) * r2)[1]}
                 stroke="var(--ink-tertiary)"
                 strokeWidth={SW_HAIR}
                 opacity={0.7}
@@ -242,8 +242,8 @@ export function MultirotorDetail({
           })}
           {/* Inner hub */}
           <circle
-            cx={P(planT, m.x, m.y)[0]}
-            cy={P(planT, m.x, m.y)[1]}
+            cx={planT(m.x, m.y)[0]}
+            cy={planT(m.x, m.y)[1]}
             r={motorR * 0.32 * scale}
             fill="var(--ink-primary)"
           />
@@ -274,10 +274,10 @@ export function MultirotorDetail({
               <g key={deg}>
                 <path d={path} fill="var(--bg-subtle)" stroke="var(--ink-secondary)" strokeWidth={SW_THIN} />
                 <line
-                  x1={P(planT, tipX + px * 0.25, tipY + py * 0.25)[0]}
-                  y1={P(planT, tipX + px * 0.25, tipY + py * 0.25)[1]}
-                  x2={P(planT, tipX - px * 0.25, tipY - py * 0.25)[0]}
-                  y2={P(planT, tipX - px * 0.25, tipY - py * 0.25)[1]}
+                  x1={planT(tipX + px * 0.25, tipY + py * 0.25)[0]}
+                  y1={planT(tipX + px * 0.25, tipY + py * 0.25)[1]}
+                  x2={planT(tipX - px * 0.25, tipY - py * 0.25)[0]}
+                  y2={planT(tipX - px * 0.25, tipY - py * 0.25)[1]}
                   stroke="var(--ink-tertiary)"
                   strokeWidth={SW_HAIR}
                 />
@@ -292,16 +292,16 @@ export function MultirotorDetail({
       <g>
         {/* Skids, drawn as two parallel rectangles under the hub */}
         <rect
-          x={P(planT, -hubR * 1.15, -hubR * 0.35)[0]}
-          y={P(planT, -hubR * 1.15, -hubR * 0.35)[1]}
+          x={planT(-hubR * 1.15, -hubR * 0.35)[0]}
+          y={planT(-hubR * 1.15, -hubR * 0.35)[1]}
           width={hubR * 2.3 * scale}
           height={hubR * 0.12 * scale}
           fill="var(--ink-tertiary)"
           opacity={0.4}
         />
         <rect
-          x={P(planT, -hubR * 1.15, hubR * 0.23)[0]}
-          y={P(planT, -hubR * 1.15, hubR * 0.23)[1]}
+          x={planT(-hubR * 1.15, hubR * 0.23)[0]}
+          y={planT(-hubR * 1.15, hubR * 0.23)[1]}
           width={hubR * 2.3 * scale}
           height={hubR * 0.12 * scale}
           fill="var(--ink-tertiary)"
@@ -317,8 +317,8 @@ export function MultirotorDetail({
 
         {/* Central hub body */}
         <circle
-          cx={P(planT, 0, 0)[0]}
-          cy={P(planT, 0, 0)[1]}
+          cx={planT(0, 0)[0]}
+          cy={planT(0, 0)[1]}
           r={hubR * scale}
           fill="var(--bg-surface)"
           stroke="var(--ink-primary)"
@@ -326,34 +326,34 @@ export function MultirotorDetail({
         />
         {/* Hub panel lines */}
         <circle
-          cx={P(planT, 0, 0)[0]}
-          cy={P(planT, 0, 0)[1]}
+          cx={planT(0, 0)[0]}
+          cy={planT(0, 0)[1]}
           r={hubR * 0.65 * scale}
           fill="none"
           stroke="var(--ink-tertiary)"
           strokeWidth={SW_HAIR}
         />
         <line
-          x1={P(planT, -hubR * 0.65, 0)[0]}
-          y1={P(planT, -hubR * 0.65, 0)[1]}
-          x2={P(planT, hubR * 0.65, 0)[0]}
-          y2={P(planT, hubR * 0.65, 0)[1]}
+          x1={planT(-hubR * 0.65, 0)[0]}
+          y1={planT(-hubR * 0.65, 0)[1]}
+          x2={planT(hubR * 0.65, 0)[0]}
+          y2={planT(hubR * 0.65, 0)[1]}
           stroke="var(--ink-tertiary)"
           strokeWidth={SW_HAIR}
         />
         <line
-          x1={P(planT, 0, -hubR * 0.65)[0]}
-          y1={P(planT, 0, -hubR * 0.65)[1]}
-          x2={P(planT, 0, hubR * 0.65)[0]}
-          y2={P(planT, 0, hubR * 0.65)[1]}
+          x1={planT(0, -hubR * 0.65)[0]}
+          y1={planT(0, -hubR * 0.65)[1]}
+          x2={planT(0, hubR * 0.65)[0]}
+          y2={planT(0, hubR * 0.65)[1]}
           stroke="var(--ink-tertiary)"
           strokeWidth={SW_HAIR}
         />
 
         {/* Battery bay on top */}
         <rect
-          x={P(planT, -hubR * 0.55, -hubR * 0.35)[0]}
-          y={P(planT, -hubR * 0.55, -hubR * 0.35)[1]}
+          x={planT(-hubR * 0.55, -hubR * 0.35)[0]}
+          y={planT(-hubR * 0.55, -hubR * 0.35)[1]}
           width={hubR * 1.1 * scale}
           height={hubR * 0.7 * scale}
           rx={hubR * 0.08 * scale}
@@ -362,48 +362,48 @@ export function MultirotorDetail({
           strokeWidth={SW_THIN}
         />
         <line
-          x1={P(planT, -hubR * 0.55, 0)[0]}
-          y1={P(planT, -hubR * 0.55, 0)[1]}
-          x2={P(planT, hubR * 0.55, 0)[0]}
-          y2={P(planT, hubR * 0.55, 0)[1]}
+          x1={planT(-hubR * 0.55, 0)[0]}
+          y1={planT(-hubR * 0.55, 0)[1]}
+          x2={planT(hubR * 0.55, 0)[0]}
+          y2={planT(hubR * 0.55, 0)[1]}
           stroke="var(--ink-tertiary)"
           strokeWidth={SW_HAIR}
         />
 
         {/* Two antenna whips */}
         <line
-          x1={P(planT, hubR * 0.4, -hubR * 0.7)[0]}
-          y1={P(planT, hubR * 0.4, -hubR * 0.7)[1]}
-          x2={P(planT, hubR * 0.9, -hubR * 1.5)[0]}
-          y2={P(planT, hubR * 0.9, -hubR * 1.5)[1]}
+          x1={planT(hubR * 0.4, -hubR * 0.7)[0]}
+          y1={planT(hubR * 0.4, -hubR * 0.7)[1]}
+          x2={planT(hubR * 0.9, -hubR * 1.5)[0]}
+          y2={planT(hubR * 0.9, -hubR * 1.5)[1]}
           stroke="var(--ink-primary)"
           strokeWidth={SW_THIN}
         />
         <circle
-          cx={P(planT, hubR * 0.9, -hubR * 1.5)[0]}
-          cy={P(planT, hubR * 0.9, -hubR * 1.5)[1]}
+          cx={planT(hubR * 0.9, -hubR * 1.5)[0]}
+          cy={planT(hubR * 0.9, -hubR * 1.5)[1]}
           r={2}
           fill="var(--ink-primary)"
         />
         <line
-          x1={P(planT, -hubR * 0.4, -hubR * 0.7)[0]}
-          y1={P(planT, -hubR * 0.4, -hubR * 0.7)[1]}
-          x2={P(planT, -hubR * 0.9, -hubR * 1.5)[0]}
-          y2={P(planT, -hubR * 0.9, -hubR * 1.5)[1]}
+          x1={planT(-hubR * 0.4, -hubR * 0.7)[0]}
+          y1={planT(-hubR * 0.4, -hubR * 0.7)[1]}
+          x2={planT(-hubR * 0.9, -hubR * 1.5)[0]}
+          y2={planT(-hubR * 0.9, -hubR * 1.5)[1]}
           stroke="var(--ink-primary)"
           strokeWidth={SW_THIN}
         />
         <circle
-          cx={P(planT, -hubR * 0.9, -hubR * 1.5)[0]}
-          cy={P(planT, -hubR * 0.9, -hubR * 1.5)[1]}
+          cx={planT(-hubR * 0.9, -hubR * 1.5)[0]}
+          cy={planT(-hubR * 0.9, -hubR * 1.5)[1]}
           r={2}
           fill="var(--ink-primary)"
         />
 
         {/* Gimbal camera, beneath the hub (drawn as a faint circle) */}
         <circle
-          cx={P(planT, 0, 0)[0]}
-          cy={P(planT, 0, 0)[1]}
+          cx={planT(0, 0)[0]}
+          cy={planT(0, 0)[1]}
           r={gimbalR * scale}
           fill="var(--bg-subtle)"
           stroke="var(--ink-tertiary)"
@@ -411,8 +411,8 @@ export function MultirotorDetail({
           opacity={0.55}
         />
         <circle
-          cx={P(planT, 0, 0)[0]}
-          cy={P(planT, 0, 0)[1]}
+          cx={planT(0, 0)[0]}
+          cy={planT(0, 0)[1]}
           r={gimbalR * 0.5 * scale}
           fill="none"
           stroke="var(--ink-tertiary)"
@@ -422,8 +422,8 @@ export function MultirotorDetail({
 
         {/* Receiver aperture on the crown */}
         <circle
-          cx={P(planT, hubR * 0.2, 0)[0]}
-          cy={P(planT, hubR * 0.2, 0)[1]}
+          cx={planT(hubR * 0.2, 0)[0]}
+          cy={planT(hubR * 0.2, 0)[1]}
           r={apertureR * scale}
           fill="var(--status-green)"
           fillOpacity={0.18}
@@ -431,8 +431,8 @@ export function MultirotorDetail({
           strokeWidth={SW_MED}
         />
         <circle
-          cx={P(planT, hubR * 0.2 + apertureR, 0)[0]}
-          cy={P(planT, hubR * 0.2 + apertureR, 0)[1]}
+          cx={planT(hubR * 0.2 + apertureR, 0)[0]}
+          cy={planT(hubR * 0.2 + apertureR, 0)[1]}
           r={5}
           fill="var(--status-orange)"
           stroke="var(--ink-primary)"
@@ -444,8 +444,8 @@ export function MultirotorDetail({
 
         {/* Arm-end drag handle on the front-right motor */}
         <circle
-          cx={P(planT, armHandleMotor.x, armHandleMotor.y)[0]}
-          cy={P(planT, armHandleMotor.x, armHandleMotor.y)[1]}
+          cx={planT(armHandleMotor.x, armHandleMotor.y)[0]}
+          cy={planT(armHandleMotor.x, armHandleMotor.y)[1]}
           r={5}
           fill="var(--status-green)"
           stroke="var(--ink-primary)"
@@ -458,17 +458,17 @@ export function MultirotorDetail({
         {/* Diagonal span dimension callout */}
         <g>
           <line
-            x1={P(planT, -armLen * 0.9, -armLen * 0.9)[0]}
-            y1={P(planT, -armLen * 0.9, -armLen * 0.9)[1]}
-            x2={P(planT, armLen * 0.9, armLen * 0.9)[0]}
-            y2={P(planT, armLen * 0.9, armLen * 0.9)[1]}
+            x1={planT(-armLen * 0.9, -armLen * 0.9)[0]}
+            y1={planT(-armLen * 0.9, -armLen * 0.9)[1]}
+            x2={planT(armLen * 0.9, armLen * 0.9)[0]}
+            y2={planT(armLen * 0.9, armLen * 0.9)[1]}
             stroke="var(--ink-tertiary)"
             strokeWidth={SW_HAIR}
             strokeDasharray="3 3"
           />
           <text
-            x={P(planT, 0, armLen * 1.4)[0]}
-            y={P(planT, 0, armLen * 1.4)[1]}
+            x={planT(0, armLen * 1.4)[0]}
+            y={planT(0, armLen * 1.4)[1]}
             textAnchor="middle"
             fontFamily="ui-monospace, monospace"
             fontSize={FS_LABEL}
@@ -508,8 +508,8 @@ export function MultirotorDetail({
       <g>
         {/* Skids, drawn as long bars below */}
         <rect
-          x={P(profileT, -skidLen / 2, -hubR - armWidth * 0.5 - gimbalR - motorR)[0]}
-          y={P(profileT, -skidLen / 2, -hubR - armWidth * 0.5 - gimbalR - motorR)[1]}
+          x={profileT(-skidLen / 2, -hubR - armWidth * 0.5 - gimbalR - motorR)[0]}
+          y={profileT(-skidLen / 2, -hubR - armWidth * 0.5 - gimbalR - motorR)[1]}
           width={skidLen * scale}
           height={armWidth * 0.6 * scale}
           fill="var(--ink-primary)"
@@ -518,8 +518,8 @@ export function MultirotorDetail({
 
         {/* Hub body (as a rounded rectangle when seen from the side) */}
         <rect
-          x={P(profileT, -hubR, hubR)[0]}
-          y={P(profileT, -hubR, hubR)[1]}
+          x={profileT(-hubR, hubR)[0]}
+          y={profileT(-hubR, hubR)[1]}
           width={hubR * 2 * scale}
           height={hubR * 2 * scale}
           rx={hubR * 0.15 * scale}
@@ -529,8 +529,8 @@ export function MultirotorDetail({
         />
         {/* Battery bay top cap */}
         <rect
-          x={P(profileT, -hubR * 0.55, hubR + armWidth * 0.5)[0]}
-          y={P(profileT, -hubR * 0.55, hubR + armWidth * 0.5)[1]}
+          x={profileT(-hubR * 0.55, hubR + armWidth * 0.5)[0]}
+          y={profileT(-hubR * 0.55, hubR + armWidth * 0.5)[1]}
           width={hubR * 1.1 * scale}
           height={armWidth * 1.1 * scale}
           fill="var(--bg-subtle)"
@@ -542,8 +542,8 @@ export function MultirotorDetail({
             Their projection in this view is a horizontal segment to
             each side at the hub's mid-height. */}
         <rect
-          x={P(profileT, -armLenPx - motorR, 0)[0]}
-          y={P(profileT, -armLenPx - motorR, 0)[1]}
+          x={profileT(-armLenPx - motorR, 0)[0]}
+          y={profileT(-armLenPx - motorR, 0)[1]}
           width={(armLenPx + motorR) * 2 * scale}
           height={armWidth * scale}
           fill="var(--bg-subtle)"
@@ -553,16 +553,16 @@ export function MultirotorDetail({
 
         {/* Motor housings at each end of the arm */}
         <circle
-          cx={P(profileT, -armLenPx, 0)[0]}
-          cy={P(profileT, -armLenPx, 0)[1]}
+          cx={profileT(-armLenPx, 0)[0]}
+          cy={profileT(-armLenPx, 0)[1]}
           r={motorR * scale}
           fill="var(--bg-surface)"
           stroke="var(--ink-primary)"
           strokeWidth={SW_MED}
         />
         <circle
-          cx={P(profileT, armLenPx, 0)[0]}
-          cy={P(profileT, armLenPx, 0)[1]}
+          cx={profileT(armLenPx, 0)[0]}
+          cy={profileT(armLenPx, 0)[1]}
           r={motorR * scale}
           fill="var(--bg-surface)"
           stroke="var(--ink-primary)"
@@ -570,37 +570,37 @@ export function MultirotorDetail({
         />
         {/* Motor shafts visible above each */}
         <line
-          x1={P(profileT, -armLenPx, motorR)[0]}
-          y1={P(profileT, -armLenPx, motorR)[1]}
-          x2={P(profileT, -armLenPx, motorR + armWidth * 0.5)[0]}
-          y2={P(profileT, -armLenPx, motorR + armWidth * 0.5)[1]}
+          x1={profileT(-armLenPx, motorR)[0]}
+          y1={profileT(-armLenPx, motorR)[1]}
+          x2={profileT(-armLenPx, motorR + armWidth * 0.5)[0]}
+          y2={profileT(-armLenPx, motorR + armWidth * 0.5)[1]}
           stroke="var(--ink-primary)"
           strokeWidth={SW_THIN}
         />
         <line
-          x1={P(profileT, armLenPx, motorR)[0]}
-          y1={P(profileT, armLenPx, motorR)[1]}
-          x2={P(profileT, armLenPx, motorR + armWidth * 0.5)[0]}
-          y2={P(profileT, armLenPx, motorR + armWidth * 0.5)[1]}
+          x1={profileT(armLenPx, motorR)[0]}
+          y1={profileT(armLenPx, motorR)[1]}
+          x2={profileT(armLenPx, motorR + armWidth * 0.5)[0]}
+          y2={profileT(armLenPx, motorR + armWidth * 0.5)[1]}
           stroke="var(--ink-primary)"
           strokeWidth={SW_THIN}
         />
 
         {/* Propeller disks edge-on (two vertical lines at motor centres) */}
         <line
-          x1={P(profileT, -armLenPx, -propR)[0]}
-          y1={P(profileT, -armLenPx, -propR)[1]}
-          x2={P(profileT, -armLenPx, propR)[0]}
-          y2={P(profileT, -armLenPx, propR)[1]}
+          x1={profileT(-armLenPx, -propR)[0]}
+          y1={profileT(-armLenPx, -propR)[1]}
+          x2={profileT(-armLenPx, propR)[0]}
+          y2={profileT(-armLenPx, propR)[1]}
           stroke="var(--ink-secondary)"
           strokeWidth={SW_THIN}
           opacity={0.7}
         />
         <line
-          x1={P(profileT, armLenPx, -propR)[0]}
-          y1={P(profileT, armLenPx, -propR)[1]}
-          x2={P(profileT, armLenPx, propR)[0]}
-          y2={P(profileT, armLenPx, propR)[1]}
+          x1={profileT(armLenPx, -propR)[0]}
+          y1={profileT(armLenPx, -propR)[1]}
+          x2={profileT(armLenPx, propR)[0]}
+          y2={profileT(armLenPx, propR)[1]}
           stroke="var(--ink-secondary)"
           strokeWidth={SW_THIN}
           opacity={0.7}
@@ -608,16 +608,16 @@ export function MultirotorDetail({
 
         {/* Gimbal camera below the hub */}
         <circle
-          cx={P(profileT, 0, -hubR - gimbalR * 1.1)[0]}
-          cy={P(profileT, 0, -hubR - gimbalR * 1.1)[1]}
+          cx={profileT(0, -hubR - gimbalR * 1.1)[0]}
+          cy={profileT(0, -hubR - gimbalR * 1.1)[1]}
           r={gimbalR * scale}
           fill="var(--bg-subtle)"
           stroke="var(--ink-secondary)"
           strokeWidth={SW_THIN}
         />
         <circle
-          cx={P(profileT, 0, -hubR - gimbalR * 1.1)[0]}
-          cy={P(profileT, 0, -hubR - gimbalR * 1.1)[1]}
+          cx={profileT(0, -hubR - gimbalR * 1.1)[0]}
+          cy={profileT(0, -hubR - gimbalR * 1.1)[1]}
           r={gimbalR * 0.5 * scale}
           fill="none"
           stroke="var(--ink-tertiary)"
@@ -625,20 +625,20 @@ export function MultirotorDetail({
         />
         {/* Support yoke from hub down to gimbal */}
         <line
-          x1={P(profileT, 0, -hubR)[0]}
-          y1={P(profileT, 0, -hubR)[1]}
-          x2={P(profileT, 0, -hubR - gimbalR * 0.6)[0]}
-          y2={P(profileT, 0, -hubR - gimbalR * 0.6)[1]}
+          x1={profileT(0, -hubR)[0]}
+          y1={profileT(0, -hubR)[1]}
+          x2={profileT(0, -hubR - gimbalR * 0.6)[0]}
+          y2={profileT(0, -hubR - gimbalR * 0.6)[1]}
           stroke="var(--ink-primary)"
           strokeWidth={SW_THIN}
         />
 
         {/* Ground reference line for the skid */}
         <line
-          x1={P(profileT, -skidLen * 0.6, -hubR - armWidth * 0.5 - gimbalR - motorR - armWidth * 0.3)[0]}
-          y1={P(profileT, -skidLen * 0.6, -hubR - armWidth * 0.5 - gimbalR - motorR - armWidth * 0.3)[1]}
-          x2={P(profileT, skidLen * 0.6, -hubR - armWidth * 0.5 - gimbalR - motorR - armWidth * 0.3)[0]}
-          y2={P(profileT, skidLen * 0.6, -hubR - armWidth * 0.5 - gimbalR - motorR - armWidth * 0.3)[1]}
+          x1={profileT(-skidLen * 0.6, -hubR - armWidth * 0.5 - gimbalR - motorR - armWidth * 0.3)[0]}
+          y1={profileT(-skidLen * 0.6, -hubR - armWidth * 0.5 - gimbalR - motorR - armWidth * 0.3)[1]}
+          x2={profileT(skidLen * 0.6, -hubR - armWidth * 0.5 - gimbalR - motorR - armWidth * 0.3)[0]}
+          y2={profileT(skidLen * 0.6, -hubR - armWidth * 0.5 - gimbalR - motorR - armWidth * 0.3)[1]}
           stroke="var(--ink-tertiary)"
           strokeWidth={SW_HAIR}
           strokeDasharray="4 3"
@@ -671,8 +671,8 @@ export function MultirotorDetail({
       <g>
         {/* Skid cross-bar at the bottom */}
         <rect
-          x={P(frontT, -hubR * 1.15, -hubR - gimbalR - motorR - armWidth)[0]}
-          y={P(frontT, -hubR * 1.15, -hubR - gimbalR - motorR - armWidth)[1]}
+          x={frontT(-hubR * 1.15, -hubR - gimbalR - motorR - armWidth)[0]}
+          y={frontT(-hubR * 1.15, -hubR - gimbalR - motorR - armWidth)[1]}
           width={hubR * 2.3 * scale}
           height={armWidth * 0.6 * scale}
           fill="var(--ink-primary)"
@@ -681,8 +681,8 @@ export function MultirotorDetail({
 
         {/* Hub body oval (seen from the front) */}
         <ellipse
-          cx={P(frontT, 0, 0)[0]}
-          cy={P(frontT, 0, 0)[1]}
+          cx={frontT(0, 0)[0]}
+          cy={frontT(0, 0)[1]}
           rx={hubR * 0.95 * scale}
           ry={hubR * 1.1 * scale}
           fill="var(--bg-surface)"
@@ -691,8 +691,8 @@ export function MultirotorDetail({
         />
         {/* Battery bay visible on the crown */}
         <rect
-          x={P(frontT, -hubR * 0.5, hubR * 1.15)[0]}
-          y={P(frontT, -hubR * 0.5, hubR * 1.15)[1]}
+          x={frontT(-hubR * 0.5, hubR * 1.15)[0]}
+          y={frontT(-hubR * 0.5, hubR * 1.15)[1]}
           width={hubR * 1.0 * scale}
           height={armWidth * 1.2 * scale}
           fill="var(--bg-subtle)"
@@ -708,17 +708,17 @@ export function MultirotorDetail({
           return (
             <g key={side}>
               <line
-                x1={P(frontT, 0, 0)[0]}
-                y1={P(frontT, 0, 0)[1]}
-                x2={P(frontT, tipX, tipY)[0]}
-                y2={P(frontT, tipX, tipY)[1]}
+                x1={frontT(0, 0)[0]}
+                y1={frontT(0, 0)[1]}
+                x2={frontT(tipX, tipY)[0]}
+                y2={frontT(tipX, tipY)[1]}
                 stroke="var(--ink-secondary)"
                 strokeWidth={SW_MED}
               />
               {/* Motor housing at tip */}
               <circle
-                cx={P(frontT, tipX, tipY)[0]}
-                cy={P(frontT, tipX, tipY)[1]}
+                cx={frontT(tipX, tipY)[0]}
+                cy={frontT(tipX, tipY)[1]}
                 r={motorR * scale}
                 fill="var(--bg-surface)"
                 stroke="var(--ink-primary)"
@@ -730,10 +730,10 @@ export function MultirotorDetail({
                 return (
                   <line
                     key={i}
-                    x1={P(frontT, tipX + Math.cos(a) * motorR * 0.5, tipY + Math.sin(a) * motorR * 0.5)[0]}
-                    y1={P(frontT, tipX + Math.cos(a) * motorR * 0.5, tipY + Math.sin(a) * motorR * 0.5)[1]}
-                    x2={P(frontT, tipX + Math.cos(a) * motorR * 0.9, tipY + Math.sin(a) * motorR * 0.9)[0]}
-                    y2={P(frontT, tipX + Math.cos(a) * motorR * 0.9, tipY + Math.sin(a) * motorR * 0.9)[1]}
+                    x1={frontT(tipX + Math.cos(a) * motorR * 0.5, tipY + Math.sin(a) * motorR * 0.5)[0]}
+                    y1={frontT(tipX + Math.cos(a) * motorR * 0.5, tipY + Math.sin(a) * motorR * 0.5)[1]}
+                    x2={frontT(tipX + Math.cos(a) * motorR * 0.9, tipY + Math.sin(a) * motorR * 0.9)[0]}
+                    y2={frontT(tipX + Math.cos(a) * motorR * 0.9, tipY + Math.sin(a) * motorR * 0.9)[1]}
                     stroke="var(--ink-tertiary)"
                     strokeWidth={SW_HAIR}
                   />
@@ -741,8 +741,8 @@ export function MultirotorDetail({
               })}
               {/* Propeller disk face-on */}
               <circle
-                cx={P(frontT, tipX, tipY)[0]}
-                cy={P(frontT, tipX, tipY)[1]}
+                cx={frontT(tipX, tipY)[0]}
+                cy={frontT(tipX, tipY)[1]}
                 r={propR * scale}
                 fill="none"
                 stroke="var(--ink-tertiary)"
@@ -752,14 +752,14 @@ export function MultirotorDetail({
               />
               {/* Two blade-tip dots */}
               <circle
-                cx={P(frontT, tipX + propR, tipY)[0]}
-                cy={P(frontT, tipX + propR, tipY)[1]}
+                cx={frontT(tipX + propR, tipY)[0]}
+                cy={frontT(tipX + propR, tipY)[1]}
                 r={2}
                 fill="var(--ink-tertiary)"
               />
               <circle
-                cx={P(frontT, tipX - propR, tipY)[0]}
-                cy={P(frontT, tipX - propR, tipY)[1]}
+                cx={frontT(tipX - propR, tipY)[0]}
+                cy={frontT(tipX - propR, tipY)[1]}
                 r={2}
                 fill="var(--ink-tertiary)"
               />
@@ -774,17 +774,17 @@ export function MultirotorDetail({
           return (
             <g key={`rear${side}`} opacity={0.4}>
               <line
-                x1={P(frontT, 0, 0)[0]}
-                y1={P(frontT, 0, 0)[1]}
-                x2={P(frontT, tipX, tipY)[0]}
-                y2={P(frontT, tipX, tipY)[1]}
+                x1={frontT(0, 0)[0]}
+                y1={frontT(0, 0)[1]}
+                x2={frontT(tipX, tipY)[0]}
+                y2={frontT(tipX, tipY)[1]}
                 stroke="var(--ink-tertiary)"
                 strokeWidth={SW_THIN}
                 strokeDasharray="2 2"
               />
               <circle
-                cx={P(frontT, tipX, tipY)[0]}
-                cy={P(frontT, tipX, tipY)[1]}
+                cx={frontT(tipX, tipY)[0]}
+                cy={frontT(tipX, tipY)[1]}
                 r={motorR * scale * 0.85}
                 fill="none"
                 stroke="var(--ink-tertiary)"
@@ -796,16 +796,16 @@ export function MultirotorDetail({
 
         {/* Gimbal camera below the hub */}
         <circle
-          cx={P(frontT, 0, -hubR - gimbalR * 1.1)[0]}
-          cy={P(frontT, 0, -hubR - gimbalR * 1.1)[1]}
+          cx={frontT(0, -hubR - gimbalR * 1.1)[0]}
+          cy={frontT(0, -hubR - gimbalR * 1.1)[1]}
           r={gimbalR * scale}
           fill="var(--bg-subtle)"
           stroke="var(--ink-secondary)"
           strokeWidth={SW_THIN}
         />
         <circle
-          cx={P(frontT, 0, -hubR - gimbalR * 1.1)[0]}
-          cy={P(frontT, 0, -hubR - gimbalR * 1.1)[1]}
+          cx={frontT(0, -hubR - gimbalR * 1.1)[0]}
+          cy={frontT(0, -hubR - gimbalR * 1.1)[1]}
           r={gimbalR * 0.5 * scale}
           fill="none"
           stroke="var(--ink-tertiary)"
