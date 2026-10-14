@@ -310,20 +310,29 @@ def _calibrate_atmosphere_surrogate(cfg: MissionConfig) -> AtmosphericSurrogate:
 
 
 def _next_visible_time(sat: Satellite, cfg: MissionConfig) -> datetime:
-    """Return the first time at which ``sat`` is above the configured
-    ground station's horizon, within 24 hours of the TLE epoch.
+    """Return the peak-elevation moment of the first visible pass,
+    within 24 hours of the TLE epoch.
 
     Rationale: opening the app onto "LINK OFFLINE" is honest but
     unhelpful. The satellite is not above the default ground station at
     its own TLE epoch, so the default mission state reports transmittance
-    zero and every panel that depends on atmosphere reads nothing. By
-    advancing the mission time to the first geometric pass within the
-    next orbital window, the platform opens onto a live mission.
+    zero and every panel that depends on atmosphere reads nothing. The
+    first available pass gives a live mission; its peak elevation gives
+    the most favorable geometry within that pass.
+
+    Peak versus start: at the pass start the beam grazes the atmosphere
+    at ~5 degrees elevation, which is a path length near 100 km through
+    the dense lower atmosphere and drives transmittance to zero even at
+    high visibility. At peak elevation (30 degrees for the default
+    satellite/ground pair) the path is far shorter and the link is
+    meaningful. The user should see the pass at its best, not at its
+    worst; the app still exposes the elevation in the transmission
+    state, so the geometry is inspectable.
 
     Falls back to the TLE epoch when no pass exists in the scan window
     (for example, a geostationary satellite over a distant longitude).
-    The fallback preserves the previous behaviour for the cases where
-    it is the correct answer.
+    The fallback preserves the previous behaviour for cases where it is
+    the correct answer.
 
     Scan parameters (60 s step, 5 degrees minimum elevation) match the
     geometry used later in ``compute_mission_state`` to decide whether
@@ -344,7 +353,7 @@ def _next_visible_time(sat: Satellite, cfg: MissionConfig) -> datetime:
         step_seconds=60.0,
         min_elevation_deg=5.0,
     )
-    return windows[0].start_utc if windows else sat.epoch_utc
+    return windows[0].peak_time_utc if windows else sat.epoch_utc
 
 
 def compute_mission_state(
@@ -366,10 +375,10 @@ def compute_mission_state(
     cfg = cfg or MissionConfig()
     sat = get_satellite(cfg.satellite_key)
 
-    # Default the demonstration time to the TLE epoch. The caller may
-    # pass any t_utc; if it is far from the epoch, SGP4 drifts and the
-    # satellite state is marked invalid rather than producing a
-    # nonsensical altitude.
+    # Default the demonstration time to the peak of the first visible
+    # pass. The caller may pass any t_utc; if it is far from the epoch,
+    # SGP4 drifts and the satellite state is marked invalid rather than
+    # producing a nonsensical altitude.
     if t_utc is None:
         t = _next_visible_time(sat, cfg)
     else:

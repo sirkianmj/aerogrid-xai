@@ -37,10 +37,12 @@ def test_catalogue_contains_the_three_packaged_keys() -> None:
 # --- computation: schema and determinism ----------------------------------
 
 
-def test_default_time_is_first_visible_pass() -> None:
-    """Default (no t_utc) advances to the first moment the satellite is
-    above the configured ground station's horizon, so the platform opens
-    onto a live mission rather than a geometrically offline one.
+def test_default_time_is_first_pass_peak() -> None:
+    """Default (no t_utc) advances to the peak-elevation moment of the
+    first visible pass, so the platform opens onto a live mission at its
+    best geometry rather than at the pass start (where the beam grazes
+    the atmosphere) or at the TLE epoch (where the satellite is below
+    the horizon).
 
     The propagation offset from the TLE epoch is bounded by the 24-hour
     scan window. For a fresh LEO TLE, SGP4 position error over that
@@ -53,6 +55,10 @@ def test_default_time_is_first_visible_pass() -> None:
     epoch = datetime.fromisoformat(s.satellite.tle_epoch_utc)
     effective = datetime.fromisoformat(s.t_utc)
     assert effective >= epoch
+    # Peak elevation of the first pass is >20 degrees for the default
+    # satellite/ground pair; the pass start is ~6 degrees. Asserting on
+    # elevation pins the peak-time behaviour, not just "after epoch".
+    assert s.transmission.elevation_deg > 20.0
 
 
 def test_default_time_falls_back_to_epoch_when_no_pass_exists() -> None:
