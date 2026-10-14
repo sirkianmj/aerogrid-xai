@@ -110,6 +110,7 @@ jobs:
             tests/test_saas_billing_routes.py \
             tests/test_saas_quota.py \
             tests/test_saas_admin_routes.py \
+            tests/test_saas_auth_routes.py \
             -v --no-header -rA | tee /tmp/rls.log
           # Both modules skip cleanly when PostgreSQL is unreachable.
           # Under this job the service container is running and the
