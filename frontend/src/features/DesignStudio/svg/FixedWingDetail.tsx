@@ -50,10 +50,10 @@ const FRAME_H = 520
 
 // Plan view: upper-left, biggest region.
 const PLAN = { x: 30, y: 35, w: 580, h: 185 }
-// Profile view: lower-left.
-const PROFILE = { x: 30, y: 235, w: 500, h: 150 }
-// Front view: lower-right.
-const FRONT = { x: 545, y: 235, w: 245, h: 150 }
+// Profile view: lower-left, sized so it shares the bottom row with FRONT.
+const PROFILE = { x: 30, y: 235, w: 320, h: 185 }
+// Front view: lower-right, enlarged to accommodate the silhouette.
+const FRONT = { x: 365, y: 235, w: 425, h: 185 }
 // Airfoil section inset: upper-right corner of the frame.
 const SECTION = { x: 620, y: 35, w: 170, h: 185 }
 
@@ -536,8 +536,8 @@ export function FixedWingDetail({
 
         {/* Wing edge-on (a thin horizontal bar at mid-height) */}
         <rect
-          x={P(profileT, -chordRoot * 0.5, 0)[0]}
-          y={P(profileT, 0, -h2 * 0.15)[1]}
+          x={profileT(-chordRoot * 0.5, 0)[0]}
+          y={profileT(0, -h2 * 0.15)[1]}
           width={chordRoot * scale}
           height={Math.max(2, h2 * 0.3 * scale)}
           fill="var(--bg-subtle)"
@@ -547,8 +547,8 @@ export function FixedWingDetail({
 
         {/* Horizontal stabiliser edge-on */}
         <rect
-          x={P(profileT, tailX - fusLen * 0.02, 0)[0]}
-          y={P(profileT, 0, -h2 * 0.1)[1]}
+          x={profileT(tailX - fusLen * 0.02, 0)[0]}
+          y={profileT(0, -h2 * 0.1)[1]}
           width={tailChord * scale}
           height={Math.max(2, h2 * 0.2 * scale)}
           fill="var(--bg-subtle)"
@@ -572,16 +572,16 @@ export function FixedWingDetail({
 
         {/* Nose landing gear */}
         <line
-          x1={P(profileT, noseGearX, -h2 * 0.9)[0]}
-          y1={P(profileT, noseGearX, -h2 * 0.9)[1]}
-          x2={P(profileT, noseGearX, -h2 * 0.9 - gearLen)[0]}
-          y2={P(profileT, noseGearX, -h2 * 0.9 - gearLen)[1]}
+          x1={profileT(noseGearX, -h2 * 0.9)[0]}
+          y1={profileT(noseGearX, -h2 * 0.9)[1]}
+          x2={profileT(noseGearX, -h2 * 0.9 - gearLen)[0]}
+          y2={profileT(noseGearX, -h2 * 0.9 - gearLen)[1]}
           stroke="var(--ink-primary)"
           strokeWidth={SW_THIN}
         />
         <circle
-          cx={P(profileT, noseGearX, -h2 * 0.9 - gearLen)[0]}
-          cy={P(profileT, noseGearX, -h2 * 0.9 - gearLen)[1]}
+          cx={profileT(noseGearX, -h2 * 0.9 - gearLen)[0]}
+          cy={profileT(noseGearX, -h2 * 0.9 - gearLen)[1]}
           r={wheelR * scale}
           fill="var(--bg-surface)"
           stroke="var(--ink-primary)"
@@ -590,16 +590,16 @@ export function FixedWingDetail({
 
         {/* Main landing gear */}
         <line
-          x1={P(profileT, mainGearX, -h2)[0]}
-          y1={P(profileT, mainGearX, -h2)[1]}
-          x2={P(profileT, mainGearX, -h2 - gearLen)[0]}
-          y2={P(profileT, mainGearX, -h2 - gearLen)[1]}
+          x1={profileT(mainGearX, -h2)[0]}
+          y1={profileT(mainGearX, -h2)[1]}
+          x2={profileT(mainGearX, -h2 - gearLen)[0]}
+          y2={profileT(mainGearX, -h2 - gearLen)[1]}
           stroke="var(--ink-primary)"
           strokeWidth={SW_THIN}
         />
         <circle
-          cx={P(profileT, mainGearX, -h2 - gearLen)[0]}
-          cy={P(profileT, mainGearX, -h2 - gearLen)[1]}
+          cx={profileT(mainGearX, -h2 - gearLen)[0]}
+          cy={profileT(mainGearX, -h2 - gearLen)[1]}
           r={wheelR * scale}
           fill="var(--bg-surface)"
           stroke="var(--ink-primary)"
@@ -608,16 +608,16 @@ export function FixedWingDetail({
 
         {/* Propeller disk, edge-on (a vertical line at the nose) */}
         <line
-          x1={P(profileT, noseX + noseR * 0.4, propR)[0]}
-          y1={P(profileT, noseX + noseR * 0.4, propR)[1]}
-          x2={P(profileT, noseX + noseR * 0.4, -propR)[0]}
-          y2={P(profileT, noseX + noseR * 0.4, -propR)[1]}
+          x1={profileT(noseX + noseR * 0.4, propR)[0]}
+          y1={profileT(noseX + noseR * 0.4, propR)[1]}
+          x2={profileT(noseX + noseR * 0.4, -propR)[0]}
+          y2={profileT(noseX + noseR * 0.4, -propR)[1]}
           stroke="var(--ink-primary)"
           strokeWidth={SW_MED}
         />
         <circle
-          cx={P(profileT, noseX + noseR * 0.4, 0)[0]}
-          cy={P(profileT, noseX + noseR * 0.4, 0)[1]}
+          cx={profileT(noseX + noseR * 0.4, 0)[0]}
+          cy={profileT(noseX + noseR * 0.4, 0)[1]}
           r={3}
           fill="var(--ink-primary)"
         />
@@ -626,9 +626,9 @@ export function FixedWingDetail({
         <path
           d={
             `M ${P(profileT, turretCxProfile - turretR, -h2 * 0.9)} ` +
-            `A ${turretR * scale} ${turretR * scale} 0 0 0 ${P(profileT, turretCxProfile + turretR, -h2 * 0.9)[0]} ${P(profileT, turretCxProfile + turretR, -h2 * 0.9)[1]} ` +
-            `L ${P(profileT, turretCxProfile + turretR * 0.7, -h2 * 0.9)[0]} ${P(profileT, turretCxProfile + turretR * 0.7, -h2 * 0.9)[1]} ` +
-            `A ${turretR * 0.7 * scale} ${turretR * 0.7 * scale} 0 0 1 ${P(profileT, turretCxProfile - turretR * 0.7, -h2 * 0.9)[0]} ${P(profileT, turretCxProfile - turretR * 0.7, -h2 * 0.9)[1]} Z`
+            `A ${turretR * scale} ${turretR * scale} 0 0 0 ${profileT(turretCxProfile + turretR, -h2 * 0.9)[0]} ${profileT(turretCxProfile + turretR, -h2 * 0.9)[1]} ` +
+            `L ${profileT(turretCxProfile + turretR * 0.7, -h2 * 0.9)[0]} ${profileT(turretCxProfile + turretR * 0.7, -h2 * 0.9)[1]} ` +
+            `A ${turretR * 0.7 * scale} ${turretR * 0.7 * scale} 0 0 1 ${profileT(turretCxProfile - turretR * 0.7, -h2 * 0.9)[0]} ${profileT(turretCxProfile - turretR * 0.7, -h2 * 0.9)[1]} Z`
           }
           fill="var(--bg-subtle)"
           stroke="var(--ink-secondary)"
@@ -650,113 +650,418 @@ export function FixedWingDetail({
   }
 
   // -------- Front view -------------------------------------------------
+  // -------- FRONT view (looking at the aircraft nose-on) ---------------
+  //
+  // Layer order, farthest from camera first:
+  //   1. Nose landing gear (drawn dashed, behind the fuselage)
+  //   2. Tail: fin triangle and h-stab slab
+  //   3. Main landing gear (struts and wheels below the wing)
+  //   4. Wings with dihedral and winglets
+  //   5. Fuselage cross-section (rounded oval)
+  //   6. Canopy bubble on top of the fuselage
+  //   7. Propeller disk with blades and spinner (front of the aircraft)
+  //
+  // Airfoil thickness in this view is EXAGGERATED 3x for legibility.
+  // At true scale, a 12% chord on a 0.45 m chord is a 5 cm slab, which
+  // renders as a line. The SECTION A-A inset draws the same airfoil at
+  // true relative thickness.
   function renderFront(): ReactElement {
     const h2 = fusWidth / 2
     const dihedralRad = (RATIO.dihedralDeg * Math.PI) / 180
+    const tipLift = halfSpan * Math.tan(dihedralRad)
 
-    // Wing tips with dihedral: at half-span horizontally, rise by
-    // half-span * tan(dihedral) vertically.
-    const tipY = halfSpan * Math.tan(dihedralRad)
+    // Exaggerated airfoil thickness in the front view (3x reality).
+    const tRoot = 3 * RATIO.airfoilThickness * chordRoot
+    const tTip = 3 * RATIO.airfoilThickness * chordTip
 
-    // Front view has fuselage horizontal axis swapped: the aircraft's
-    // forward direction is out of the page. So the horizontal axis in
-    // this view is the wingspan, and the vertical axis is height.
-    // We draw with X = span direction, Y = vertical.
+    // Common vertical dimensions for gear.
+    const strutLen = finHeight * 0.55
+    const mainWheelR = finHeight * 0.16
+    const noseWheelR = finHeight * 0.13
 
-    // Propeller disk face-on: a circle of radius propR, drawn behind
-    // the fuselage so the aircraft reads as pointing out of the page.
+    // --- 1. Nose gear (behind fuselage, dashed) ---
+    function renderNoseGear(): ReactElement {
+      return (
+        <g opacity={0.7}>
+          <line
+            x1={frontT(0, -h2 * 0.9)[0]}
+            y1={frontT(0, -h2 * 0.9)[1]}
+            x2={frontT(0, -h2 * 0.9 - strutLen * 0.85)[0]}
+            y2={frontT(0, -h2 * 0.9 - strutLen * 0.85)[1]}
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_THIN}
+            strokeDasharray="3 2"
+          />
+          <circle
+            cx={frontT(0, -h2 * 0.9 - strutLen * 0.85 - noseWheelR)[0]}
+            cy={frontT(0, -h2 * 0.9 - strutLen * 0.85 - noseWheelR)[1]}
+            r={noseWheelR * scale}
+            fill="var(--bg-surface)"
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_THIN}
+            strokeDasharray="3 2"
+          />
+        </g>
+      )
+    }
+
+    // --- 2. Tail surfaces ---
+    function renderTail(): ReactElement {
+      // Vertical fin: triangle from the aft fuselage top.
+      const finBaseW = finHeight * 0.55
+      const finPath =
+        `M ${P(frontT, -finBaseW, h2 * 0.4)} ` +
+        `L ${P(frontT, 0, h2 * 0.4)} ` +
+        `L ${P(frontT, 0, h2 * 0.4 + finHeight)} ` +
+        `L ${P(frontT, -finBaseW * 0.6, h2 * 0.4 + finHeight * 0.7)} Z`
+
+      // Horizontal stabiliser edge-on: a thin slab at the tail height.
+      const hsW = tailSpan / 2
+      const hsT = tTip * 0.8
+      const hsPath =
+        `M ${P(frontT, -hsW, h2 * 0.1)} ` +
+        `L ${P(frontT, -hsW, h2 * 0.1 - hsT)} ` +
+        `L ${P(frontT, hsW, h2 * 0.1 - hsT)} ` +
+        `L ${P(frontT, hsW, h2 * 0.1)} Z`
+
+      return (
+        <g>
+          <path d={hsPath} fill="var(--bg-subtle)" stroke="var(--ink-secondary)" strokeWidth={SW_MED} />
+          <line
+            x1={frontT(-hsW, h2 * 0.1)[0]}
+            y1={frontT(-hsW, h2 * 0.1)[1]}
+            x2={frontT(-hsW, h2 * 0.1 - hsT)[0]}
+            y2={frontT(-hsW, h2 * 0.1 - hsT)[1]}
+            stroke="var(--ink-primary)"
+            strokeWidth={SW_MED}
+          />
+          <line
+            x1={frontT(hsW, h2 * 0.1)[0]}
+            y1={frontT(hsW, h2 * 0.1)[1]}
+            x2={frontT(hsW, h2 * 0.1 - hsT)[0]}
+            y2={frontT(hsW, h2 * 0.1 - hsT)[1]}
+            stroke="var(--ink-primary)"
+            strokeWidth={SW_MED}
+          />
+          <path d={finPath} fill="var(--bg-subtle)" stroke="var(--ink-secondary)" strokeWidth={SW_MED} />
+          <line
+            x1={frontT(-finBaseW * 0.35, h2 * 0.4 + finHeight * 0.8)[0]}
+            y1={frontT(-finBaseW * 0.35, h2 * 0.4 + finHeight * 0.8)[1]}
+            x2={frontT(-finBaseW * 0.35, h2 * 0.4 + finHeight * 0.25)[0]}
+            y2={frontT(-finBaseW * 0.35, h2 * 0.4 + finHeight * 0.25)[1]}
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_HAIR}
+          />
+        </g>
+      )
+    }
+
+    // --- 3. Main landing gear (in front of the tail, behind the wing) ---
+    function renderMainGear(): ReactElement {
+      return (
+        <g>
+          {[-1, 1].map((side) => {
+            const gearX = side * gearTrack * 0.5
+            return (
+              <g key={side}>
+                <line
+                  x1={frontT(gearX, -h2 * 0.9)[0]}
+                  y1={frontT(gearX, -h2 * 0.9)[1]}
+                  x2={frontT(gearX, -h2 * 0.9 - strutLen)[0]}
+                  y2={frontT(gearX, -h2 * 0.9 - strutLen)[1]}
+                  stroke="var(--ink-primary)"
+                  strokeWidth={SW_MAIN}
+                />
+                <rect
+                  x={frontT(gearX - fusWidth * 0.06, -h2 * 0.9)[0]}
+                  y={frontT(gearX - fusWidth * 0.06, -h2 * 0.9)[1]}
+                  width={fusWidth * 0.12 * scale}
+                  height={strutLen * 0.4 * scale}
+                  fill="var(--bg-subtle)"
+                  stroke="var(--ink-secondary)"
+                  strokeWidth={SW_THIN}
+                />
+                <circle
+                  cx={frontT(gearX, -h2 * 0.9 - strutLen - mainWheelR)[0]}
+                  cy={frontT(gearX, -h2 * 0.9 - strutLen - mainWheelR)[1]}
+                  r={mainWheelR * scale}
+                  fill="var(--bg-surface)"
+                  stroke="var(--ink-primary)"
+                  strokeWidth={SW_MAIN}
+                />
+                <circle
+                  cx={frontT(gearX, -h2 * 0.9 - strutLen - mainWheelR)[0]}
+                  cy={frontT(gearX, -h2 * 0.9 - strutLen - mainWheelR)[1]}
+                  r={mainWheelR * 0.35 * scale}
+                  fill="var(--ink-primary)"
+                />
+                <circle
+                  cx={frontT(gearX, -h2 * 0.9 - strutLen - mainWheelR)[0]}
+                  cy={frontT(gearX, -h2 * 0.9 - strutLen - mainWheelR)[1]}
+                  r={mainWheelR * 0.6 * scale}
+                  fill="none"
+                  stroke="var(--ink-tertiary)"
+                  strokeWidth={SW_HAIR}
+                />
+              </g>
+            )
+          })}
+        </g>
+      )
+    }
+
+    // --- 4. Wings ---
+    function renderWingFront(side: 1 | -1): ReactElement {
+      const tipX = side * halfSpan
+      const rootY = 0
+      const tipY = tipLift
+      const wingPath =
+        `M ${P(frontT, 0, rootY + tRoot / 2)} ` +
+        `L ${P(frontT, tipX, tipY + tTip / 2)} ` +
+        `L ${P(frontT, tipX, tipY - tTip / 2)} ` +
+        `L ${P(frontT, 0, rootY - tRoot / 2)} Z`
+
+      const wingletH = tTip * 1.6
+      const wingletPath =
+        `M ${P(frontT, tipX, tipY + tTip / 2)} ` +
+        `L ${P(frontT, tipX + side * wingletH * 0.3, tipY + tTip / 2 + wingletH)} ` +
+        `L ${P(frontT, tipX + side * wingletH * 0.3, tipY - tTip / 2 + wingletH)} ` +
+        `L ${P(frontT, tipX, tipY - tTip / 2)} Z`
+
+      return (
+        <g key={side}>
+          <path d={wingPath} fill="var(--bg-subtle)" stroke="var(--ink-secondary)" strokeWidth={SW_MED} />
+          <path d={wingletPath} fill="var(--bg-subtle)" stroke="var(--ink-primary)" strokeWidth={SW_MED} />
+          {/* Leading edge highlight */}
+          <line
+            x1={frontT(0, rootY + tRoot / 2)[0]}
+            y1={frontT(0, rootY + tRoot / 2)[1]}
+            x2={frontT(tipX, tipY + tTip / 2)[0]}
+            y2={frontT(tipX, tipY + tTip / 2)[1]}
+            stroke="var(--ink-primary)"
+            strokeWidth={SW_MAIN * 0.8}
+          />
+          {/* Aileron outline dashed on the outboard trailing edge */}
+          <line
+            x1={frontT(side * halfSpan * 0.6, tipY * 0.6 - tTip / 2)[0]}
+            y1={frontT(side * halfSpan * 0.6, tipY * 0.6 - tTip / 2)[1]}
+            x2={frontT(tipX, tipY - tTip / 2)[0]}
+            y2={frontT(tipX, tipY - tTip / 2)[1]}
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_HAIR}
+            strokeDasharray="2 2"
+          />
+        </g>
+      )
+    }
+
+    // --- 5. Fuselage cross-section ---
+    function renderFuselage(): ReactElement {
+      const fusH = fusWidth * 1.15
+      const cx = frontT(0, 0)[0]
+      const cy = frontT(0, 0)[1]
+      return (
+        <g>
+          <ellipse
+            cx={cx}
+            cy={cy}
+            rx={h2 * scale}
+            ry={(fusH / 2) * scale}
+            fill="var(--bg-surface)"
+            stroke="var(--ink-primary)"
+            strokeWidth={SW_MAIN}
+          />
+          <line
+            x1={cx - h2 * scale}
+            y1={cy}
+            x2={cx + h2 * scale}
+            y2={cy}
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_HAIR}
+          />
+          <line
+            x1={cx}
+            y1={cy - (fusH / 2) * scale}
+            x2={cx}
+            y2={cy + (fusH / 2) * scale}
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_HAIR}
+            opacity={0.6}
+          />
+          {/* Exhaust ports on each side */}
+          {[-1, 1].map((side) => (
+            <rect
+              key={side}
+              x={frontT(side * h2 * 0.85, -h2 * 0.3)[0]}
+              y={frontT(side * h2 * 0.85, -h2 * 0.3)[1]}
+              width={3}
+              height={5}
+              fill="var(--ink-secondary)"
+            />
+          ))}
+          {/* Static ports */}
+          {[-1, 1].map((side) => (
+            <circle
+              key={side}
+              cx={frontT(side * h2 * 0.7, h2 * 0.15)[0]}
+              cy={frontT(side * h2 * 0.7, h2 * 0.15)[1]}
+              r={1.2}
+              fill="var(--ink-tertiary)"
+            />
+          ))}
+        </g>
+      )
+    }
+
+    // --- 6. Canopy ---
+    function renderCanopy(): ReactElement {
+      const canopyW = fusWidth * 0.9
+      const canopyH = fusWidth * 0.5
+      const canopyPath =
+        `M ${P(frontT, -canopyW / 2, h2 * 0.85)} ` +
+        `Q ${P(frontT, -canopyW * 0.55, h2 * 0.85 + canopyH)} ${P(frontT, 0, h2 * 0.85 + canopyH)} ` +
+        `Q ${P(frontT, canopyW * 0.55, h2 * 0.85 + canopyH)} ${P(frontT, canopyW / 2, h2 * 0.85)} Z`
+      return (
+        <g>
+          <path d={canopyPath} fill="var(--bg-subtle)" stroke="var(--ink-primary)" strokeWidth={SW_MED} />
+          <line
+            x1={frontT(0, h2 * 0.85)[0]}
+            y1={frontT(0, h2 * 0.85)[1]}
+            x2={frontT(0, h2 * 0.85 + canopyH)[0]}
+            y2={frontT(0, h2 * 0.85 + canopyH)[1]}
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_HAIR}
+          />
+          <line
+            x1={frontT(-canopyW * 0.3, h2 * 0.85)[0]}
+            y1={frontT(-canopyW * 0.3, h2 * 0.85)[1]}
+            x2={frontT(-canopyW * 0.2, h2 * 0.85 + canopyH * 0.7)[0]}
+            y2={frontT(-canopyW * 0.2, h2 * 0.85 + canopyH * 0.7)[1]}
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_HAIR}
+          />
+          <line
+            x1={frontT(canopyW * 0.3, h2 * 0.85)[0]}
+            y1={frontT(canopyW * 0.3, h2 * 0.85)[1]}
+            x2={frontT(canopyW * 0.2, h2 * 0.85 + canopyH * 0.7)[0]}
+            y2={frontT(canopyW * 0.2, h2 * 0.85 + canopyH * 0.7)[1]}
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_HAIR}
+          />
+        </g>
+      )
+    }
+
+    // --- 7. Propeller ---
+    function renderProp(): ReactElement {
+      const cx = frontT(0, 0)[0]
+      const cy = frontT(0, 0)[1]
+      return (
+        <g>
+          <circle
+            cx={cx}
+            cy={cy}
+            r={propR * scale}
+            fill="none"
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_HAIR}
+            strokeDasharray="4 3"
+            opacity={0.55}
+          />
+          {[0, 120, 240].map((deg) => {
+            const rad = ((deg - 90) * Math.PI) / 180
+            const bx = Math.cos(rad)
+            const by = Math.sin(rad)
+            const tipX = cx + bx * propR * scale
+            const tipY = cy + by * propR * scale
+            const midX = cx + bx * propR * scale * 0.55
+            const midY = cy + by * propR * scale * 0.55
+            const perpX = -by
+            const perpY = bx
+            const bw = propR * scale * 0.15
+            const path =
+              `M ${cx} ${cy} ` +
+              `Q ${midX + perpX * bw} ${midY + perpY * bw} ${tipX} ${tipY} ` +
+              `Q ${midX - perpX * bw} ${midY - perpY * bw} ${cx} ${cy} Z`
+            return (
+              <path
+                key={deg}
+                d={path}
+                fill="var(--bg-surface)"
+                stroke="var(--ink-primary)"
+                strokeWidth={SW_MED}
+              />
+            )
+          })}
+          <circle cx={cx} cy={cy} r={propR * scale * 0.14} fill="var(--ink-primary)" />
+          <circle cx={cx} cy={cy} r={propR * scale * 0.07} fill="var(--bg-surface)" />
+        </g>
+      )
+    }
 
     return (
       <g>
-        {/* Propeller disk face-on, behind the fuselage */}
-        <circle
-          cx={P(frontT, 0, 0)[0]}
-          cy={P(frontT, 0, 0)[1]}
-          r={propR * scale}
-          fill="none"
-          stroke="var(--ink-tertiary)"
-          strokeWidth={SW_THIN}
-          strokeDasharray="3 3"
-          opacity={0.7}
-        />
-        {/* Blade tips visible at 0/120/240 degrees */}
-        {[0, 120, 240].map((deg) => {
-          const rad = (deg * Math.PI) / 180
-          const bx = Math.cos(rad) * propR
-          const by = Math.sin(rad) * propR
-          return (
-            <circle
-              key={deg}
-              cx={P(frontT, bx, by)[0]}
-              cy={P(frontT, bx, by)[1]}
-              r={2}
-              fill="var(--ink-tertiary)"
-            />
-          )
-        })}
+        {renderNoseGear()}
+        {renderTail()}
+        {renderMainGear()}
+        {renderWingFront(-1)}
+        {renderWingFront(1)}
+        {renderFuselage()}
+        {renderCanopy()}
+        {renderProp()}
 
-        {/* Fuselage cross-section, drawn as an oval */}
-        <ellipse
-          cx={P(frontT, 0, 0)[0]}
-          cy={P(frontT, 0, 0)[1]}
-          rx={fusWidth * 0.55 * scale}
-          ry={fusWidth * 0.65 * scale}
-          fill="var(--bg-surface)"
-          stroke="var(--ink-primary)"
-          strokeWidth={SW_MAIN}
-        />
+        {/* Span dimension line above the wings */}
+        <g>
+          <line
+            x1={frontT(-halfSpan, tipLift + tTip + finHeight * 0.4)[0]}
+            y1={frontT(-halfSpan, tipLift + tTip + finHeight * 0.4)[1]}
+            x2={frontT(halfSpan, tipLift + tTip + finHeight * 0.4)[0]}
+            y2={frontT(halfSpan, tipLift + tTip + finHeight * 0.4)[1]}
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_HAIR}
+          />
+          <line
+            x1={frontT(-halfSpan, tipLift + tTip + finHeight * 0.4 - 3)[0]}
+            y1={frontT(-halfSpan, tipLift + tTip + finHeight * 0.4 - 3)[1]}
+            x2={frontT(-halfSpan, tipLift + tTip + finHeight * 0.4 + 3)[0]}
+            y2={frontT(-halfSpan, tipLift + tTip + finHeight * 0.4 + 3)[1]}
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_HAIR}
+          />
+          <line
+            x1={frontT(halfSpan, tipLift + tTip + finHeight * 0.4 - 3)[0]}
+            y1={frontT(halfSpan, tipLift + tTip + finHeight * 0.4 - 3)[1]}
+            x2={frontT(halfSpan, tipLift + tTip + finHeight * 0.4 + 3)[0]}
+            y2={frontT(halfSpan, tipLift + tTip + finHeight * 0.4 + 3)[1]}
+            stroke="var(--ink-tertiary)"
+            strokeWidth={SW_HAIR}
+          />
+          <text
+            x={frontT(0, tipLift + tTip + finHeight * 0.55)[0]}
+            y={frontT(0, tipLift + tTip + finHeight * 0.55)[1]}
+            textAnchor="middle"
+            fontFamily="ui-monospace, monospace"
+            fontSize={FS_LABEL}
+            fill="var(--ink-tertiary)"
+          >
+            span {span.toFixed(2)} m · dihedral {RATIO.dihedralDeg}°
+          </text>
+        </g>
 
-        {/* Wings */}
-        <polyline
-          points={`${P(frontT, -halfSpan, tipY)} ${P(frontT, -fusWidth / 2, 0)} ${P(frontT, fusWidth / 2, 0)} ${P(frontT, halfSpan, tipY)}`}
-          fill="none"
-          stroke="var(--ink-secondary)"
-          strokeWidth={SW_MAIN}
-        />
-        {/* Winglets: short vertical caps at the tips */}
-        <line
-          x1={P(frontT, -halfSpan, tipY)[0]}
-          y1={P(frontT, -halfSpan, tipY)[1]}
-          x2={P(frontT, -halfSpan, tipY + chordTip * 0.5)[0]}
-          y2={P(frontT, -halfSpan, tipY + chordTip * 0.5)[1]}
-          stroke="var(--ink-primary)"
-          strokeWidth={SW_MED}
-        />
-        <line
-          x1={P(frontT, halfSpan, tipY)[0]}
-          y1={P(frontT, halfSpan, tipY)[1]}
-          x2={P(frontT, halfSpan, tipY + chordTip * 0.5)[0]}
-          y2={P(frontT, halfSpan, tipY + chordTip * 0.5)[1]}
-          stroke="var(--ink-primary)"
-          strokeWidth={SW_MED}
-        />
-
-        {/* Landing gear: two main wheels visible below */}
-        {[-1, 1].map((side) => (
-          <g key={side}>
-            <line
-              x1={P(frontT, side * gearTrack / 2, -h2)[0]}
-              y1={P(frontT, side * gearTrack / 2, -h2)[1]}
-              x2={P(frontT, side * gearTrack / 2, -h2 - gearTrack * 0.25)[0]}
-              y2={P(frontT, side * gearTrack / 2, -h2 - gearTrack * 0.25)[1]}
-              stroke="var(--ink-primary)"
-              strokeWidth={SW_THIN}
-            />
-            <circle
-              cx={P(frontT, side * gearTrack / 2, -h2 - gearTrack * 0.25)[0]}
-              cy={P(frontT, side * gearTrack / 2, -h2 - gearTrack * 0.25)[1]}
-              r={finHeight * 0.1 * scale}
-              fill="var(--bg-surface)"
-              stroke="var(--ink-primary)"
-              strokeWidth={SW_THIN}
-            />
-          </g>
-        ))}
-
-        {/* View label */}
+        {/* Exaggeration note */}
         <text
           x={FRONT.x + FRONT.w * 0.02}
-          y={FRONT.y + FRONT.h * 0.08}
+          y={FRONT.y + FRONT.h - 4}
+          fontFamily="ui-monospace, monospace"
+          fontSize={FS_LABEL * 0.85}
+          fill="var(--ink-tertiary)"
+        >
+          airfoil thickness exaggerated 3× for legibility
+        </text>
+
+        <text
+          x={FRONT.x + FRONT.w * 0.02}
+          y={FRONT.y + FRONT.h * 0.09}
           fontFamily="ui-monospace, monospace"
           fontSize={FS_LABEL * 1.1}
           fill="var(--ink-secondary)"
