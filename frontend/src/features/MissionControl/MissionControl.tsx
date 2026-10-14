@@ -290,6 +290,14 @@ function PipelineView({ data, onRefresh }: { data: MissionState; onRefresh: () =
           statusReason={atmStage.reason}
         >
           <KeyValue label="τ" value={s.atmosphere.transmittance.toFixed(4)} />
+          {s.atmosphere.transmittance_low !== null &&
+            s.atmosphere.transmittance_high !== null &&
+            s.atmosphere.nominal_coverage !== null && (
+              <KeyValue
+                label="τ interval"
+                value={`[${s.atmosphere.transmittance_low.toFixed(3)}, ${s.atmosphere.transmittance_high.toFixed(3)}] @ ${(s.atmosphere.nominal_coverage * 100).toFixed(0)}%`}
+              />
+            )}
           <KeyValue label="visibility" value={`${s.atmosphere.visibility_km.toFixed(1)} km`} />
           <KeyValue label="cloud" value={s.atmosphere.cloud_factor.toFixed(2)} />
           <KeyValue
