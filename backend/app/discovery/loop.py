@@ -109,6 +109,9 @@ def _classify(
     population: list[Individual],
     encoder: EncoderFn,
     table: ConflictProneTable,
+    trace: list[dict[str, object]] | None = None,
+    generation: int = 0,
+    max_trace: int = 0,
 ) -> tuple[list[Individual], list[Individual], set[int]]:
     """Encode, check, and attribute every individual.
 
@@ -116,11 +119,18 @@ def _classify(
     in place for every UNSAT result. ``feasible_ids`` contains the
     ``id()`` of every individual in ``feasible`` so that a caller can
     test membership without object equality on Architecture.
+
+    When ``trace`` is a list, one entry is appended for every
+    individual in the batch, capped at ``max_trace`` total entries
+    across the whole run. The entry names the generation, the
+    individual's position in the batch, the SAT/UNSAT status, the
+    constraint count, and the sorted list of grammar features marked
+    conflict-prone by the attribution mechanism (empty on SAT).
     """
     feasible: list[Individual] = []
     infeasible: list[Individual] = []
     feasible_ids: set[int] = set()
-    for ind in population:
+    for idx, ind in enumerate(population):
         constraints = encoder(ind.architecture)
         attribution = attribute_and_mark(constraints, table)
         if attribution.status == "sat":
@@ -128,6 +138,18 @@ def _classify(
             feasible_ids.add(id(ind))
         else:
             infeasible.append(ind)
+        if trace is not None and len(trace) < max_trace:
+            conflict_prone = getattr(attribution, "conflict_prone", ())
+            mapped = sorted(f"{f.kind.value}:{f.identifier}" for f in conflict_prone)
+            trace.append(
+                {
+                    "generation": generation,
+                    "individual_index": idx,
+                    "status": str(attribution.status),
+                    "n_constraints": len(constraints),
+                    "conflict_prone": mapped,
+                }
+            )
     return feasible, infeasible, feasible_ids
 
 
@@ -181,6 +203,8 @@ def run_clear_d_loop(
     *,
     reference_point: ObjectiveVector | None = None,
     hypervolume_samples: int = 2048,
+    trace: list[dict[str, object]] | None = None,
+    max_trace: int = 0,
 ) -> ClearDLoopResult:
     """Run the CLEAR-D closed loop.
 
@@ -227,7 +251,9 @@ def run_clear_d_loop(
     # Initial classification of the seed population. This is the only
     # classification of these individuals; later classifications are
     # reserved for offspring.
-    feasible, infeasible, feasible_ids = _classify(population, encoder, table)
+    feasible, infeasible, feasible_ids = _classify(
+        population, encoder, table, trace=trace, generation=0, max_trace=max_trace
+    )
 
     for gen in range(cfg.n_generations):
         birth_gens = [ind.generation for ind in feasible]
@@ -283,7 +309,14 @@ def run_clear_d_loop(
 
         # Classify offspring exactly once. This is the only pass that
         # updates the ConflictProneTable for offspring contributions.
-        _, _, offspring_feasible_ids = _classify(offspring, encoder, table)
+        _, _, offspring_feasible_ids = _classify(
+            offspring,
+            encoder,
+            table,
+            trace=trace,
+            generation=gen + 1,
+            max_trace=max_trace,
+        )
 
         # Constrained selection over parents plus offspring. Feasibility
         # for the combined pool is the union of the two known sets, so
