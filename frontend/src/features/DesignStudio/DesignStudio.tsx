@@ -33,6 +33,7 @@ import {
 } from "./designApi"
 import { OrbitDiagram } from "./svg/OrbitDiagram"
 import { SatelliteBusDiagram } from "./svg/SatelliteBusDiagram"
+import { SatelliteProfileSVG } from "./svg/SatelliteProfileSVG"
 import { DroneTopView } from "./svg/DroneTopView"
 
 function fmtPower(w: number): string {
@@ -179,6 +180,11 @@ function SatelliteDesigner({ presets }: { presets: SatellitePreset[] }) {
       <h3 className="mb-2 text-sm font-semibold">Satellite designer</h3>
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-4">
         <div className="space-y-3">
+          <SatelliteProfileSVG
+            transmitter_power_w={fields.transmitter_power_w}
+            transmitter_aperture_m={fields.transmitter_aperture_m}
+            onChange={(patch) => setFields((f) => ({ ...f, ...patch }))}
+          />
           <OrbitDiagram
             a_km={fields.a_km}
             e={fields.e}
