@@ -27,8 +27,13 @@ from app.discovery.generator import GeneratorConfig, generate_architecture
 from app.discovery.grammar import Architecture, Terminal
 from app.discovery.loop import ClearDLoopConfig, run_clear_d_loop
 from app.discovery.nsga2 import synthetic_evaluator
+from app.physics.atmosphere import (
+    total_extinction_per_km as _total_extinction_per_km,
+)
+from app.physics.atmosphere import (
+    transmission as _kruse_kim_transmission,
+)
 from app.physics.catalog import get_satellite, list_satellite_keys
-from app.physics.link_budget import atmospheric_transmission
 from app.physics.orbital import StateVector, classify_orbit
 from app.verification.architecture_encoder import encode_architecture
 
@@ -279,10 +284,11 @@ def _calibrate_atmosphere_surrogate(cfg: MissionConfig) -> AtmosphericSurrogate:
         # Point-model prediction, then a deterministic ±15% perturbation
         # representing the model's stated accuracy envelope.
         base = float(
-            atmospheric_transmission(
+            _kruse_kim_transmission(
                 wavelength_nm=cfg.wavelength_nm,
                 path_length_m=path_m,
-                extinction_coeff_per_m=cfg.extinction_coeff_per_m,
+                visibility_km=cfg.visibility_km,
+                cloud_factor=cfg.cloud_factor,
             )
         )
         noise = rng.uniform(-1.0, 1.0) * 0.15 * base
@@ -414,10 +420,18 @@ def compute_mission_state(
         # Clamp elevation to avoid a division by zero at the horizon.
         sin_elev = max(math.sin(elevation_rad), 1e-3)
         atmospheric_path_m = h_eff_m / sin_elev
-        tau = atmospheric_transmission(
+        # Kruse-Kim total extinction: molecular + aerosol + cloud.
+        # The aerosol term is derived from visibility_km; the cloud
+        # term from cloud_factor. Both inputs therefore affect tau.
+        tau = _kruse_kim_transmission(
             wavelength_nm=cfg.wavelength_nm,
             path_length_m=atmospheric_path_m,
-            extinction_coeff_per_m=cfg.extinction_coeff_per_m,
+            visibility_km=cfg.visibility_km,
+            cloud_factor=cfg.cloud_factor,
+        )
+        alpha_per_m = (
+            _total_extinction_per_km(cfg.wavelength_nm, cfg.visibility_km, cfg.cloud_factor)
+            / 1000.0
         )
         transmission = TransmissionState(
             modality="laser",
@@ -440,7 +454,7 @@ def compute_mission_state(
             transmittance=float(tau),
             visibility_km=cfg.visibility_km,
             cloud_factor=cfg.cloud_factor,
-            extinction_coeff_per_m=cfg.extinction_coeff_per_m,
+            extinction_coeff_per_m=float(alpha_per_m),
             transmittance_low=float(tier2.interval.low),
             transmittance_high=float(tier2.interval.high),
             nominal_coverage=float(tier2.interval.nominal_coverage),

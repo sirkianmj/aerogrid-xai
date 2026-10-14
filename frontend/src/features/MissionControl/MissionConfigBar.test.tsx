@@ -103,7 +103,7 @@ describe("MissionConfigBar", () => {
     window.localStorage.removeItem("aerogrid.token")
   })
 
-  it("renders the config bar heading and all seven inputs", () => {
+  it("renders the config bar heading and all nine inputs", () => {
     stubFetchOk()
     renderWithProvider()
     expect(

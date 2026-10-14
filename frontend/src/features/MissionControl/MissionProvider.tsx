@@ -42,6 +42,8 @@ function queryString(c: MissionConfig): string {
   p.set("ground_lat_deg", String(c.ground_lat_deg))
   p.set("ground_lon_deg", String(c.ground_lon_deg))
   p.set("transmitter_power_w", String(c.transmitter_power_w))
+  p.set("visibility_km", String(c.visibility_km))
+  p.set("cloud_factor", String(c.cloud_factor))
   if (c.t_utc) p.set("t_utc", c.t_utc)
   return p.toString()
 }
