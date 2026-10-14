@@ -31,6 +31,14 @@
   --status-orange: #ff9500;
   --status-red: #ff3b30;
 
+  /* Plot / node / link accents. Kept separate from the legacy names so a
+     palette change does not require touching every consumer. */
+  --plot-primary: #14b8a6;
+  --plot-secondary: #8b5cf6;
+  --plot-warning: #f59e0b;
+  --plot-muted: #94a3b8;
+  --plot-accent-pink: #ec4899;
+
   /* Legacy names — preserved for the epistemic badge and any other
      component that reads the older palette. */
   --color-bg: var(--bg-canvas);
@@ -51,6 +59,14 @@
   --ink-tertiary: #6b7280;
   --border-hairline: #1e2530;
   --border-subtle: rgba(255, 255, 255, 0.08);
+  --status-green: #34d058;
+  --status-orange: #ffa726;
+  --status-red: #ff5252;
+  --plot-primary: #2dd4bf;
+  --plot-secondary: #a78bfa;
+  --plot-warning: #fbbf24;
+  --plot-muted: #94a3b8;
+  --plot-accent-pink: #f472b6;
   --color-bg: var(--bg-canvas);
   --color-fg: var(--ink-primary);
 }

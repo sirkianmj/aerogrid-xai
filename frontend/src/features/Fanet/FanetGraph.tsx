@@ -20,17 +20,17 @@ const VIEW_H = 520
 const LAYER_Y = { satellite: 90, uav: 260, ground: 440 }
 
 const NODE_COLOR: Record<string, string> = {
-  Satellite_LEO: "var(--color-accent-teal)",
-  Satellite_GEO: "var(--color-accent-teal)",
-  UAV_Energy: "var(--color-accent-violet)",
-  UAV_Compute: "var(--color-accent-amber)",
-  Ground_Station: "var(--color-accent-slate)",
+  Satellite_LEO: "var(--plot-primary)",
+  Satellite_GEO: "var(--plot-primary)",
+  UAV_Energy: "var(--plot-secondary)",
+  UAV_Compute: "var(--plot-warning)",
+  Ground_Station: "var(--plot-muted)",
 }
 
 const LINK_COLOR: Record<string, string> = {
-  Laser_Link: "#8b5cf6",
-  Microwave_Link: "#f59e0b",
-  Hybrid_Link: "#ec4899",
+  Laser_Link: "var(--plot-secondary)",
+  Microwave_Link: "var(--plot-warning)",
+  Hybrid_Link: "var(--plot-accent-pink)",
 }
 
 function layerOf(node: MissionNode): keyof typeof LAYER_Y {
@@ -58,34 +58,34 @@ export function FanetGraph() {
   return (
     <section aria-labelledby="fanet-heading" className="mb-10">
       <div className="mb-1 flex items-baseline gap-3">
-        <h2 id="fanet-heading" className="text-lg font-medium">
+        <h2 id="fanet-heading" className="text-lg font-semibold">
           UAV Network (FANET)
         </h2>
-        <span className="text-xs opacity-50">
+        <span className="text-xs text-[var(--ink-tertiary)]">
           Section 10 / 12 · live mission topology
         </span>
       </div>
-      <p className="mb-4 text-sm opacity-70 max-w-3xl">
+      <p className="mb-4 text-sm text-[var(--ink-secondary)] max-w-3xl">
         The directed graph of nodes and links for the current mission
         architecture. UAVs in the middle layer, satellites above, ground
         stations below. Edges are the architecture&apos;s modalities.
       </p>
 
       {load.status === "loading" && (
-        <p className="text-sm opacity-60" data-testid="fanet-loading">
+        <p className="text-sm text-[var(--ink-secondary)]" data-testid="fanet-loading">
           Loading mission topology…
         </p>
       )}
 
       {load.status === "error" && (
         <div className="rounded border border-current/15 p-4" data-testid="fanet-error">
-          <p className="text-sm" style={{ color: "var(--color-accent-amber)" }}>
+          <p className="text-sm" style={{ color: "var(--status-red)" }}>
             Error{load.status_code ? ` (${load.status_code})` : ""}: {load.message}
           </p>
           <button
             type="button"
             onClick={refresh}
-            className="mt-3 rounded border px-3 py-1 text-xs hover:bg-current/5"
+            className="mt-3 rounded border border-[var(--border-hairline)] px-3 py-1 text-xs hover:bg-[var(--bg-subtle)]"
           >
             Retry
           </button>
@@ -134,15 +134,15 @@ function GraphView({ data, onRefresh }: { data: MissionState; onRefresh: () => v
 
   if (nodes.length === 0) {
     return (
-      <TaggedOutput tag="simulation_result" className="rounded border border-current/15 p-4">
-        <p className="text-sm opacity-60">No nodes in the current architecture.</p>
+      <TaggedOutput tag="simulation_result" className="apple-card p-4">
+        <p className="text-sm text-[var(--ink-secondary)]">No nodes in the current architecture.</p>
       </TaggedOutput>
     )
   }
 
   return (
-    <TaggedOutput tag="simulation_result" className="rounded border border-current/15 p-4">
-      <div className="mb-3 flex flex-wrap items-baseline gap-3 text-xs opacity-70">
+    <TaggedOutput tag="simulation_result" className="apple-card p-4">
+      <div className="mb-3 flex flex-wrap items-baseline gap-3 text-xs text-[var(--ink-secondary)]">
         <span className="font-mono">{nodes.length} nodes</span>
         <span className="font-mono">{links.length} links</span>
         <span className="font-mono">verdict: {data.architecture.sat_verdict}</span>
@@ -150,7 +150,7 @@ function GraphView({ data, onRefresh }: { data: MissionState; onRefresh: () => v
         <button
           type="button"
           onClick={onRefresh}
-          className="ml-auto rounded border border-current/20 px-2 py-0.5 text-[0.65rem] uppercase tracking-wider hover:bg-current/5"
+          className="ml-auto rounded border border-[var(--border-hairline)] px-2 py-0.5 text-[0.65rem] uppercase tracking-wider hover:bg-[var(--bg-subtle)]"
         >
           Refresh
         </button>
@@ -276,18 +276,18 @@ function GraphView({ data, onRefresh }: { data: MissionState; onRefresh: () => v
 
         <aside className="text-xs">
           {!selectedNode && (
-            <p className="opacity-60">Click a node to inspect it.</p>
+            <p className="text-[var(--ink-secondary)]">Click a node to inspect it.</p>
           )}
           {selectedNode && (
-            <div className="rounded border border-current/15 p-3" data-testid="fanet-inspector">
+            <div className="apple-subcard p-3" data-testid="fanet-inspector">
               <div className="mb-1 font-mono font-medium">{selectedNode.node_id}</div>
-              <div className="mb-2 opacity-70">{selectedNode.kind}</div>
+              <div className="mb-2 text-[var(--ink-secondary)]">{selectedNode.kind}</div>
               {Object.keys(selectedNode.params).length > 0 && (
                 <table className="w-full">
                   <tbody>
                     {Object.entries(selectedNode.params).map(([k, v]) => (
                       <tr key={k}>
-                        <td className="py-0.5 opacity-60 font-mono">{k}</td>
+                        <td className="py-0.5 text-[var(--ink-tertiary)] font-mono">{k}</td>
                         <td className="py-0.5 text-right font-mono">
                           {typeof v === "number" ? v.toFixed(2) : String(v)}
                         </td>
@@ -297,13 +297,13 @@ function GraphView({ data, onRefresh }: { data: MissionState; onRefresh: () => v
                 </table>
               )}
               {selectedLinks.length > 0 && (
-                <div className="mt-2 border-t border-current/10 pt-2">
-                  <div className="mb-1 opacity-60">links ({selectedLinks.length})</div>
+                <div className="mt-2 border-t border-[var(--border-hairline)] pt-2">
+                  <div className="mb-1 text-[var(--ink-tertiary)]">links ({selectedLinks.length})</div>
                   <ul className="space-y-0.5">
                     {selectedLinks.map((l) => (
                       <li key={l.link_id} className="font-mono">
                         {l.source_id} → {l.target_id}{" "}
-                        <span className="opacity-60">({l.kind})</span>
+                        <span className="text-[var(--ink-tertiary)]">({l.kind})</span>
                       </li>
                     ))}
                   </ul>
@@ -314,7 +314,7 @@ function GraphView({ data, onRefresh }: { data: MissionState; onRefresh: () => v
         </aside>
       </div>
 
-      <footer className="mt-4 border-t border-current/10 pt-3 font-mono text-xs opacity-60">
+      <footer className="mt-4 border-t border-[var(--border-hairline)] pt-3 font-mono text-xs text-[var(--ink-tertiary)]">
         artefact: fanet_architecture
       </footer>
     </TaggedOutput>

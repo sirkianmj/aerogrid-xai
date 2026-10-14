@@ -45,17 +45,17 @@ export function GlobeControls({
   const maxIndex = Math.max(0, totalPoints - 1)
   return (
     <div
-      className="mb-3 flex flex-wrap items-center gap-3 rounded border border-current/15 px-3 py-2 text-sm"
+      className="mb-3 flex flex-wrap items-center gap-3 apple-card px-3 py-2 text-sm"
       data-testid="globe-controls"
     >
       <label className="flex items-center gap-2">
-        <span className="text-[0.65rem] uppercase tracking-wide opacity-50">Satellite</span>
+        <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">Satellite</span>
         <select
           aria-label="Satellite"
           value={selected}
           onChange={(e) => onSelect(e.target.value)}
           disabled={disabled}
-          className="rounded border border-current/20 bg-transparent px-2 py-0.5 font-mono text-xs"
+          className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-0.5 font-mono text-xs"
         >
           {catalog.map((s) => (
             <option key={s.key} value={s.key}>
@@ -69,7 +69,7 @@ export function GlobeControls({
         type="button"
         onClick={onTogglePlay}
         disabled={disabled || totalPoints < 2}
-        className="rounded border border-current/20 px-2 py-0.5 text-xs uppercase tracking-wider hover:bg-current/5 disabled:opacity-40"
+        className="rounded border border-[var(--border-hairline)] px-2 py-0.5 text-xs uppercase tracking-wider hover:bg-[var(--bg-subtle)] disabled:opacity-40"
         aria-label={isPlaying ? "Pause" : "Play"}
         data-testid="play-toggle"
       >
@@ -80,13 +80,13 @@ export function GlobeControls({
         type="button"
         onClick={onReset}
         disabled={disabled || totalPoints < 2}
-        className="rounded border border-current/20 px-2 py-0.5 text-xs uppercase tracking-wider hover:bg-current/5 disabled:opacity-40"
+        className="rounded border border-[var(--border-hairline)] px-2 py-0.5 text-xs uppercase tracking-wider hover:bg-[var(--bg-subtle)] disabled:opacity-40"
       >
         Reset
       </button>
 
       <label className="flex items-center gap-2 flex-1 min-w-72">
-        <span className="text-[0.65rem] uppercase tracking-wide opacity-50">Time</span>
+        <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">Time</span>
         <input
           type="range"
           aria-label="Time"
@@ -98,7 +98,7 @@ export function GlobeControls({
           className="flex-1"
         />
         <span
-          className="font-mono text-xs opacity-70 w-56 truncate"
+          className="font-mono text-xs text-[var(--ink-tertiary)] w-56 truncate"
           data-testid="current-time"
           title={currentTimeIso}
         >
@@ -107,13 +107,13 @@ export function GlobeControls({
       </label>
 
       <label className="flex items-center gap-2">
-        <span className="text-[0.65rem] uppercase tracking-wide opacity-50">Speed</span>
+        <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">Speed</span>
         <select
           aria-label="Speed"
           value={speed}
           onChange={(e) => onSpeedChange(Number(e.target.value))}
           disabled={disabled}
-          className="rounded border border-current/20 bg-transparent px-2 py-0.5 font-mono text-xs"
+          className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-0.5 font-mono text-xs"
         >
           {SPEED_OPTIONS.map((s) => (
             <option key={s} value={s}>

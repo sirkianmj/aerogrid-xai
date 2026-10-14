@@ -185,31 +185,31 @@ export function Globe() {
 
   return (
     <section aria-labelledby="globe-heading" className="mb-10">
-      <h2 id="globe-heading" className="mb-1 text-lg font-medium">
+      <h2 id="globe-heading" className="mb-1 text-lg font-semibold">
         Globe (Section 7)
       </h2>
-      <p className="mb-4 text-sm opacity-70">
+      <p className="mb-4 text-sm text-[var(--ink-secondary)]">
         SGP4/SDP4 propagation of the packaged TLE. Positions are computed
         at request time by the backend; the scene renders what the backend
         returned.
       </p>
 
-      {state.status === "loading" && <p className="opacity-70">Loading orbital data...</p>}
+      {state.status === "loading" && <p className="text-[var(--ink-secondary)]">Loading orbital data...</p>}
 
       {state.status === "error" && (
-        <p className="text-sm" style={{ color: "var(--color-accent-amber)" }}>
+        <p className="text-sm" style={{ color: "var(--status-red)" }}>
           Error{state.status_code ? ` (${state.status_code})` : ""}: {state.message}
         </p>
       )}
 
       {state.status === "ok" && satellite && (
-        <TaggedOutput tag="simulation_result" className="rounded border border-current/15 p-4">
+        <TaggedOutput tag="simulation_result" className="apple-card p-4">
           <header className="mb-3 flex flex-wrap items-baseline gap-3">
             <span className="text-base font-medium">{satellite.name}</span>
-            <span className="text-xs uppercase tracking-wide opacity-60">
+            <span className="text-xs uppercase tracking-wide text-[var(--ink-tertiary)]">
               {satellite.orbit_class}
             </span>
-            <span className="ml-auto font-mono text-xs opacity-70">
+            <span className="ml-auto font-mono text-xs text-[var(--ink-tertiary)]">
               {state.track.n_points} points @ {state.track.step_seconds}s
             </span>
           </header>
@@ -236,7 +236,7 @@ export function Globe() {
           <div className="mb-4 rounded" style={{ height: 420 }}>
             <Canvas
               camera={{ position: [0, 0, 3], fov: 45 }}
-              style={{ background: "var(--color-bg)" }}
+              style={{ background: "var(--bg-canvas)" }}
             >
               <OrbitControls enablePan={false} minDistance={1.5} maxDistance={6} />
               <GlobeScene
@@ -256,7 +256,7 @@ export function Globe() {
             </div>
           )}
 
-          <div className="mb-3 flex flex-wrap gap-3 text-xs opacity-70">
+          <div className="mb-3 flex flex-wrap gap-3 text-xs text-[var(--ink-secondary)]">
             <span>
               epoch: <span className="font-mono">{satellite.epoch_utc}</span>
             </span>
@@ -277,7 +277,7 @@ export function Globe() {
             </summary>
             <div className="mt-2 max-h-64 overflow-auto">
               <table className="w-full text-xs">
-                <thead className="text-left opacity-70">
+                <thead className="text-left text-[var(--ink-tertiary)]">
                   <tr>
                     <th className="py-1 font-normal">time_utc</th>
                     <th className="py-1 font-normal">lat_deg</th>
@@ -309,7 +309,7 @@ export function Globe() {
             </div>
           </details>
 
-          <footer className="mt-4 border-t border-current/10 pt-3 font-mono text-xs opacity-60">
+          <footer className="mt-4 border-t border-[var(--border-hairline)] pt-3 font-mono text-xs text-[var(--ink-tertiary)]">
             artefact: orbital_track (SGP4/SDP4)
           </footer>
         </TaggedOutput>
@@ -320,8 +320,8 @@ export function Globe() {
 
 function Readout({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded border border-current/10 px-3 py-2">
-      <div className="text-[0.65rem] uppercase tracking-wide opacity-50">{label}</div>
+    <div className="apple-subcard px-3 py-2">
+      <div className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">{label}</div>
       <div className="font-mono text-xs">{value}</div>
     </div>
   )
