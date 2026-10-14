@@ -13,15 +13,20 @@
  *
  *     +Y is the north pole
  *     +X is the point (lat=0, lon=0)
- *     +Z is the point (lat=0, lon=+90E)
+ *     -Z is the point (lat=0, lon=+90E)   [east of Greenwich]
  *
  * Equivalently:
  *
- *     x = r * cos(lat) * cos(lon)
- *     y = r * sin(lat)
- *     z = r * cos(lat) * sin(lon)
+ *     x =  r * cos(lat) * cos(lon)
+ *     y =  r * sin(lat)
+ *     z = -r * cos(lat) * sin(lon)
  *
  * with lat and lon in radians and r the distance from Earth centre.
+ *
+ * The negated z is what keeps the frame a proper rotation of the
+ * backend's ECEF-style (Z-up) frame rather than a mirror of it.
+ * Without the sign, east and west swap on the rendered globe and the
+ * satellite track appears to run backwards through the sky.
  *
  * Scale
  * -----
@@ -78,7 +83,7 @@ export function geodeticToUnit(
   return [
     r * cosLat * Math.cos(lon),
     r * Math.sin(lat),
-    r * cosLat * Math.sin(lon),
+    -r * cosLat * Math.sin(lon),
   ]
 }
 
@@ -116,7 +121,7 @@ export function inverseGeodetic(p: Vec3): { lat_deg: number; lon_deg: number } {
     throw new Error("cannot invert a zero-length vector")
   }
   const lat_deg = (Math.asin(y / r) * 180) / Math.PI
-  const lon_deg = (Math.atan2(z, x) * 180) / Math.PI
+  const lon_deg = (Math.atan2(-z, x) * 180) / Math.PI
   return { lat_deg, lon_deg }
 }
 

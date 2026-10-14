@@ -30,18 +30,18 @@ describe("geodeticToUnit: cardinal points", () => {
     expect(z).toBeCloseTo(0, 12)
   })
 
-  it("(0, 90, 0) is +Z", () => {
+  it("(0, 90, 0) is -Z", () => {
     const [x, y, z] = geodeticToUnit(0, 90, 0)
     expect(x).toBeCloseTo(0, 12)
     expect(y).toBeCloseTo(0, 12)
-    expect(z).toBeCloseTo(1, 12)
+    expect(z).toBeCloseTo(-1, 12)
   })
 
-  it("(0, -90, 0) is -Z", () => {
+  it("(0, -90, 0) is +Z", () => {
     const [x, y, z] = geodeticToUnit(0, -90, 0)
     expect(x).toBeCloseTo(0, 12)
     expect(y).toBeCloseTo(0, 12)
-    expect(z).toBeCloseTo(-1, 12)
+    expect(z).toBeCloseTo(1, 12)
   })
 })
 
@@ -178,7 +178,46 @@ describe("geodeticToUnit: agreement with backend positions", () => {
     const [fx, fy, fz] = geodeticToUnit(lat, lon, alt)
     expect(fx).toBeCloseTo(bx / EARTH_RADIUS_M, 12)
     expect(fy).toBeCloseTo(bz / EARTH_RADIUS_M, 12)
-    expect(fz).toBeCloseTo(by / EARTH_RADIUS_M, 12)
+    expect(fz).toBeCloseTo(-by / EARTH_RADIUS_M, 12)
+  })
+})
+
+describe("geodeticToUnit orientation (absolute points)", () => {
+  // These assert specific Cartesian coordinates, so they catch a
+  // handedness bug that a forward-inverse round-trip cannot.
+  it("places Greenwich on +X at the equator", () => {
+    const v = geodeticToUnit(0, 0, 0)
+    expect(v[0]).toBeCloseTo(1, 6)
+    expect(v[1]).toBeCloseTo(0, 6)
+    expect(v[2]).toBeCloseTo(0, 6)
+  })
+
+  it("places lon=+90E on -Z at the equator", () => {
+    const v = geodeticToUnit(0, 90, 0)
+    expect(v[0]).toBeCloseTo(0, 6)
+    expect(v[1]).toBeCloseTo(0, 6)
+    expect(v[2]).toBeCloseTo(-1, 6)
+  })
+
+  it("places lon=-90W on +Z at the equator", () => {
+    const v = geodeticToUnit(0, -90, 0)
+    expect(v[0]).toBeCloseTo(0, 6)
+    expect(v[1]).toBeCloseTo(0, 6)
+    expect(v[2]).toBeCloseTo(1, 6)
+  })
+
+  it("places lon=180 on -X at the equator", () => {
+    const v = geodeticToUnit(0, 180, 0)
+    expect(v[0]).toBeCloseTo(-1, 6)
+    expect(v[1]).toBeCloseTo(0, 6)
+    expect(v[2]).toBeCloseTo(0, 6)
+  })
+
+  it("places the north pole on +Y", () => {
+    const v = geodeticToUnit(90, 0, 0)
+    expect(v[0]).toBeCloseTo(0, 6)
+    expect(v[1]).toBeCloseTo(1, 6)
+    expect(v[2]).toBeCloseTo(0, 6)
   })
 })
 
