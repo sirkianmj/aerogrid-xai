@@ -51,9 +51,13 @@ const FRAME_H = 520
 // Plan view: upper-left, biggest region.
 const PLAN = { x: 30, y: 35, w: 580, h: 185 }
 // Profile view: lower-left, sized so it shares the bottom row with FRONT.
-const PROFILE = { x: 30, y: 235, w: 320, h: 185 }
-// Front view: lower-right, enlarged to accommodate the silhouette.
-const FRONT = { x: 365, y: 235, w: 425, h: 185 }
+// Front view: lower-left, directly below the plan view, per the
+// standard third-angle orthographic layout.
+const FRONT = { x: 30, y: 235, w: 425, h: 185 }
+// Profile view: lower-right, to the right of the front view. Same
+// third-angle convention: plan above, front below plan, side view
+// beside the front.
+const PROFILE = { x: 465, y: 235, w: 320, h: 185 }
 // Airfoil section inset: upper-right corner of the frame.
 const SECTION = { x: 620, y: 35, w: 170, h: 185 }
 

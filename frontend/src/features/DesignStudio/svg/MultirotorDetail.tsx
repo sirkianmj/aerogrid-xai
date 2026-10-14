@@ -46,8 +46,10 @@ const FRAME_W = 820
 const FRAME_H = 520
 
 const PLAN = { x: 30, y: 35, w: 480, h: 200 }
-const PROFILE = { x: 30, y: 250, w: 400, h: 150 }
-const FRONT = { x: 445, y: 250, w: 340, h: 150 }
+// Front view: lower-left, directly below the plan view (third-angle).
+const FRONT = { x: 30, y: 250, w: 400, h: 150 }
+// Profile view: lower-right, beside the front view (third-angle).
+const PROFILE = { x: 445, y: 250, w: 340, h: 150 }
 const SECTION = { x: 530, y: 35, w: 260, h: 200 }
 
 // --- Documented physical ratios (see header) --------------------------
