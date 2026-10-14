@@ -33,6 +33,7 @@ export type DronePreset = {
   receiver_type: string
   battery_efficiency: number
   thermal_limit_c: number
+  airframe: string
 }
 
 export type PresetsResponse = {
@@ -144,6 +145,7 @@ export type DroneDesignRequest = {
   wingspan_m: number
   battery_wh: number
   thermal_limit_c: number
+  airframe: string
   satellite_key: string
   ground_lat_deg: number
   ground_lon_deg: number

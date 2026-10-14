@@ -99,6 +99,9 @@ class UavHardware:
     wingspan_m: float = 2.0
     battery_wh: float = 100.0
     thermal_limit_c: float = 80.0
+    # Airframe class. Not used by the optical cascade; drives the
+    # Design Studio drawing and any future aerodynamic model.
+    airframe: str = "fixed_wing"
 
     def __post_init__(self) -> None:
         if self.receiver_aperture_m2 <= 0.0:
@@ -118,6 +121,10 @@ class UavHardware:
             raise ValueError(f"battery_wh must be > 0; got {self.battery_wh}")
         if self.thermal_limit_c <= 0.0:
             raise ValueError(f"thermal_limit_c must be > 0; got {self.thermal_limit_c}")
+        if self.airframe not in ("fixed_wing", "multirotor"):
+            raise ValueError(
+                f"airframe must be 'fixed_wing' or 'multirotor'; got {self.airframe!r}"
+            )
 
 
 @dataclass(frozen=True)
@@ -263,6 +270,7 @@ class UavState(BaseModel):
     # Derived feasibility: wing loading and the boolean rule-of-thumb.
     wing_loading_kg_per_m2: float
     lift_feasible: bool
+    airframe: str
 
 
 class MissionNode(BaseModel):
@@ -1022,6 +1030,7 @@ def compute_mission_state(
                 receiver_type=uav_hardware.receiver_type,
                 wing_loading_kg_per_m2=float(wing_loading_kg_per_m2),
                 lift_feasible=lift_feasible,
+                airframe=uav_hardware.airframe,
             )
         )
 

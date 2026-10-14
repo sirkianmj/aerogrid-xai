@@ -31,6 +31,9 @@ import {
   type PresetsResponse,
   type SatellitePreset,
 } from "./designApi"
+import { OrbitDiagram } from "./svg/OrbitDiagram"
+import { SatelliteBusDiagram } from "./svg/SatelliteBusDiagram"
+import { DroneTopView } from "./svg/DroneTopView"
 
 function fmtPower(w: number): string {
   if (w >= 1.0) return `${w.toFixed(3)} W`
@@ -174,83 +177,105 @@ function SatelliteDesigner({ presets }: { presets: SatellitePreset[] }) {
   return (
     <div className="apple-card p-4 mb-6">
       <h3 className="mb-2 text-sm font-semibold">Satellite designer</h3>
-      <div className="mb-3 flex flex-wrap items-center gap-3 text-xs">
-        <label className="flex items-center gap-2">
-          <span className="text-[var(--ink-tertiary)]">preset</span>
-          <select
-            aria-label="Satellite preset"
-            onChange={(e) => {
-              const p = presets.find((x) => x.id === e.target.value)
-              if (p) applyPreset(p)
-            }}
-            className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-xs"
-          >
-            <option value="">— pick a starting point —</option>
-            {presets.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.id} · {p.label}
-              </option>
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-4">
+        <div className="space-y-3">
+          <OrbitDiagram
+            a_km={fields.a_km}
+            e={fields.e}
+            onChange={(patch) => setFields((f) => ({ ...f, ...patch }))}
+          />
+          <SatelliteBusDiagram
+            transmitter_power_w={fields.transmitter_power_w}
+            transmitter_aperture_m={fields.transmitter_aperture_m}
+            onChange={(patch) => setFields((f) => ({ ...f, ...patch }))}
+          />
+          <p className="text-[0.65rem] text-[var(--ink-tertiary)]">
+            Drag the periapsis or apoapsis marker to change the orbit;
+            drag the aperture edge to widen or narrow the beam. Numbers
+            on the right stay in sync.
+          </p>
+        </div>
+
+        <div>
+          <div className="mb-3 flex flex-wrap items-center gap-3 text-xs">
+            <label className="flex items-center gap-2">
+              <span className="text-[var(--ink-tertiary)]">preset</span>
+              <select
+                aria-label="Satellite preset"
+                onChange={(e) => {
+                  const p = presets.find((x) => x.id === e.target.value)
+                  if (p) applyPreset(p)
+                }}
+                className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-xs"
+              >
+                <option value="">— pick a starting point —</option>
+                {presets.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.id} · {p.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {(
+              [
+                ["a_km", "a (km)"],
+                ["e", "e"],
+                ["i_deg", "i (deg)"],
+                ["raan_deg", "RAAN (deg)"],
+                ["argp_deg", "argp (deg)"],
+                ["m0_deg", "M0 (deg)"],
+                ["transmitter_power_w", "P_tx (W)"],
+                ["wavelength_nm", "λ (nm)"],
+                ["transmitter_aperture_m", "aperture (m)"],
+              ] as const
+            ).map(([key, label]) => (
+              <label key={key} className="flex flex-col gap-1">
+                <span className="text-[0.6rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
+                  {label}
+                </span>
+                <input
+                  type="number"
+                  step="any"
+                  aria-label={label}
+                  value={fields[key]}
+                  onChange={(e) =>
+                    setFields((f) => ({ ...f, [key]: Number(e.target.value) || 0 }))
+                  }
+                  className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-xs"
+                />
+              </label>
             ))}
-          </select>
-        </label>
-      </div>
+          </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-        {(
-          [
-            ["a_km", "a (km)"],
-            ["e", "e"],
-            ["i_deg", "i (deg)"],
-            ["raan_deg", "RAAN (deg)"],
-            ["argp_deg", "argp (deg)"],
-            ["m0_deg", "M0 (deg)"],
-            ["transmitter_power_w", "P_tx (W)"],
-            ["wavelength_nm", "λ (nm)"],
-            ["transmitter_aperture_m", "aperture (m)"],
-          ] as const
-        ).map(([key, label]) => (
-          <label key={key} className="flex flex-col gap-1">
-            <span className="text-[0.6rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
-              {label}
-            </span>
-            <input
-              type="number"
-              step="any"
-              aria-label={label}
-              value={fields[key]}
-              onChange={(e) =>
-                setFields((f) => ({ ...f, [key]: Number(e.target.value) || 0 }))
-              }
-              className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-xs"
-            />
-          </label>
-        ))}
-      </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={evaluate}
+              disabled={loading}
+              className="rounded border border-[var(--border-hairline)] px-3 py-1 text-xs uppercase tracking-wider hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+            >
+              {loading ? "Evaluating..." : "Evaluate design"}
+            </button>
+            <button
+              type="button"
+              onClick={useThisSatellite}
+              className="rounded border border-[var(--border-hairline)] px-3 py-1 text-xs uppercase tracking-wider hover:bg-[var(--bg-subtle)]"
+            >
+              Use this satellite
+            </button>
+          </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={evaluate}
-          disabled={loading}
-          className="rounded border border-[var(--border-hairline)] px-3 py-1 text-xs uppercase tracking-wider hover:bg-[var(--bg-subtle)] disabled:opacity-50"
-        >
-          {loading ? "Evaluating..." : "Evaluate design"}
-        </button>
-        <button
-          type="button"
-          onClick={useThisSatellite}
-          className="rounded border border-[var(--border-hairline)] px-3 py-1 text-xs uppercase tracking-wider hover:bg-[var(--bg-subtle)]"
-        >
-          Use this satellite
-        </button>
+          {error && (
+            <p className="mt-3 text-xs" style={{ color: "var(--status-red)" }}>
+              Error: {error}
+            </p>
+          )}
+          {report && <ReportCard report={report} />}
+        </div>
       </div>
-
-      {error && (
-        <p className="mt-3 text-xs" style={{ color: "var(--status-red)" }}>
-          Error: {error}
-        </p>
-      )}
-      {report && <ReportCard report={report} />}
     </div>
   )
 }
@@ -260,6 +285,10 @@ function SatelliteDesigner({ presets }: { presets: SatellitePreset[] }) {
 // --------------------------------------------------------------------------
 
 type DroneDraft = UavHardware & { _id: string }
+
+function normalizeAirframe(s: string): "fixed_wing" | "multirotor" {
+  return s === "multirotor" ? "multirotor" : "fixed_wing"
+}
 
 function droneFromPreset(p: DronePreset): DroneDraft {
   return {
@@ -271,6 +300,7 @@ function droneFromPreset(p: DronePreset): DroneDraft {
     wingspan_m: p.wingspan_m,
     battery_wh: p.battery_wh,
     thermal_limit_c: p.thermal_limit_c,
+    airframe: normalizeAirframe(p.airframe),
   }
 }
 
@@ -284,6 +314,7 @@ function defaultDrone(): DroneDraft {
     wingspan_m: 2,
     battery_wh: 100,
     thermal_limit_c: 80,
+    airframe: "fixed_wing",
   }
 }
 
@@ -291,6 +322,7 @@ function DroneDesigner({ presets }: { presets: DronePreset[] }) {
   const { config, applyConfig } = useMission()
   const [rows, setRows] = useState<DroneDraft[]>(() => [defaultDrone()])
   const [reports, setReports] = useState<Record<string, FeasibilityReport>>({})
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   function updateRow(id: string, patch: Partial<DroneDraft>) {
     setRows((rs) => rs.map((r) => (r._id === id ? { ...r, ...patch } : r)))
@@ -319,6 +351,7 @@ function DroneDesigner({ presets }: { presets: DronePreset[] }) {
         wingspan_m: row.wingspan_m,
         battery_wh: row.battery_wh,
         thermal_limit_c: row.thermal_limit_c,
+        airframe: row.airframe,
         satellite_key: config.satellite_key,
         ground_lat_deg: config.ground_lat_deg,
         ground_lon_deg: config.ground_lon_deg,
@@ -354,6 +387,7 @@ function DroneDesigner({ presets }: { presets: DronePreset[] }) {
         wingspan_m: r.wingspan_m,
         battery_wh: r.battery_wh,
         thermal_limit_c: r.thermal_limit_c,
+        airframe: r.airframe,
       })),
     })
   }
@@ -368,8 +402,33 @@ function DroneDesigner({ presets }: { presets: DronePreset[] }) {
       <p className="mb-3 text-xs text-[var(--ink-secondary)]">
         Add one row per drone. Each row is evaluated against the current
         mission geometry; press "Use this fleet" to make the mission use
-        these drones.
+        these drones. Drag the wingtip and aperture markers on the
+        diagram to change the selected drone.
       </p>
+
+      {rows.length > 0 &&
+        (() => {
+          const row = rows.find((r) => r._id === selectedId) ?? rows[0]!
+          const rowIndex = rows.indexOf(row)
+          return (
+            <div className="mb-4 rounded border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-3">
+              <div className="mb-2 flex items-baseline justify-between text-[0.7rem]">
+                <span className="font-mono text-[var(--ink-secondary)]">
+                  editing row {rowIndex + 1}
+                </span>
+                <span className="text-[var(--ink-tertiary)]">
+                  drag wingtips · drag aperture edge
+                </span>
+              </div>
+              <DroneTopView
+                wingspan_m={row.wingspan_m}
+                receiver_aperture_m2={row.receiver_aperture_m2}
+                airframe={row.airframe}
+                onChange={(patch) => updateRow(row._id, patch)}
+              />
+            </div>
+          )
+        })()}
 
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
@@ -382,6 +441,7 @@ function DroneDesigner({ presets }: { presets: DronePreset[] }) {
               <th className="py-1 font-normal">aperture (m²)</th>
               <th className="py-1 font-normal">type</th>
               <th className="py-1 font-normal">T_max (°C)</th>
+              <th className="py-1 font-normal">airframe</th>
               <th className="py-1 font-normal">verdict</th>
               <th></th>
             </tr>
@@ -390,7 +450,16 @@ function DroneDesigner({ presets }: { presets: DronePreset[] }) {
             {rows.map((row) => {
               const rpt = reports[row._id]
               return (
-                <tr key={row._id} className="border-t border-[var(--border-hairline)]">
+                <tr
+                  key={row._id}
+                  className={
+                    "border-t border-[var(--border-hairline)] cursor-pointer " +
+                    (row._id === (selectedId ?? rows[0]?._id)
+                      ? "bg-[var(--bg-subtle)]"
+                      : "")
+                  }
+                  onClick={() => setSelectedId(row._id)}
+                >
                   <td className="py-1">
                     <select
                       aria-label="Drone preset"
@@ -461,6 +530,21 @@ function DroneDesigner({ presets }: { presets: DronePreset[] }) {
                       }
                       className="w-16 rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-1 py-0.5 font-mono"
                     />
+                  </td>
+                  <td className="py-1">
+                    <select
+                      aria-label="airframe"
+                      value={row.airframe}
+                      onChange={(e) =>
+                        updateRow(row._id, {
+                          airframe: normalizeAirframe(e.target.value),
+                        })
+                      }
+                      className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-1 py-0.5 font-mono"
+                    >
+                      <option value="fixed_wing">fixed-wing</option>
+                      <option value="multirotor">multirotor</option>
+                    </select>
                   </td>
                   <td className="py-1">
                     {rpt ? (
