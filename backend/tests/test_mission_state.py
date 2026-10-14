@@ -136,10 +136,7 @@ def test_atmospheric_path_uses_effective_thickness_not_slant_range() -> None:
         lat2 = math.radians(cfg.ground_lat_deg)
         dlat = lat2 - lat1
         dlon = math.radians(cfg.ground_lon_deg - sv.lon_deg)
-        a = (
-            math.sin(dlat / 2) ** 2
-            + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-        )
+        a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
         psi = 2.0 * math.asin(min(1.0, math.sqrt(a)))
         r_ratio = r_earth_m / (r_earth_m + sv.alt_km * 1000.0)
         elev_rad = math.atan2(math.cos(psi) - r_ratio, math.sin(psi))
