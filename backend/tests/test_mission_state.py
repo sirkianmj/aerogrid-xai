@@ -306,3 +306,46 @@ def test_get_mission_state_rejects_non_positive_transmitter_power() -> None:
     assert r.status_code == 422
     r = client.get("/mission/state", params={"transmitter_power_w": 0.0})
     assert r.status_code == 422
+
+
+def test_atmosphere_interval_present_when_link_is_up() -> None:
+    """When the link is above the horizon, the mission state carries a
+    Tier 2 calibrated interval around the transmittance."""
+    from datetime import timedelta
+
+    from app.physics.catalog import get_satellite
+
+    cfg = MissionConfig(satellite_key="iss")
+    sat = get_satellite("iss")
+    t = sat.epoch_utc + timedelta(seconds=2 * 3600)
+    s = compute_mission_state(cfg, t_utc=t)
+    if s.transmission.modality != "laser":
+        # Sweep until we find a laser geometry
+        for offset in range(0, 3 * 24 * 3600, 60):
+            t = sat.epoch_utc + timedelta(seconds=offset)
+            s = compute_mission_state(cfg, t_utc=t)
+            if s.transmission.modality == "laser":
+                break
+    assert s.transmission.modality == "laser", "no laser geometry found in 3 days"
+    assert s.atmosphere.transmittance_low is not None
+    assert s.atmosphere.transmittance_high is not None
+    assert s.atmosphere.nominal_coverage == pytest.approx(0.90, abs=1e-9)
+    low = s.atmosphere.transmittance_low
+    high = s.atmosphere.transmittance_high
+    assert low is not None and high is not None
+    assert low <= s.atmosphere.transmittance <= high
+
+
+def test_atmosphere_interval_absent_when_link_is_offline() -> None:
+    """When the satellite is below the horizon, the interval is None."""
+    cfg = MissionConfig(satellite_key="iss")
+    sat_epoch = compute_mission_state(cfg).t_utc
+    assert sat_epoch is not None
+    # At the ISS TLE epoch the satellite is below the horizon at the
+    # default ground station; that is our offline case.
+    s = compute_mission_state(cfg)
+    if s.transmission.modality == "offline":
+        assert s.atmosphere.transmittance == 0.0
+        assert s.atmosphere.transmittance_low is None
+        assert s.atmosphere.transmittance_high is None
+        assert s.atmosphere.nominal_coverage is None

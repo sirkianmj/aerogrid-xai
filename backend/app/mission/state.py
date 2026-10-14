@@ -21,6 +21,7 @@ from datetime import UTC, datetime
 from pydantic import BaseModel, Field
 
 from app.control.tier1 import decide_charge_uav, default_charge_rule_list
+from app.control.tier2 import AtmosphericSurrogate, Tier2Estimate
 from app.discovery.attribution import ConflictProneTable, attribute_and_mark
 from app.discovery.generator import GeneratorConfig, generate_architecture
 from app.discovery.grammar import Architecture, Terminal
@@ -92,6 +93,15 @@ class AtmosphereState(BaseModel):
     visibility_km: float
     cloud_factor: float
     extinction_coeff_per_m: float
+    # Tier 2 calibrated interval around ``transmittance``. Present only
+    # when the link is above the horizon. The interval is a Section 21
+    # [SIMULATION] result reflecting the stated accuracy envelope of the
+    # Kruse-Kim parametrization (specification Section 9.2: 7-15% nRMSE
+    # against reference radiative transfer codes), not a physical
+    # measurement. See the docstring of _calibrate_atmosphere_surrogate.
+    transmittance_low: float | None = None
+    transmittance_high: float | None = None
+    nominal_coverage: float | None = None
 
 
 class UavState(BaseModel):
@@ -233,6 +243,60 @@ def _pick_uav_candidates(cfg: MissionConfig, arch: Architecture) -> list[dict[st
     return out
 
 
+def _calibrate_atmosphere_surrogate(cfg: MissionConfig) -> AtmosphericSurrogate:
+    """Return a calibrated AtmosphericSurrogate.
+
+    Calibration targets are the point model's own predictions over a
+    deterministic grid of plausible geometries, perturbed by a
+    pseudo-noise whose amplitude is 15% of the point value. That 15%
+    figure is the pessimistic bound of the Kruse-Kim model's stated
+    accuracy envelope (specification Section 9.2: reference radiative
+    transfer codes MODTRAN, libRadtran, and SBDART report 7-15% nRMSE;
+    SMARTS reports around 5%). The resulting conformal interval
+    therefore reflects the parametrisation's documented accuracy
+    against those codes, not any physical measurement. It is a
+    Section 21 [SIMULATION] result and is labelled as such at the API
+    level.
+
+    The calibration grid uses the mission's own wavelength, visibility,
+    and cloud factor, with path lengths spanning the plausible
+    atmosphere (100 m to 200 km). This means the interval is tuned to
+    the mission's conditions rather than being a global band.
+    """
+    rng = random.Random(cfg.seed)
+    calibration_inputs: list[dict[str, float]] = []
+    calibration_targets: list[float] = []
+    for i in range(32):
+        # Log-spaced path lengths from 100 m to 200 km.
+        frac = i / 31.0
+        path_m = 100.0 * (2000.0**frac)  # 100 * 2000^1 = 200_000
+        inp = {
+            "wavelength_nm": cfg.wavelength_nm,
+            "path_m": path_m,
+            "visibility_km": cfg.visibility_km,
+            "cloud_factor": cfg.cloud_factor,
+        }
+        # Point-model prediction, then a deterministic ±15% perturbation
+        # representing the model's stated accuracy envelope.
+        base = float(
+            atmospheric_transmission(
+                wavelength_nm=cfg.wavelength_nm,
+                path_length_m=path_m,
+                extinction_coeff_per_m=cfg.extinction_coeff_per_m,
+            )
+        )
+        noise = rng.uniform(-1.0, 1.0) * 0.15 * base
+        calibration_inputs.append(inp)
+        calibration_targets.append(base + noise)
+    surrogate = AtmosphericSurrogate()
+    surrogate.calibrate(
+        calibration_inputs=calibration_inputs,
+        calibration_targets=calibration_targets,
+        nominal_coverage=0.90,
+    )
+    return surrogate
+
+
 def compute_mission_state(
     cfg: MissionConfig | None = None, *, t_utc: datetime | None = None
 ) -> MissionState:
@@ -363,11 +427,23 @@ def compute_mission_state(
             atmospheric_path_m=float(atmospheric_path_m),
             elevation_deg=float(math.degrees(elevation_rad)),
         )
+        surrogate = _calibrate_atmosphere_surrogate(cfg)
+        tier2: Tier2Estimate = surrogate.estimate_atmospheric_loss(
+            {
+                "wavelength_nm": cfg.wavelength_nm,
+                "path_m": float(atmospheric_path_m),
+                "visibility_km": cfg.visibility_km,
+                "cloud_factor": cfg.cloud_factor,
+            }
+        )
         atmosphere = AtmosphereState(
             transmittance=float(tau),
             visibility_km=cfg.visibility_km,
             cloud_factor=cfg.cloud_factor,
             extinction_coeff_per_m=cfg.extinction_coeff_per_m,
+            transmittance_low=float(tier2.interval.low),
+            transmittance_high=float(tier2.interval.high),
+            nominal_coverage=float(tier2.interval.nominal_coverage),
         )
     else:
         # The transmitter power is the mission's *configured* power,

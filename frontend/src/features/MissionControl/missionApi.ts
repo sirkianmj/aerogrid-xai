@@ -45,6 +45,9 @@ export type AtmosphereState = {
   visibility_km: number
   cloud_factor: number
   extinction_coeff_per_m: number
+  transmittance_low: number | null
+  transmittance_high: number | null
+  nominal_coverage: number | null
 }
 
 export type UavState = {

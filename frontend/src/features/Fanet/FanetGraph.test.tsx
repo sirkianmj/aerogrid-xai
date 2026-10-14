@@ -42,6 +42,9 @@ const SAMPLE: MissionState = {
     visibility_km: 10,
     cloud_factor: 0.2,
     extinction_coeff_per_m: 1e-5,
+    transmittance_low: 0.82,
+    transmittance_high: 0.94,
+    nominal_coverage: 0.9,
   },
   uavs: [],
   architecture: {
