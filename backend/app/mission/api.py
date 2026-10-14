@@ -24,6 +24,25 @@ async def get_mission_state(
     ground_lat_deg: float = Query(40.798, ge=-90.0, le=90.0),
     ground_lon_deg: float = Query(-77.860, ge=-180.0, le=180.0),
     transmitter_power_w: float = Query(10_000.0, gt=0.0, le=1e9),
+    visibility_km: float = Query(
+        10.0,
+        gt=0.0,
+        le=100.0,
+        description=(
+            "Meteorological visibility in km. Feeds the Kruse-Kim "
+            "atmospheric transmittance model. Higher visibility means "
+            "lower aerosol attenuation."
+        ),
+    ),
+    cloud_factor: float = Query(
+        0.2,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Cloud cover fraction in [0, 1]. 0 is clear sky, 1 is fully "
+            "overcast. Contributes to atmospheric attenuation."
+        ),
+    ),
     t_utc: datetime | None = Query(
         None,
         description=(
@@ -49,6 +68,8 @@ async def get_mission_state(
             ground_lat_deg=ground_lat_deg,
             ground_lon_deg=ground_lon_deg,
             transmitter_power_w=transmitter_power_w,
+            visibility_km=visibility_km,
+            cloud_factor=cloud_factor,
         )
         return compute_mission_state(cfg, t_utc=t_utc)
     except KeyError as exc:

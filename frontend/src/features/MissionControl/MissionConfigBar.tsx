@@ -8,9 +8,12 @@
 
 import { useState } from "react"
 import { DEFAULT_CONFIG, useMission, type MissionConfig } from "./missionContext"
+import { ENVIRONMENT_PRESETS } from "./environmentPresets"
 
 type FieldErrors = {
   t_utc?: string
+  visibility_km?: string
+  cloud_factor?: string
   ground_lat_deg?: string
   ground_lon_deg?: string
   transmitter_power_w?: string
@@ -34,6 +37,12 @@ function validate(c: MissionConfig): FieldErrors {
   }
   if (c.seed < 0) {
     e.seed = "seed must be >= 0"
+  }
+  if (c.visibility_km <= 0 || c.visibility_km > 100) {
+    e.visibility_km = "visibility must be in (0, 100] km"
+  }
+  if (c.cloud_factor < 0 || c.cloud_factor > 1) {
+    e.cloud_factor = "cloud factor must be in [0, 1]"
   }
   return e
 }
@@ -62,7 +71,9 @@ export function MissionConfigBar() {
     draft.transmitter_power_w !== config.transmitter_power_w ||
     draft.n_uavs !== config.n_uavs ||
     draft.seed !== config.seed ||
-    draft.t_utc !== config.t_utc
+    draft.t_utc !== config.t_utc ||
+    draft.visibility_km !== config.visibility_km ||
+    draft.cloud_factor !== config.cloud_factor
 
   function set<K extends keyof MissionConfig>(key: K, value: MissionConfig[K]) {
     setDraft((prev) => ({ ...prev, [key]: value }))
@@ -80,6 +91,39 @@ export function MissionConfigBar() {
         </h2>
         <span className="text-xs text-[var(--ink-tertiary)]">
           drives every panel below that reads mission state
+        </span>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-2">
+          <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
+            Environment preset
+          </span>
+          <select
+            aria-label="Environment preset"
+            value=""
+            onChange={(e) => {
+              const preset = ENVIRONMENT_PRESETS.find((x) => x.id === e.target.value)
+              if (preset) {
+                setDraft((prev) => ({
+                  ...prev,
+                  visibility_km: preset.visibility_km,
+                  cloud_factor: preset.cloud_factor,
+                }))
+              }
+            }}
+            className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-xs"
+          >
+            <option value="">— pick a starting point —</option>
+            {ENVIRONMENT_PRESETS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span className="text-[0.65rem] text-[var(--ink-tertiary)]">
+          Sets visibility and cloud; both remain editable below.
         </span>
       </div>
 
@@ -212,6 +256,52 @@ export function MissionConfigBar() {
           {errors.seed && (
             <span className="text-[0.65rem]" style={{ color: "var(--status-red)" }}>
               {errors.seed}
+            </span>
+          )}
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
+            Visibility (km)
+          </span>
+          <input
+            aria-label="Visibility in kilometres"
+            type="number"
+            step="0.5"
+            min={0.5}
+            max={100}
+            value={draft.visibility_km}
+            onChange={(e) =>
+              set("visibility_km", num(e.target.value, draft.visibility_km))
+            }
+            className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-xs"
+          />
+          {errors.visibility_km && (
+            <span className="text-[0.65rem]" style={{ color: "var(--status-red)" }}>
+              {errors.visibility_km}
+            </span>
+          )}
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
+            Cloud cover (0-1)
+          </span>
+          <input
+            aria-label="Cloud factor"
+            type="number"
+            step="0.05"
+            min={0}
+            max={1}
+            value={draft.cloud_factor}
+            onChange={(e) =>
+              set("cloud_factor", num(e.target.value, draft.cloud_factor))
+            }
+            className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-xs"
+          />
+          {errors.cloud_factor && (
+            <span className="text-[0.65rem]" style={{ color: "var(--status-red)" }}>
+              {errors.cloud_factor}
             </span>
           )}
         </label>

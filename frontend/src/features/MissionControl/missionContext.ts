@@ -22,6 +22,10 @@ export type MissionConfig = {
   n_uavs: number
   seed: number
   t_utc: string | null
+  /** Meteorological visibility in km; feeds Kruse-Kim attenuation. */
+  visibility_km: number
+  /** Cloud cover fraction in [0, 1]; feeds attenuation. */
+  cloud_factor: number
 }
 
 export const DEFAULT_CONFIG: MissionConfig = {
@@ -32,6 +36,8 @@ export const DEFAULT_CONFIG: MissionConfig = {
   n_uavs: 6,
   seed: 20261014,
   t_utc: null,
+  visibility_km: 10.0,
+  cloud_factor: 0.2,
 }
 
 export type MissionLoad =
