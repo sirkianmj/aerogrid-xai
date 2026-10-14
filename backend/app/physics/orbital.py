@@ -11,16 +11,25 @@ SGP4/SDP4 propagator over the TLE.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
 import numpy as np
+from sgp4.api import WGS72 as _WGS72  # type: ignore[import-untyped]
+from sgp4.api import Satrec as _Satrec
 from skyfield.api import EarthSatellite, load, wgs84  # type: ignore[import-untyped]
 from skyfield.timelib import Time  # type: ignore[import-untyped]
 
 _TS = load.timescale()
+
+# WGS-72 gravitational constant, matching the SGP4 model. The TLE
+# format is defined against WGS-72; using WGS-84 here would put the
+# synthetic mean motion slightly off the value SGP4 would recover.
+_MU_WGS72_KM3_S2 = 398_600.8
+_EPOCH_1949 = datetime(1949, 12, 31, tzinfo=UTC)
 
 LEO_MAX_ALT_KM = 2_000.0
 GEO_ALT_KM = 35_786.0
@@ -69,10 +78,24 @@ class Satellite:
     TLE epoch).
     """
 
-    def __init__(self, name: str, line1: str, line2: str) -> None:
+    def __init__(
+        self,
+        name: str,
+        line1: str = "",
+        line2: str = "",
+        *,
+        _earth_sat: EarthSatellite | None = None,
+    ) -> None:
         self.name = name
         self.line1 = line1
         self.line2 = line2
+        if _earth_sat is not None:
+            # Built from Keplerian elements via sgp4 Satrec, or supplied
+            # by a caller that already has an EarthSatellite. The TLE
+            # lines are empty strings; propagate identically to the
+            # TLE path since both go through the same SGP4 model.
+            self._earth_sat = _earth_sat
+            return
         self._earth_sat = EarthSatellite(line1, line2, name, _TS)
 
     @classmethod
@@ -82,6 +105,86 @@ class Satellite:
         if len(lines) < 3:
             raise ValueError(f"TLE file must contain at least 3 non-empty lines; got {len(lines)}")
         return cls(lines[0], lines[1], lines[2])
+
+    @classmethod
+    def from_keplerian(
+        cls,
+        *,
+        name: str,
+        epoch_utc: datetime,
+        a_km: float,
+        e: float,
+        i_deg: float,
+        raan_deg: float,
+        argp_deg: float,
+        m0_deg: float,
+        satnum: int = 99_999,
+    ) -> Satellite:
+        """Build a Satellite from mean Keplerian elements.
+
+        Elements are interpreted as TLE-format **mean** elements, which
+        is the convention SGP4 expects. If the caller has osculating
+        (instantaneous) elements, they must convert to mean elements
+        before calling this method; that conversion is not performed
+        here because it depends on the specific propagator.
+
+        Args:
+            name: Display name. Not used by the propagator.
+            epoch_utc: The moment at which these elements are valid.
+                Must be timezone-aware or naive UTC.
+            a_km: Semi-major axis in kilometres. Must be > 0.
+            e: Eccentricity in [0, 1). Hyperbolic and parabolic orbits
+                are not representable in this orbit model.
+            i_deg: Inclination in degrees, in [0, 180].
+            raan_deg: Right ascension of ascending node in degrees.
+            argp_deg: Argument of perigee in degrees.
+            m0_deg: Mean anomaly at epoch in degrees.
+            satnum: Satellite number for the internal Satrec. Default
+                99999 so it cannot collide with a real catalogue ID.
+
+        Returns:
+            A Satellite whose state is propagated by the same SGP4 model
+            used for TLE-based satellites. ``line1`` and ``line2`` are
+            empty; do not assume a TLE is present.
+        """
+        if not (0.0 <= e < 1.0):
+            raise ValueError(f"eccentricity must be in [0, 1); got {e}")
+        if a_km <= 0.0:
+            raise ValueError(f"a_km must be > 0; got {a_km}")
+        if not (0.0 <= i_deg <= 180.0):
+            raise ValueError(f"inclination must be in [0, 180]; got {i_deg}")
+        if not (1 <= satnum <= 99_999):
+            raise ValueError(f"satnum must be in [1, 99999]; got {satnum}")
+
+        if epoch_utc.tzinfo is None:
+            epoch_utc = epoch_utc.replace(tzinfo=UTC)
+
+        # Kepler's third law: n = sqrt(mu / a^3). n is in rad/s;
+        # SGP4 expects rad/min.
+        n_rad_s = math.sqrt(_MU_WGS72_KM3_S2 / (a_km**3))
+        n_rad_min = n_rad_s * 60.0
+
+        # sgp4 expects epoch in days since 1949-12-31 00:00 UT.
+        epoch_days = (epoch_utc - _EPOCH_1949).total_seconds() / 86_400.0
+
+        satrec = _Satrec()
+        satrec.sgp4init(
+            _WGS72,  # gravity constant set
+            "i",  # improved mode
+            satnum,
+            epoch_days,
+            0.0,  # bstar: no drag
+            0.0,  # ndot: no first-order decay
+            0.0,  # nddot: no second-order decay
+            e,
+            math.radians(argp_deg),
+            math.radians(i_deg),
+            math.radians(m0_deg),
+            n_rad_min,
+            math.radians(raan_deg),
+        )
+        earth_sat = EarthSatellite.from_satrec(satrec, _TS)
+        return cls(name=name, _earth_sat=earth_sat)
 
     @property
     def epoch_utc(self) -> datetime:

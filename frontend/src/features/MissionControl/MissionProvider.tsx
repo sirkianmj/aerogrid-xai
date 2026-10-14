@@ -37,7 +37,21 @@ function describeError(err: unknown): { message: string; status_code?: number } 
 function queryString(c: MissionConfig): string {
   const p = new URLSearchParams()
   p.set("seed", String(c.seed))
-  p.set("satellite_key", c.satellite_key)
+  // Custom orbit overrides the catalogue key. The two are mutually
+  // exclusive at the API level (mutual-exclusion check on the backend),
+  // so only one of them may be sent.
+  if (c.satellite_elements) {
+    const el = c.satellite_elements
+    p.set("a_km", String(el.a_km))
+    p.set("e", String(el.e))
+    p.set("i_deg", String(el.i_deg))
+    p.set("raan_deg", String(el.raan_deg))
+    p.set("argp_deg", String(el.argp_deg))
+    p.set("m0_deg", String(el.m0_deg))
+    p.set("elements_epoch_utc", el.epoch_utc)
+  } else {
+    p.set("satellite_key", c.satellite_key)
+  }
   p.set("n_uavs", String(c.n_uavs))
   p.set("ground_lat_deg", String(c.ground_lat_deg))
   p.set("ground_lon_deg", String(c.ground_lon_deg))

@@ -47,11 +47,34 @@ from app.verification.architecture_encoder import encode_architecture
 
 
 @dataclass(frozen=True)
+class SatelliteElements:
+    """User-supplied mean Keplerian elements for a mission.
+
+    Elements are interpreted as TLE-format **mean** elements (the
+    convention SGP4 expects). When present on a MissionConfig, these
+    override ``satellite_key`` and the satellite is built via
+    ``Satellite.from_keplerian``. The default mission time becomes
+    ``epoch_utc`` rather than a scan for the next visible pass, because
+    the peak-pass scan assumes a fixed TLE epoch and the caller who
+    supplies elements is telling us exactly when they are valid.
+    """
+
+    epoch_utc: datetime
+    a_km: float
+    e: float
+    i_deg: float
+    raan_deg: float
+    argp_deg: float
+    m0_deg: float
+
+
+@dataclass(frozen=True)
 class MissionConfig:
     """Deterministic inputs for one mission-state computation."""
 
     seed: int = 20261014
     satellite_key: str = "iss"
+    satellite_elements: SatelliteElements | None = None
     ground_station_name: str = "Ground Station Alpha"
     ground_lat_deg: float = 40.798
     ground_lon_deg: float = -77.860
@@ -373,14 +396,34 @@ def compute_mission_state(
     range, rather than a crash.
     """
     cfg = cfg or MissionConfig()
-    sat = get_satellite(cfg.satellite_key)
+    if cfg.satellite_elements is not None:
+        el = cfg.satellite_elements
+        sat = Satellite.from_keplerian(
+            name=f"USER-{el.a_km:.0f}km",
+            epoch_utc=el.epoch_utc,
+            a_km=el.a_km,
+            e=el.e,
+            i_deg=el.i_deg,
+            raan_deg=el.raan_deg,
+            argp_deg=el.argp_deg,
+            m0_deg=el.m0_deg,
+        )
+    else:
+        sat = get_satellite(cfg.satellite_key)
 
     # Default the demonstration time to the peak of the first visible
     # pass. The caller may pass any t_utc; if it is far from the epoch,
     # SGP4 drifts and the satellite state is marked invalid rather than
     # producing a nonsensical altitude.
     if t_utc is None:
-        t = _next_visible_time(sat, cfg)
+        if cfg.satellite_elements is not None:
+            # The caller supplied elements valid at a specific epoch.
+            # Do not advance; use their epoch as the mission time.
+            t = cfg.satellite_elements.epoch_utc
+            if t.tzinfo is None:
+                t = t.replace(tzinfo=UTC)
+        else:
+            t = _next_visible_time(sat, cfg)
     else:
         t = t_utc
         if t.tzinfo is None:
@@ -408,7 +451,10 @@ def compute_mission_state(
     orbit_class = classify_orbit(max(alt, 0.0)) if alt_valid else "invalid"
 
     satellite = SatelliteState(
-        key=cfg.satellite_key,
+        # When the caller supplied elements, the satellite is not from
+        # the catalogue; report a stable placeholder key so the UI
+        # does not display a catalogue name that does not apply.
+        key="custom" if cfg.satellite_elements is not None else cfg.satellite_key,
         name=sat.name,
         orbit_class=orbit_class,
         tle_epoch_utc=sat.epoch_utc.isoformat(),
