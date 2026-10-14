@@ -92,6 +92,26 @@ correctly wrapped in `TaggedOutput`; all scientific endpoints except
 three `/orbital/*` routes carry an `epistemic_tag` field. Four findings
 (F-1 through F-4) recorded for follow-up; none is a live defect.
 
+## UI panels (post-Sprint-10 instrument work)
+
+Each UI panel that renders a claim-bearing artifact is listed here with
+its verifying tests. A panel that displays a number without a test that
+would fail if the number were wrong does not belong in the instrument.
+
+| Panel / capability | Epistemic tag | Verifying tests |
+|---|---|---|
+| Mission Control pipeline view | per-stage (`simulation_result` at the wrapper) | `backend/tests/test_mission_state.py` (20) + `frontend/src/features/MissionControl/MissionControl.test.tsx` (11) |
+| Mission configuration bar | drives input to `/mission/state` | `frontend/src/features/MissionControl/MissionConfigBar.test.tsx` (7) + `backend/tests/test_mission_state.py` (4 config-parameter tests) |
+| CLEAR-D Discovery dashboard | `simulation_result` | `backend/tests/test_discovery_api.py` (14) + `frontend/src/features/ClearDDashboard/ClearDDashboard.test.tsx` (12) |
+| FANET graph | `simulation_result` | `backend/tests/test_mission_state.py` (node_list/link_list assertions) + `frontend/src/features/Fanet/FanetGraph.test.tsx` (13) |
+| Animated Globe + time control | `simulation_result` | `frontend/src/features/Globe/GlobeControls.test.tsx` (12) + `backend/tests/test_orbital_api.py` (14) |
+| Ground-anchored CLEAR-D | `simulation_result` | `backend/tests/test_generator.py` (4 pin tests) + `backend/tests/test_discovery_api.py` (2 pin tests) |
+| Tier 2 atmospheric uncertainty bands | `simulation_result` | `backend/tests/test_mission_state.py` (2 interval tests) + `backend/tests/test_tier2.py` (existing) |
+
+The epistemic tags are enforced by the `TaggedOutput` component at the
+type level (`frontend/src/components/EpistemicBadge/`). See
+`docs/EPISTEMIC_HIERARCHY_AUDIT.md` for the enforcement audit.
+
 ## Citation audit
 
 Every citation referenced by the claims in this document has been
