@@ -3,7 +3,6 @@ import { AppShell, type AppShellNavItem } from "./components/AppShell/AppShell"
 import { EpistemicBadge } from "./components/EpistemicBadge/EpistemicBadge"
 import { ALL_TAGS, EPISTEMIC_TAGS } from "./components/EpistemicBadge/epistemic"
 import { SessionBar } from "./components/Session/SessionBar"
-import { AdminPanel } from "./features/AdminPanel/AdminPanel"
 import { ArchitecturesView } from "./features/Architectures/ArchitecturesView"
 import { SensitivityPanel } from "./features/Sensitivity/SensitivityPanel"
 import { DesignStudio } from "./features/DesignStudio/DesignStudio"
@@ -25,7 +24,6 @@ const NAV: AppShellNavItem[] = [
   { id: "xai", label: "Two-Tier XAI Core", tag: "15·26" },
   { id: "tradespace", label: "Trade Space", tag: "14" },
   { id: "design", label: "Design Studio", tag: "P-V" },
-  { id: "admin", label: "SaaS & Admin", tag: "23" },
   { id: "about", label: "About & Legend", tag: "21" },
   { id: "legal", label: "Terms & Privacy", tag: "S11·4" },
   { id: "status", label: "Status", tag: "S11·5" },
@@ -126,11 +124,6 @@ function LegalView() {
 
 function App() {
   const [activeView, setActiveView] = useState("twin")
-  const token =
-    typeof window !== "undefined"
-      ? window.localStorage.getItem("aerogrid.token")
-      : null
-
   return (
     <MissionProvider>
       <AppShell
@@ -179,11 +172,6 @@ function App() {
         {activeView === "tradespace" && (
           <div className="mx-auto max-w-5xl space-y-6">
             <TradeSpace />
-          </div>
-        )}
-        {activeView === "admin" && (
-          <div className="mx-auto max-w-5xl space-y-6">
-            <AdminPanel token={token} />
           </div>
         )}
         {activeView === "about" && <AboutView />}
