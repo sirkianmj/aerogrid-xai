@@ -94,7 +94,7 @@ export function OrbitDiagram({ a_km, e, onChange }: OrbitDiagramProps) {
       ref={svgRef}
       viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
       className="w-full"
-      style={{ maxHeight: 340, touchAction: "none" }}
+      style={{ maxHeight: 260, touchAction: "none" }}
       role="img"
       aria-label="Orbit diagram; drag the apsis markers to change the orbit"
       data-testid="orbit-diagram"
