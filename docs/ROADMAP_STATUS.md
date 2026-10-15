@@ -531,3 +531,23 @@ This is recorded because the first push's PR body stated the notebook
 copy in `/tmp`, not of the committed artifact. The distinction matters
 and is the same class of state-record inaccuracy this file has been
 correcting.
+
+
+## Post-Sprint-12 — Z3 first-touch race fixed
+
+Commit `9c477bf` (PR #145). Closes the latent Z3 finding from Sprint
+11 s11-7 with a one-line fix and a contract test.
+
+- **Corrected diagnosis:** the s11-7 report described Z3's context as
+  thread-local. Direct experiment falsified that. The mechanism is a
+  first-touch race on a process-global singleton. After any thread
+  calls `z3.main_ctx()` once, every subsequent call returns the same
+  context; only two threads racing the *first* call each create their
+  own.
+- **Fix:** `backend/app/main.py` calls `z3.main_ctx()` during module
+  import, before `app = FastAPI(...)`. The import is synchronous, so
+  no request handler thread can race it.
+- **Contract test:** `backend/tests/test_z3_single_context_contract.py`
+  (3 tests). Its module docstring carries pre-registered acceptance
+  criteria for the deferred full per-context fix (5 modules, ~60 call
+  sites).
