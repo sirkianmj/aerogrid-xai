@@ -26,6 +26,7 @@ const NAV: AppShellNavItem[] = [
   { id: "design", label: "Design Studio", tag: "P-V" },
   { id: "admin", label: "SaaS & Admin", tag: "23" },
   { id: "about", label: "About & Legend", tag: "21" },
+  { id: "legal", label: "Terms & Privacy", tag: "S11·4" },
 ]
 
 function AboutView() {
@@ -50,6 +51,72 @@ function AboutView() {
             </li>
           ))}
         </ul>
+      </div>
+    </div>
+  )
+}
+
+function LegalView() {
+  return (
+    <div className="mx-auto max-w-3xl space-y-6" data-testid="legal-view">
+      <div className="apple-card space-y-3 p-6">
+        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-tertiary)]">
+          Legal — Sprint 11 s11-4
+        </div>
+        <h2 id="tos-heading" className="text-lg font-semibold">
+          Terms of Service
+        </h2>
+        <p className="text-[12px] text-[var(--ink-secondary)]">
+          Version 0.1 (template). Not legal advice; requires review by
+          counsel before public deployment.
+        </p>
+        <ol className="list-decimal space-y-2 pl-5 text-[12px] text-[var(--ink-secondary)]">
+          <li><b className="text-[var(--ink-primary)]">Acceptance.</b> By accessing the Service you agree to be bound by these Terms.</li>
+          <li><b className="text-[var(--ink-primary)]">About the Service.</b>{" "}AeroGrid-XAI is a software-only research instrument. It does not build, test, or deploy physical hardware.</li>
+          <li><b className="text-[var(--ink-primary)]">Licence.</b> Source code is dual-licensed AGPL-3.0 (community) and a proprietary Commercial EULA (enterprise).</li>
+          <li><b className="text-[var(--ink-primary)]">Accounts.</b> You are responsible for the confidentiality of your credentials and all activity under your account.</li>
+          <li><b className="text-[var(--ink-primary)]">Acceptable use.</b>{" "}No unauthorised access, no exceeding rate limits, no designing physical weapon systems.</li>
+          <li><b className="text-[var(--ink-primary)]">Your content.</b>{" "}You retain all rights to mission configurations, architecture definitions, and designs you create.</li>
+          <li><b className="text-[var(--ink-primary)]">Availability.</b>{" "}Provided as-is; no uptime commitment unless separately agreed.</li>
+          <li><b className="text-[var(--ink-primary)]">Disclaimers.</b> No warranty, express or implied, of any simulation result, formal verification verdict, or AI prediction.</li>
+          <li><b className="text-[var(--ink-primary)]">Liability.</b> No indirect, incidental, or consequential damages.</li>
+          <li><b className="text-[var(--ink-primary)]">Termination.</b>{" "}Either party may terminate with reasonable notice.</li>
+        </ol>
+        <p className="text-[11px] text-[var(--ink-tertiary)]">
+          Full text: <code className="font-mono">docs/legal/TERMS_OF_SERVICE.md</code>
+        </p>
+      </div>
+
+      <div className="apple-card space-y-3 p-6">
+        <h2 id="privacy-heading" className="text-lg font-semibold">
+          Privacy Policy
+        </h2>
+        <p className="text-[12px] text-[var(--ink-secondary)]">
+          Version 0.1 (template). Not legal advice; requires review by
+          counsel before public deployment.
+        </p>
+        <h3 className="text-sm font-semibold text-[var(--ink-primary)]">What we collect</h3>
+        <ul className="list-disc space-y-1 pl-5 text-[12px] text-[var(--ink-secondary)]">
+          <li>Account data: slug, display name, bcrypt-hashed password.</li>
+          <li>Session data: a JWT in browser localStorage, 24-hour expiry.</li>
+          <li>Request metadata: IP, path, status, duration.</li>
+          <li>Content you create: mission configurations, designs, exports.</li>
+        </ul>
+        <h3 className="text-sm font-semibold text-[var(--ink-primary)]">What we do NOT collect</h3>
+        <p className="text-[12px] text-[var(--ink-secondary)]">
+          No cookies. No third-party analytics. No tracking pixels. No email addresses. No biometric data.
+        </p>
+        <h3 className="text-sm font-semibold text-[var(--ink-primary)]">Where data lives</h3>
+        <p className="text-[12px] text-[var(--ink-secondary)]">
+          Everything runs on the operator&apos;s local macOS deployment: PostgreSQL, Redis, MinIO, Prometheus. No data leaves the machine unless you deliberately export it. Stripe sees billing details only if paid subscriptions are enabled.
+        </p>
+        <h3 className="text-sm font-semibold text-[var(--ink-primary)]">Your rights</h3>
+        <p className="text-[12px] text-[var(--ink-secondary)]">
+          Access, correction, deletion, and portability. Contact <code className="font-mono">sirkianmj@forgex4.com</code>.
+        </p>
+        <p className="text-[11px] text-[var(--ink-tertiary)]">
+          Full text: <code className="font-mono">docs/legal/PRIVACY_POLICY.md</code>
+        </p>
       </div>
     </div>
   )
@@ -118,6 +185,7 @@ function App() {
           </div>
         )}
         {activeView === "about" && <AboutView />}
+        {activeView === "legal" && <LegalView />}
       </AppShell>
     </MissionProvider>
   )
