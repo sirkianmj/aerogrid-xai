@@ -26,6 +26,7 @@ dependencies:
   - wget
   - pytest
   - pytest-cov
+  - locust=2.46.7
   - httpx
   - ruff
   - mypy
