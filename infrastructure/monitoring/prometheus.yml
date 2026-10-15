@@ -1,0 +1,22 @@
+# AeroGrid-XAI Prometheus scrape configuration.
+#
+# Single job: the FastAPI backend's /metrics endpoint. The
+# prometheus-fastapi-instrumentator library exposes per-handler
+# request counts and latency histograms on that endpoint; this file
+# tells Prometheus where to find them.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    service: aerogrid
+    environment: development
+
+scrape_configs:
+  - job_name: aerogrid-backend
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - "127.0.0.1:8000"
+        labels:
+          role: backend

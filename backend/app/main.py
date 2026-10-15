@@ -47,4 +47,12 @@ app.include_router(auth_router)
 app.include_router(saas_billing_router)
 app.include_router(saas_admin_router)
 
-Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+# The instrumentator must not count its own scrape endpoint, the
+# health probe, or the OpenAPI schema. Without exclusions, every
+# Prometheus scrape adds a sample to http_requests_total with
+# handler="/metrics", and every health check adds one for "/health".
+# Those series grow without bound over the process lifetime and would
+# dominate the dashboard.
+Instrumentator(
+    excluded_handlers=["/metrics", "/health", "/openapi.json", "/docs", "/redoc"],
+).instrument(app).expose(app, endpoint="/metrics")

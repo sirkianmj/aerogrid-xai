@@ -1,0 +1,18 @@
+# Grafana dashboard provider.
+#
+# Points Grafana at a directory of dashboard JSON files. That directory
+# is a symlink into the repository (created by install_monitoring.sh),
+# so the committed dashboards are the source of truth.
+
+apiVersion: 1
+
+providers:
+  - name: aerogrid
+    orgId: 1
+    folder: AeroGrid
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: __DASHBOARDS_DIR__
