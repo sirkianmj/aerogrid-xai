@@ -29,6 +29,15 @@ class FakeRedis:
         return True
 
 
+@pytest.fixture(autouse=True)
+def _enable_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The CI workflow sets AEROGRID_DISABLE_RATE_LIMIT=1 so that the
+    broader suite does not trip the fail-closed policy. This fixture
+    removes it for every test in this module, so the tests here
+    exercise the real limiter."""
+    monkeypatch.delenv("AEROGRID_DISABLE_RATE_LIMIT", raising=False)
+
+
 @pytest.fixture
 def fake_redis(monkeypatch: pytest.MonkeyPatch) -> Iterator[FakeRedis]:
     fake = FakeRedis()
@@ -36,7 +45,47 @@ def fake_redis(monkeypatch: pytest.MonkeyPatch) -> Iterator[FakeRedis]:
     yield fake
 
 
-def test_signup_rate_limit_returns_429_after_threshold(fake_redis: FakeRedis) -> None:
+@pytest.fixture
+def fake_auth_db(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Replace the admin_session used by auth_routes so /auth/signup and
+    /auth/token run to completion without PostgreSQL. Returns a UUID and
+    a truthy validator for any query, which satisfies both the
+    INSERT...RETURNING id and the SELECT id, valid paths."""
+    import uuid as _uuid
+    from contextlib import contextmanager
+
+    class _Row:
+        def __init__(self, values: list[object]) -> None:
+            self._v = values
+
+        def __getitem__(self, i: int) -> object:
+            return self._v[i]
+
+    class _Result:
+        def __init__(self, values: list[object]) -> None:
+            self._r = _Row(values)
+
+        def first(self) -> _Row:
+            return self._r
+
+    class _Session:
+        def execute(
+            self,
+            _stmt: object,
+            _params: object = None,
+        ) -> _Result:
+            return _Result([_uuid.uuid4(), True])
+
+    @contextmanager
+    def _session() -> Iterator[_Session]:
+        yield _Session()
+
+    monkeypatch.setattr("app.saas.auth_routes.admin_session", _session)
+
+
+def test_signup_rate_limit_returns_429_after_threshold(
+    fake_redis: FakeRedis, fake_auth_db: None
+) -> None:
     payload = {
         "slug": "ratelimit-test",
         "display_name": "Rate Limit Test",
@@ -53,7 +102,9 @@ def test_signup_rate_limit_returns_429_after_threshold(fake_redis: FakeRedis) ->
     assert r.headers["X-RateLimit-Remaining"] == "0"
 
 
-def test_token_rate_limit_returns_429_after_threshold(fake_redis: FakeRedis) -> None:
+def test_token_rate_limit_returns_429_after_threshold(
+    fake_redis: FakeRedis, fake_auth_db: None
+) -> None:
     payload = {"slug": "does-not-exist", "password": "does-not-matter-x"}
     for _ in range(5):
         client.post("/auth/token", json=payload)
@@ -78,7 +129,9 @@ def test_stripe_webhook_is_exempt(fake_redis: FakeRedis) -> None:
         assert r.status_code != 429
 
 
-def test_auth_fails_closed_when_redis_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_auth_fails_closed_when_redis_unavailable(
+    monkeypatch: pytest.MonkeyPatch, fake_auth_db: None
+) -> None:
     monkeypatch.setattr("app.middleware.rate_limit.get_redis", lambda: None)
     r = client.post(
         "/auth/token",

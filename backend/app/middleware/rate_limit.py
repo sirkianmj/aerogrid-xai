@@ -29,6 +29,7 @@ client address, and the middleware would need to read it from
 
 from __future__ import annotations
 
+import os
 import time
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -80,6 +81,13 @@ def _client_key(request: Request) -> str:
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):  # type: ignore[no-untyped-def]
+        # Test environments do not run Redis. Setting
+        # AEROGRID_DISABLE_RATE_LIMIT=1 makes the middleware a no-op so
+        # the rest of the test suite can exercise the auth routes
+        # without tripping the fail-closed policy. Production and
+        # development do not set this.
+        if os.environ.get("AEROGRID_DISABLE_RATE_LIMIT") == "1":
+            return await call_next(request)
         rule = _rule_for(request.url.path)
         if rule is None:
             return await call_next(request)
