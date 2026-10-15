@@ -173,13 +173,32 @@ def _extract_bearer(request: Request) -> str | None:
     return parts[1].strip() or None
 
 
+_DESKTOP_TENANT_ID = UUID("00000000-0000-0000-0000-000000000000")
+
+
+def _is_desktop_mode() -> bool:
+    """True when the app runs as a single-user desktop binary.
+
+    Desktop mode bypasses the tenant / quota layer: there is one user
+    on the local machine, not a hosted multi-tenant deployment.
+    Hosted servers leave AEROGRID_DESKTOP unset and behave exactly as
+    before.
+    """
+    return os.environ.get("AEROGRID_DESKTOP") == "1"
+
+
 def require_tenant(request: Request) -> TenantContext:
     """FastAPI dependency: return the caller's tenant context.
 
     Raises:
         HTTPException 401 if no Authorization: Bearer header is present
             or the token is invalid.
+
+    In desktop mode returns a synthetic single-user context instead of
+    checking a token.
     """
+    if _is_desktop_mode():
+        return TenantContext(tenant_id=_DESKTOP_TENANT_ID, role=Role.SUPERADMIN)
     token = _extract_bearer(request)
     if token is None:
         raise HTTPException(

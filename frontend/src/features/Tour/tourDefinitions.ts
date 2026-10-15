@@ -233,6 +233,50 @@ export const ALL_STEPS: TourStep[] = [
     placement: "bottom",
     view: "xai",
   },
+
+  {
+    id: "4.1",
+    chapterId: 4,
+    chapterTitle: "Trade Space",
+    title: "Pareto scatter",
+    body: "Points are architectures. Axes are objectives. The front is the non-dominated set.",
+    anchor: "tradespace",
+    placement: "bottom",
+    view: "tradespace",
+  },
+
+  {
+    id: "4.2",
+    chapterId: 4,
+    chapterTitle: "Trade Space",
+    title: "Axis picker",
+    body: "Choose which objectives to plot. The front is invariant; the projection is not.",
+    anchor: "tradespace",
+    placement: "bottom",
+    view: "tradespace",
+  },
+
+  {
+    id: "4.3",
+    chapterId: 4,
+    chapterTitle: "Trade Space",
+    title: "Parallel coordinates",
+    body: "Six dimensions at once. Drag a slider to filter.",
+    anchor: "tradespace",
+    placement: "bottom",
+    view: "tradespace",
+  },
+
+  {
+    id: "4.4",
+    chapterId: 4,
+    chapterTitle: "Trade Space",
+    title: "Hypervolume",
+    body: "One number that ranks a whole front. Monotone in coverage.",
+    anchor: "tradespace",
+    placement: "bottom",
+    view: "tradespace",
+  },
   {
     id: "5.1",
     chapterId: 5,

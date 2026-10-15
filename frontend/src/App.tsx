@@ -15,12 +15,14 @@ import { MissionControl } from "./features/MissionControl/MissionControl"
 import { MissionProvider } from "./features/MissionControl/MissionProvider"
 import { TourProvider } from "./features/Tour/TourProvider"
 import { Telemetry } from "./features/Telemetry/Telemetry"
+import { TradeSpace } from "./features/TradeSpace/TradeSpace"
 import { XAITrace } from "./features/XAITrace/XAITrace"
 
 const NAV: AppShellNavItem[] = [
   { id: "twin", label: "Digital Twin & Orbit", tag: "4·7·10" },
   { id: "cleard", label: "CLEAR-D Synthesis", tag: "Part V" },
   { id: "xai", label: "Two-Tier XAI Core", tag: "15·26" },
+  { id: "tradespace", label: "Trade Space", tag: "14" },
   { id: "design", label: "Design Studio", tag: "P-V" },
   { id: "about", label: "About & Legend", tag: "21" },
   { id: "legal", label: "Terms & Privacy", tag: "S11·4" },
@@ -158,6 +160,11 @@ function App() {
         {activeView === "design" && (
           <div className="mx-auto max-w-5xl space-y-6">
             <DesignStudio />
+          </div>
+        )}
+        {activeView === "tradespace" && (
+          <div className="mx-auto max-w-5xl space-y-6">
+            <TradeSpace />
           </div>
         )}
         {activeView === "about" && <AboutView />}
