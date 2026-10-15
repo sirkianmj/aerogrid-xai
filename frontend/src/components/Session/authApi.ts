@@ -46,3 +46,40 @@ export async function login(
   }
   return (await response.json()) as LoginResponse
 }
+
+export type SignupRequest = {
+  slug: string
+  display_name: string
+  password: string
+}
+
+export type SignupResponse = {
+  token: string
+  tenant_id: string
+  role: string
+  expires_in_seconds: number
+}
+
+export async function postSignup(
+  request: SignupRequest,
+  signal?: AbortSignal,
+): Promise<SignupResponse> {
+  const response = await fetch("/api/auth/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+    signal,
+  })
+  if (!response.ok) {
+    let detail = `HTTP ${response.status}`
+    try {
+      const body = (await response.json()) as { detail?: unknown }
+      if (typeof body.detail === "string") detail = body.detail
+    } catch {
+      // not JSON
+    }
+    throw new AuthApiError(response.status, detail)
+  }
+  return (await response.json()) as SignupResponse
+}
+
