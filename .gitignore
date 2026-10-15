@@ -49,3 +49,8 @@ Thumbs.db
 # CSVs are re-derivable from the same command. See
 # docs/LOAD_TEST_BASELINE.md for the recorded baseline.
 /tests/loadtest/results/
+
+# Desktop packaging build outputs
+/build/
+/dist/
+/packaging/aerogrid.iconset/
