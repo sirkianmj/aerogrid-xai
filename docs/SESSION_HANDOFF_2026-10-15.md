@@ -92,7 +92,7 @@ Updated 2026-10-15 after Sprint 12 closed at `73c4097`.
 | `docs/HANDOFF.md` sections 0-9 still contain stale state claims | superseded by this document |
 | `frontend/src/features/Status/StatusView.tsx` has no test | only feature dir without one |
 | `frontend/src/features/DesignStudio/svg/{FixedWingDetail,MultirotorDetail,SatelliteProfileSVG}.tsx` (3492 LOC) have no tests and have not been visually verified since the #127 coordinate fix | ongoing |
-| Z3 global-context finding (section 4) | latent, no fix; becomes real when the discovery pipeline is moved into a threaded path |
+| Z3 global-context finding (section 4) | **first-touch race fixed** in PR #145 (`main.py` forces `z3.main_ctx()` at import boundary). Full per-context fix deferred with pre-registered criteria in `test_z3_single_context_contract.py`. |
 | Frontend `App.test.tsx` mocks R3F canvas; two jsdom warnings remain | P32, P33 |
 | Four scientific hypotheses in `docs/SCIENTIFIC_CLAIMS.md` remain UNCOVERED (H1, H3, H4, H7) | by the project's own rule, these are **invalid** |
 | Four hypotheses remain PARTIAL (H2, H8, H10, H11) | gaps named in SCIENTIFIC_CLAIMS.md |
@@ -102,34 +102,62 @@ Updated 2026-10-15 after Sprint 12 closed at `73c4097`.
 
 ---
 
+## 5b. Z3 finding — corrected and closed at #145
+
+The s11-7 PR originally reported the Z3 defect as "context is
+thread-local." That was **wrong**. Direct experiment (three diagnostic
+scripts, recorded in PR #145's body) established:
+
+| Experiment | Sequence | Result |
+|---|---|---|
+| 1 | Two threads race `z3.main_ctx()` with no prior Z3 use | **Different** contexts |
+| 2 | Main thread calls it first, then two workers call it | **Same** context (worker = main) |
+| 3 | Explicit `z3.Context()` rejects cross-context arithmetic | Confirmed as expected |
+
+Corrected diagnosis: **Z3's main context is a process-global
+singleton with a first-touch race.** After any thread has called
+`main_ctx()` once, every subsequent call returns the same context.
+
+Fix applied at #145: `backend/app/main.py` calls `z3.main_ctx()` once,
+during FastAPI module import, before `app = FastAPI(...)`. The import
+is synchronous, so no request handler thread can race it.
+
+Contract test: `backend/tests/test_z3_single_context_contract.py`
+(3 tests). Its module docstring carries the pre-registered acceptance
+criteria for the deferred full per-context fix (5 modules, ~60 call
+sites), so the deferral is bounded.
+
+---
+
 ## 6. Where to go next
 
-Sprint 11 and Sprint 12 are complete. The next engineering decisions,
-in descending order of scientific value:
+Sprint 11 and Sprint 12 are complete. The Z3 finding is closed (see
+§5b). The next engineering decisions, in descending order of
+scientific value:
 
-1. **Fix the Z3 global-context finding.** It is latent today; it
-   becomes a real defect the moment the discovery pipeline is moved
-   into `run_in_threadpool` or any other threaded path. Two options:
-   a `threading.Lock` around `encode_architecture` (simple, serialises
-   the encoder) or a per-thread Z3 context (keeps parallelism, more
-   work). This is a real engineering decision; the evidence is in the
-   s11-7 test module's docstring and in the s11-7 PR body.
-
-2. **Address the four UNCOVERED scientific hypotheses (H1, H3, H4,
+1. **Address the four UNCOVERED scientific hypotheses (H1, H3, H4,
    H7).** By the project's own s9-7 rule, they are invalid until a
    test exists whose failure would falsify them. Each requires a
    specific experiment: H1 needs a position-only tracking baseline;
    H3 needs a weather-independent scheduling arm; H4 needs decision
    robustness under environmental noise; H7 needs annual availability
-   computed across regions. Real scientific work, probably weeks.
+   computed across regions. **This is the single largest scientific
+   gap in the project.** Real experimental work — weeks per
+   hypothesis, not one session.
 
-3. **Frontend test gaps.** `StatusView.tsx` has no test; the three
-   large SVG drawings have no tests. Smaller scope, mechanical.
+2. **Frontend test gaps.** `StatusView.tsx` has no test; the three
+   large SVG drawings (`FixedWingDetail.tsx`, `MultirotorDetail.tsx`,
+   `SatelliteProfileSVG.tsx`, 3492 LOC total) have no tests. Smaller
+   scope, mechanical, safe.
 
-4. **s3-8 status decision.** The PWL soundness direction question in
+3. **s3-8 status decision.** The PWL soundness direction question in
    `docs/DID/STR.md` section 6.3.7 is covered by `test_fuzz_soundness.py`
    in the direction that is sound under the spec's literal encoding,
    but the tracker still says PENDING. A decision, not code.
+
+4. **The deferred Z3 per-context fix.** Pre-registered criteria are in
+   `backend/tests/test_z3_single_context_contract.py`. Not urgent
+   until something takes the pipeline off the single-threaded path.
 
 Do not begin any of these by trusting `docs/HANDOFF.md`'s state
 claims. Trust this document and `docs/ROADMAP_STATUS.md`.
