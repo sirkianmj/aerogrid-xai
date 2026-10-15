@@ -1,14 +1,15 @@
 /**
  * SessionBar — sign-in form and session state.
  *
- * Two modes when unauthenticated:
- *   login  (default)  tenant slug + password via LoginForm
- *   token  (advanced) paste-a-JWT input, kept for integration tests,
- *                     CI, and the case where an operator has a
- *                     pre-issued token but no password on this tenant
+ * Three modes when unauthenticated:
+ *   login   (default)  tenant slug + password via LoginForm
+ *   signup  (self-service)  create a new tenant via SignupForm
+ *   token   (advanced) paste-a-JWT input, kept for integration tests,
+ *                      CI, and the case where an operator has a
+ *                      pre-issued token but no password on this tenant
  *
- * Both modes write to the same `aerogrid.token` localStorage key, so
- * every reader of that key across the app keeps working unchanged.
+ * All three modes write to the same `aerogrid.token` localStorage key,
+ * so every reader of that key across the app keeps working unchanged.
  *
  * When a token is present, the component shows a masked indicator and
  * a Sign out action. Sign out clears the token and reloads the page so
@@ -17,6 +18,7 @@
 
 import { useState } from "react"
 import { LoginForm } from "./LoginForm"
+import { SignupForm } from "./SignupForm"
 
 const TOKEN_KEY = "aerogrid.token"
 
@@ -25,7 +27,7 @@ function readToken(): string | null {
   return window.localStorage.getItem(TOKEN_KEY)
 }
 
-type Mode = "login" | "token"
+type Mode = "login" | "signup" | "token"
 
 export function SessionBar() {
   const [token, setToken] = useState<string | null>(() => readToken())
@@ -72,7 +74,22 @@ export function SessionBar() {
           </button>
         </>
       ) : mode === "login" ? (
-        <LoginForm onSuccess={persist} onSwitchToToken={() => setMode("token")} />
+        <>
+          <LoginForm onSuccess={persist} onSwitchToToken={() => setMode("token")} />
+          <button
+            type="button"
+            onClick={() => setMode("signup")}
+            className="text-[0.65rem] uppercase tracking-wider opacity-60 hover:opacity-100"
+            data-testid="switch-to-signup"
+          >
+            Create account
+          </button>
+        </>
+      ) : mode === "signup" ? (
+        <SignupForm
+          onSuccess={persist}
+          onSwitchToLogin={() => setMode("login")}
+        />
       ) : (
         <>
           <label htmlFor="session-token-input" className="sr-only">
