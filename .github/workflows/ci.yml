@@ -102,6 +102,7 @@ jobs:
       - name: Run the database-backed test modules
         env:
           AEROGRID_DATABASE_URL: postgresql+psycopg2://aerogrid@127.0.0.1:5432/aerogrid
+          AEROGRID_DISABLE_RATE_LIMIT: "1"
         run: |
           cd backend
           pytest \
@@ -211,5 +212,6 @@ jobs:
       - name: Run master test harness
         env:
           AEROGRID_DATABASE_URL: postgresql+psycopg2://aerogrid@127.0.0.1:5432/aerogrid
+          AEROGRID_DISABLE_RATE_LIMIT: "1"
         run: python tests/master_test.py --require-db
         shell: bash -el {0}
