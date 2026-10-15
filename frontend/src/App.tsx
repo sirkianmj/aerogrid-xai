@@ -13,6 +13,9 @@ import { Globe } from "./features/Globe/Globe"
 import { MissionConfigBar } from "./features/MissionControl/MissionConfigBar"
 import { MissionControl } from "./features/MissionControl/MissionControl"
 import { MissionProvider } from "./features/MissionControl/MissionProvider"
+import { TourFirstRunOffer } from "./features/Tour/TourFirstRunOffer"
+import { TourOverlay } from "./features/Tour/TourOverlay"
+import { TourProvider } from "./features/Tour/TourProvider"
 import { Telemetry } from "./features/Telemetry/Telemetry"
 import { TradeSpace } from "./features/TradeSpace/TradeSpace"
 import { XAITrace } from "./features/XAITrace/XAITrace"
@@ -124,7 +127,8 @@ function LegalView() {
 function App() {
   const [activeView, setActiveView] = useState("twin")
   return (
-    <MissionProvider>
+    <TourProvider>
+      <MissionProvider>
       <AppShell
         navItems={NAV}
         activeView={activeView}
@@ -169,7 +173,10 @@ function App() {
         {activeView === "legal" && <LegalView />}
         {activeView === "status" && <StatusView />}
       </AppShell>
-    </MissionProvider>
+      <TourOverlay />
+      <TourFirstRunOffer />
+      </MissionProvider>
+    </TourProvider>
   )
 }
 
