@@ -118,6 +118,7 @@ export function MissionConfigBar() {
 
   return (
     <section
+      data-tour-id="mission-config"
       aria-labelledby="mission-config-heading"
       className="mb-6 rounded border border-[var(--border-hairline)] p-3 text-sm"
       data-testid="mission-config-bar"
