@@ -7,6 +7,7 @@ app.control.api; further routers are added as the platform grows.
 
 import os
 
+import z3 as _z3
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -26,6 +27,22 @@ from app.saas.routes import router as saas_router
 from app.status.api import router as status_router
 from app.telemetry.api import router as telemetry_router
 from app.tradespace.api import router as tradespace_router
+
+# --- Z3 process-global context initialisation ------------------------
+# Z3's Python bindings expose a process-global context via
+# ``z3.main_ctx()``. The first call creates the context; if two threads
+# call ``main_ctx()`` concurrently before either has initialised it,
+# each thread gets its own, and cross-thread arithmetic raises
+# ``Z3Exception: context mismatch``. Subsequent calls from any thread
+# return the cached global.
+#
+# The discovery pipeline assumes a single Z3 context across all stages.
+# Forcing creation here, during FastAPI's synchronous import, guarantees
+# initialisation before any request handler can run.
+#
+# Empirical basis and pre-registered criteria for the full per-context
+# fix: backend/tests/test_z3_single_context_contract.py.
+_ = _z3.main_ctx()
 
 app = FastAPI(
     title="AeroGrid-XAI API",
