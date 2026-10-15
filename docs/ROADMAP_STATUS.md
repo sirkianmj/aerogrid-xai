@@ -552,9 +552,10 @@ Commit `9c477bf` (PR #145). Closes the latent Z3 finding from Sprint
   criteria for the deferred full per-context fix (5 modules, ~60 call
   sites).
 
-## Sprint 13 - Hypothesis sweep (5 of 5 complete)
+## Post-Sprint-12 research - Hypothesis audit sweep
 
-Sprint 13 closed at `3480461`. Five PRs moved five hypotheses off
+The post-Sprint-12 research sweep closed at `3480461`. Five PRs
+moved five hypotheses off
 UNCOVERED; one of them produced a falsification -- the first in the
 project.
 
@@ -587,7 +588,7 @@ six components that would have to be built (6-9 sessions) and
 recommends reclassifying H7 in SPEC section 27 as a research
 direction.
 
-### Test count at Sprint 13 close
+### Test count at post-Sprint-12 close
 
 1244 backend tests collected (was 1222 at session start; +22 across
 the sweep).
