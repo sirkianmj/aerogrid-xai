@@ -30,12 +30,12 @@ Status legend:
 | ID | Claim (abridged) | Status | Test(s) |
 |----|------------------|--------|---------|
 | H1 | Predictive beam tracking improves expected energy delivery over position-only tracking, within disclosed uncertainty | `PARTIAL` | `backend/tests/test_h1_predictive_tracking.py` (4 tests). Mechanism covered on a declared scope; "within disclosed uncertainty" clause not covered. See H1 scope below. |
-| H2 | Joint NSGA-II optimization of energy and topology improves resilience over independent UAV management | `PARTIAL` | `backend/tests/test_nsga2.py` verifies NSGA-II primitives (dominance, crowding, hypervolume). No test constructs a matched independent-management baseline. |
+| H2 | Joint NSGA-II optimization of energy and topology improves resilience over independent UAV management | `PARTIAL` | `backend/tests/test_h2_nsga2_baseline.py` (3 tests). Joint 6-objective arm vs two split optimizers at matched budget, hypervolume compared on the full space. Direction confirmed on all 5 seeds; mean relative gap ~0.35%. "Resilience" per se is not tested — only hypervolume coverage. See H2 scope below. |
 | H3 | Atmosphere-aware optimization reduces energy-transfer failures vs weather-independent scheduling | `PARTIAL` | `backend/tests/test_h3_atmosphere_scheduling.py` (4 tests). Mechanism covered on a declared weather distribution; "optimization" is a greedy max-forecast scheduler and the failure criterion is an operational threshold, not a spec-derived metric. See H3 scope below. |
 | H4 | Uncertainty-aware decisions are more robust under environmental variability than point estimates | `FALSIFIED` | `backend/tests/test_h4_uncertainty_decisions.py` (4 tests). The platform's Tier 2 interval is constant-width; an interval-aware policy at matched proceed rate is algebraically identical to a shifted point policy. The claim cannot hold on this design. See H4 scope below. |
 | H5 | The two-tier architecture allows engineers to identify dominant factors with fidelity to the model's own logic | `COVERED` | `test_tier1.py`, `test_xai_fidelity_audit.py`; audit at `docs/XAI_FIDELITY_AUDIT.md`. |
 | H6 | PWL-encoded Z3 verification proves feasibility or infeasibility within a disclosed approximation error before full simulation | `COVERED` | `test_pwl.py`, `test_pwl_tune.py`, `test_z3_end_to_end.py`, `test_scientific_validation/test_*`. |
-| H7 | Hybrid laser+microwave architectures outperform single-modality for annual availability in most regions | **UNCOVERED** | The `Hybrid_Link` modality exists and the MPE constraint fires on both mechanisms (`test_encoder_physics.py`), but no test computes annual availability across regions. |
+| H7 | Hybrid laser+microwave architectures outperform single-modality for annual availability in most regions | **UNCOVERED (capability absent, not merely untested)** | The `Hybrid_Link` modality and its MPE constraint exist, but the platform has no annual-availability computation and no regional aggregation. The claim is not falsifiable by any test today. See `docs/H7_AVAILABILITY_SCOPE.md`. |
 | H8 | Thermal management is the dominant limiting factor on continuous high-power laser reception for small UAVs | `PARTIAL` | `test_thermal.py`, `test_receiver.py` verify the thermal model; no test demonstrates dominance relative to other factors. |
 | H9 | Closed-loop CLEAR-D discovers architectures with higher verified feasibility than generative search without unsat-core feedback, at equal computational budget | `COVERED` | `test_h9_convergence.py` (mutation-level, 40% faster than random); `notebooks/06_unsat_core_ablation.ipynb`; `notebooks/10_clear_d_end_to_end.ipynb` (3.29× mechanism-level). The loop-level comparison is documented as non-informative on the current generator, per HANDOFF §4b. |
 | H10 | The coupled electro-thermal model predicts thermal runaway thresholds consistent with experimental receiver data within uncertainty bounds | `PARTIAL` | `test_thermal.py` verifies the runaway boundary within the model; comparison against external measured data is not performed (the Han et al. paper is [UNVERIFIED] per P5). |
@@ -201,6 +201,67 @@ the platform as built it cannot be true. If the specification's
 Section 27 intends H4 as a research direction rather than as a
 property of the current system, that should be stated. As written,
 it is falsified by direct test.
+
+### H2 scope
+
+The H2 test constructs two arms and compares them on hypervolume
+over the full six-objective space.
+
+- Joint arm: one ``run_nsga2`` over all six objectives
+  ``(C, R, E, N, T, U)`` at ``population_size=12, n_generations=10``
+  (budget 120).
+- Independent arm: two ``run_nsga2`` calls at half budget
+  (``n_generations=5`` each, total 120), one over the energy group
+  ``(C, R, E)`` and one over the topology group ``(N, T, U)``.
+  Objectives outside each group are zeroed for dominance purposes,
+  then both results are re-scored against the full evaluator and
+  non-dominated sorted.
+- Metric: Monte-Carlo hypervolume with 2048 samples per arm.
+- Seeds: 5, from 20261015 to 20261055.
+- Initial population: 4 architectures, ``min_nodes=4, max_nodes=6``.
+
+Observed:
+
+| Seed | hv_joint | hv_indep | gap |
+|---|---|---|---|
+| 20261015 | 1.0416e12 | 1.0371e12 | +4.51e9 |
+| 20261025 | 1.0410e12 | 1.0378e12 | +3.22e9 |
+| 20261035 | 1.0408e12 | 1.0378e12 | +3.01e9 |
+| 20261045 | 1.0423e12 | 1.0384e12 | +3.87e9 |
+| 20261055 | 1.0423e12 | 1.0386e12 | +3.65e9 |
+| **mean** | **1.0416e12** | **1.0379e12** | **+3.65e9** |
+
+Direction: joint wins on all 5 seeds. Mean relative gap ≈ 0.35%.
+
+Mechanism: the independent arm produces more front members
+(approximately 23 vs 12) but covers a smaller volume in the joint
+space, because each split optimizer finds diversity inside its own
+sub-space and does not extend into the other group's region.
+
+Not covered:
+
+- **"Resilience"** as stated in the claim is broader than hypervolume
+  coverage. A direct resilience metric — recovery from a perturbation
+  or performance retention under a disturbance — is not tested. The
+  hypervolume proxy is what the current test can measure, and the
+  claim's word "resilience" is not restricted to it.
+- **The physical evaluator.** Both arms use ``synthetic_evaluator``
+  (the test instrument, not the physics model). Whether joint
+  optimization also beats split optimization under the physical
+  evaluator is not tested.
+- **Other splits.** Only the specific (energy, topology) split is
+  compared. Other groupings might show different results.
+
+### H7 scope
+
+See `docs/H7_AVAILABILITY_SCOPE.md`. The distinction from other
+UNCOVERED rows is that H7 has no underlying mechanism to test. The
+platform does not compute annual availability or regional
+aggregation; constructing a test-only loop would produce a number
+with no bearing on the platform's claims. The scope document names
+the six components that would have to be built, with effort
+estimates, and recommends reclassifying H7 in SPEC §27 as a research
+direction rather than a property claim.
 
 ## Real-world benchmark claims (specification Section 6)
 
