@@ -7,6 +7,7 @@ import { AdminPanel } from "./features/AdminPanel/AdminPanel"
 import { ArchitecturesView } from "./features/Architectures/ArchitecturesView"
 import { SensitivityPanel } from "./features/Sensitivity/SensitivityPanel"
 import { DesignStudio } from "./features/DesignStudio/DesignStudio"
+import { StatusView } from "./features/Status/StatusView"
 import { ClearDDashboard } from "./features/ClearDDashboard/ClearDDashboard"
 import { DigitalTwin } from "./features/DigitalTwin/DigitalTwin"
 import { FanetGraph } from "./features/Fanet/FanetGraph"
@@ -27,6 +28,7 @@ const NAV: AppShellNavItem[] = [
   { id: "admin", label: "SaaS & Admin", tag: "23" },
   { id: "about", label: "About & Legend", tag: "21" },
   { id: "legal", label: "Terms & Privacy", tag: "S11·4" },
+  { id: "status", label: "Status", tag: "S11·5" },
 ]
 
 function AboutView() {
@@ -186,6 +188,7 @@ function App() {
         )}
         {activeView === "about" && <AboutView />}
         {activeView === "legal" && <LegalView />}
+        {activeView === "status" && <StatusView />}
       </AppShell>
     </MissionProvider>
   )

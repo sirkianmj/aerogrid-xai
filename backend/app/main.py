@@ -23,6 +23,7 @@ from app.saas.admin_routes import router as saas_admin_router
 from app.saas.auth_routes import router as auth_router
 from app.saas.billing_routes import router as saas_billing_router
 from app.saas.routes import router as saas_router
+from app.status.api import router as status_router
 from app.telemetry.api import router as telemetry_router
 from app.tradespace.api import router as tradespace_router
 
@@ -51,6 +52,7 @@ app.include_router(saas_router)
 app.include_router(auth_router)
 app.include_router(saas_billing_router)
 app.include_router(saas_admin_router)
+app.include_router(status_router)
 
 
 # --- CORS -----------------------------------------------------------
@@ -104,5 +106,12 @@ app.add_middleware(SecurityHeadersMiddleware)
 # Those series grow without bound over the process lifetime and would
 # dominate the dashboard.
 Instrumentator(
-    excluded_handlers=["/metrics", "/health", "/openapi.json", "/docs", "/redoc"],
+    excluded_handlers=[
+        "/metrics",
+        "/health",
+        "/status",
+        "/openapi.json",
+        "/docs",
+        "/redoc",
+    ],
 ).instrument(app).expose(app, endpoint="/metrics")
