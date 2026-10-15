@@ -26,7 +26,7 @@ Status legend:
 
 | ID | Claim (abridged) | Status | Test(s) |
 |----|------------------|--------|---------|
-| H1 | Predictive beam tracking improves expected energy delivery over position-only tracking, within disclosed uncertainty | **UNCOVERED** | The trajectory predictor exists (`app/control/trajectory.py`) but no test compares it to a position-only baseline under matched conditions. Reported in the specification as a target experiment, not a result. |
+| H1 | Predictive beam tracking improves expected energy delivery over position-only tracking, within disclosed uncertainty | `PARTIAL` | `backend/tests/test_h1_predictive_tracking.py` (4 tests). Mechanism covered on a declared scope; "within disclosed uncertainty" clause not covered. See H1 scope below. |
 | H2 | Joint NSGA-II optimization of energy and topology improves resilience over independent UAV management | `PARTIAL` | `backend/tests/test_nsga2.py` verifies NSGA-II primitives (dominance, crowding, hypervolume). No test constructs a matched independent-management baseline. |
 | H3 | Atmosphere-aware optimization reduces energy-transfer failures vs weather-independent scheduling | **UNCOVERED** | `test_atmosphere.py` verifies the physics; no end-to-end test compares the two scheduling regimes. |
 | H4 | Uncertainty-aware decisions are more robust under environmental variability than point estimates | **UNCOVERED** | Tier 2 estimates carry intervals (`test_tier2.py`), but no test measures decision robustness under environmental noise with vs without uncertainty conditioning. |
@@ -38,6 +38,41 @@ Status legend:
 | H10 | The coupled electro-thermal model predicts thermal runaway thresholds consistent with experimental receiver data within uncertainty bounds | `PARTIAL` | `test_thermal.py` verifies the runaway boundary within the model; comparison against external measured data is not performed (the Han et al. paper is [UNVERIFIED] per P5). |
 | H11 | The two-tier controller achieves explanation fidelity 1.0 (by construction) while achieving prediction accuracy within 5% of an end-to-end opaque controller | `PARTIAL` | Fidelity = 1.0 is `COVERED` (`test_xai_fidelity_audit.py`). The "within 5% of opaque" half is not tested — no opaque controller exists to compare against. |
 | H12 | Closed-loop refinement reduces epsilon by at least 50% over 100 operational cycles | `COVERED` | `test_pwl_tune.py::test_h12_epsilon_reduces_by_half_over_100_cycles`; `notebooks/08_closed_loop_refinement.ipynb`; `notebooks/10_clear_d_end_to_end.ipynb` (ratio 0.125). |
+
+### H1 scope
+
+The H1 test asserts a comparative claim (predictive vs position-only)
+on a declared distribution. Parameters, motion families, and metric
+are declared in the test module docstring and summarised here.
+
+- Beam radius 17 m, slew latency 2 s, state noise sigma 5 m, n = 400.
+- Motion: held-heading (linear) and constant-turn (|omega| <= 0.15
+  rad/s). Speed uniform in [5, 25] m/s.
+- Metric: mean pointing efficiency eta = exp(-2 delta^2 / w^2).
+  Multiplicative in the link budget, so the mean is proportional to
+  expected delivered energy.
+
+Observed on this scope:
+
+| Quantity | Value |
+|---|---|
+| Position-only eta (linear) | 0.07 |
+| Predictive eta (linear) | 0.45 |
+| Gain at L = 1, 2, 3, 5 s | +0.14, +0.39, +0.43, +0.45 |
+| Linear family gain | +0.93 |
+| Turning family gain | +0.87 |
+
+Not covered: the claim's "within disclosed uncertainty" clause. The
+test uses a point estimate perturbed by Gaussian noise, not the
+conformal interval that TrajectoryEstimate.radius_m provides. No
+controller in the repository consumes that interval; adding one is a
+design change, not a test.
+
+Known limitation: the constant-turn family produces arc deviation of
+a few metres over the tracking horizon, small against the 17 m beam
+radius. The predictor is only lightly penalized. A stronger
+adversarial case would require turn rates producing deviations
+comparable to the beam radius. That regime is not tested.
 
 ## Real-world benchmark claims (specification Section 6)
 
