@@ -107,9 +107,7 @@ def _sample_weather(rng: random.Random) -> tuple[float, float]:
     return vis_km, cloud
 
 
-def _forecast_weather(
-    rng: random.Random, truth: tuple[float, float]
-) -> tuple[float, float]:
+def _forecast_weather(rng: random.Random, truth: tuple[float, float]) -> tuple[float, float]:
     vis_km = truth[0] + rng.gauss(0.0, FORECAST_VIS_SIGMA_KM)
     vis_km = min(max(vis_km, 0.05), 100.0)
     cloud = truth[1] + rng.gauss(0.0, FORECAST_CLOUD_SIGMA)
@@ -150,9 +148,7 @@ def _schedule_atmosphere_aware(
 # --- One schedule -------------------------------------------------------
 
 
-def _run_one_schedule(
-    rng: random.Random, weather_variance_scale: float = 1.0
-) -> tuple[int, int]:
+def _run_one_schedule(rng: random.Random, weather_variance_scale: float = 1.0) -> tuple[int, int]:
     """Run one schedule for both policies. Return (failures_aware,
     failures_independent).
 
@@ -173,10 +169,7 @@ def _run_one_schedule(
         a = rng.gammavariate(cloud_a, 1.0)
         b = rng.gammavariate(cloud_b, 1.0)
         cloud_raw = a / (a + b)
-        cloud_truth = (
-            cloud_mean
-            + weather_variance_scale * (cloud_raw - cloud_mean)
-        )
+        cloud_truth = cloud_mean + weather_variance_scale * (cloud_raw - cloud_mean)
         cloud_truth = min(max(cloud_truth, 0.0), 1.0)
 
         # Forecast: truth plus noise, clipped.
@@ -187,9 +180,7 @@ def _run_one_schedule(
 
         # Which UAV does each scheduler pick?
         pick_ind = _schedule_weather_independent(slot)
-        forecast_etas = [
-            _eta_atm(vis_fc, cloud_fc, path) for path in SLANT_PATHS_M
-        ]
+        forecast_etas = [_eta_atm(vis_fc, cloud_fc, path) for path in SLANT_PATHS_M]
         pick_aware = _schedule_atmosphere_aware(forecast_etas)
 
         # Actual transmittance at the chosen pairs.
@@ -282,9 +273,7 @@ def test_gap_is_positive_across_variance_range() -> None:
     for s, g in zip(scales, gaps, strict=True):
         print(f"    variance_scale={s:4.1f}  gap={g:+.3f}")
     for s, g in zip(scales, gaps, strict=True):
-        assert g > 0.0, (
-            f"gap is not positive at variance_scale={s}: {g:+.3f}"
-        )
+        assert g > 0.0, f"gap is not positive at variance_scale={s}: {g:+.3f}"
 
 
 def test_both_schedulers_attempt_the_same_number_of_transfers() -> None:
