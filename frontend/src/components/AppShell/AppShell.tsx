@@ -8,12 +8,12 @@
  *     │              │                                             │
  *     └──────────────┴─────────────────────────────────────────────┘
  *
- * No header bar. The application title, the invariant badges, and the
- * theme toggle all live in the sidebar. Navigation is one list, not
- * two; a header switcher that duplicated the sidebar nav has been
- * removed. The layout matches Xcode, Finder, and every other native
- * macOS app: a fixed sidebar carries navigation and identity; the
- * main pane carries content.
+ * Follows Apple's macOS application layout: a fixed source-list
+ * sidebar carries identity (application name, version), navigation
+ * (the workspace views), and secondary controls (theme, invariant
+ * badges); the main pane carries content. The sidebar material is
+ * lighter than the canvas in light mode and darker than the canvas
+ * in dark mode, matching Finder, Mail, and Xcode.
  */
 
 import { useState } from "react"
@@ -62,7 +62,6 @@ function ThemeToggle() {
   function choose(next: ThemePref) {
     setThemePref(next)
     setPref(next)
-    // Re-apply is handled inside setThemePref; nothing else to do.
   }
 
   return (
@@ -110,10 +109,14 @@ export function AppShell({
     <div className="flex h-screen w-screen bg-[var(--bg-canvas)] text-[var(--ink-primary)]">
       <aside
         aria-label="Primary"
-        className="flex w-64 shrink-0 flex-col overflow-y-auto border-r border-[var(--border-hairline)] bg-[var(--bg-sidebar)]"
+        className="flex w-[236px] shrink-0 flex-col overflow-y-auto border-r border-[var(--border-hairline)] bg-[var(--bg-sidebar)]"
       >
+        {/* Identity block — Apple's "sidebar header". */}
         <div className="flex flex-col gap-0.5 px-4 pb-3 pt-4">
-          <span className="text-[13px] font-semibold tracking-tight">
+          <span
+            className="text-[13px] font-semibold tracking-[-0.01em]"
+            style={{ color: "var(--ink-primary)" }}
+          >
             AeroGrid-XAI
           </span>
           <span className="font-mono text-[10px] text-[var(--ink-tertiary)]">
@@ -133,11 +136,7 @@ export function AppShell({
                 type="button"
                 onClick={() => onViewChange(item.id)}
                 aria-current={active ? "page" : undefined}
-                className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-[12px] transition ${
-                  active
-                    ? "bg-[var(--bg-surface)] font-semibold text-[var(--ink-primary)] shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
-                    : "text-[var(--ink-secondary)] hover:bg-black/[0.04] hover:text-[var(--ink-primary)]"
-                }`}
+                className="apple-sidebar-item"
               >
                 <span>{item.label}</span>
                 {item.tag ? (

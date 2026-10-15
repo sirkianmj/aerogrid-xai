@@ -1,72 +1,236 @@
 /**
- * Design tokens.
+ * AeroGrid-XAI design tokens.
  *
- * Light is the default; the `.dark` class on <html> switches to dark.
- * `main.tsx` applies `.dark` from the OS preference and keeps it in
+ * Built on Apple's Human Interface Guidelines (macOS/iOS system
+ * colors, SF type scale, standard radii and spacing). Every legacy
+ * token name is preserved as an alias so pre-existing components
+ * continue to resolve without modification.
+ *
+ * Light is the default; `.dark` on <html> switches to dark mode.
+ * main.tsx applies `.dark` from the OS preference and keeps it in
  * sync with `prefers-color-scheme`.
  *
- * The legacy names --color-bg, --color-fg, --color-accent-* are kept
- * so the epistemic badge (components/EpistemicBadge) and any other
- * pre-existing component that reads them continue to resolve.
+ * WCAG 2.1 AA pairs validated in src/lib/contrast.test.ts.
  */
 
 :root {
-  /* Surfaces */
-  --bg-canvas: #f5f5f7;
-  --bg-surface: #ffffff;
-  --bg-sidebar: #f2f2f7;
-  --bg-subtle: #fafafc;
+  /* ----------------------------------------------------------------
+   * Apple system colors — light appearance.
+   * Values from Apple HIG "System Colors" (iOS 18 / macOS 15).
+   * ---------------------------------------------------------------- */
+  --sys-red: #ff3b30;
+  --sys-orange: #ff9500;
+  --sys-yellow: #ffcc00;
+  --sys-green: #34c759;
+  --sys-mint: #00c7be;
+  --sys-teal: #5ac8fa;
+  --sys-cyan: #32ade6;
+  --sys-blue: #007aff;
+  --sys-indigo: #5856d6;
+  --sys-purple: #af52de;
+  --sys-pink: #ff2d55;
+  --sys-brown: #a2845e;
+  --sys-gray: #8e8e93;
+  --sys-gray-2: #aeaeb2;
+  --sys-gray-3: #c7c7cc;
+  --sys-gray-4: #d1d1d6;
+  --sys-gray-5: #e5e5ea;
+  --sys-gray-6: #f2f2f7;
 
-  /* Ink */
-  --ink-primary: #1d1d1f;
-  --ink-secondary: #6e6e73;
-  --ink-tertiary: #86868b;
+  /* ----------------------------------------------------------------
+   * Backgrounds (Apple "Background Colors" — light).
+   * ---------------------------------------------------------------- */
+  --bg-canvas: #f2f2f7;           /* systemGroupedBackground */
+  --bg-surface: #ffffff;          /* secondarySystemGroupedBackground */
+  --bg-sidebar: #f2f2f7;          /* sidebar material approximation */
+  --bg-subtle: #fafafc;           /* tertiarySystemBackground */
+  --bg-elevated: #ffffff;         /* for popovers */
 
-  /* Borders */
-  --border-hairline: #e5e5ea;
-  --border-subtle: rgba(0, 0, 0, 0.06);
+  /* ----------------------------------------------------------------
+   * Labels (Apple "Label Colors" — light).
+   * Values are hex approximations of Apple's rgba labels, chosen so
+   * downstream code that reads them via var() gets a stable color.
+   * ---------------------------------------------------------------- */
+  --ink-primary: #1d1d1f;         /* label */
+  --ink-secondary: #6e6e73;       /* secondaryLabel */
+  --ink-tertiary: #86868b;        /* tertiaryLabel */
+  --ink-quaternary: #c7c7cc;      /* quaternaryLabel */
 
-  /* Status */
-  --status-green: #28cd41;
+  /* ----------------------------------------------------------------
+   * Separators (Apple "Separator Colors" — light).
+   * ---------------------------------------------------------------- */
+  --border-hairline: rgba(60, 60, 67, 0.13);
+  --border-subtle: rgba(60, 60, 67, 0.06);
+  --separator-opaque: #c6c6c8;
+
+  /* ----------------------------------------------------------------
+   * Fills (Apple "Fill Colors" — light). Used for control
+   * backgrounds that sit on top of surfaces.
+   * ---------------------------------------------------------------- */
+  --fill-primary: rgba(120, 120, 128, 0.2);
+  --fill-secondary: rgba(120, 120, 128, 0.16);
+  --fill-tertiary: rgba(118, 118, 128, 0.12);
+
+  /* ----------------------------------------------------------------
+   * Accent (interactive tint). Overrides per-app if needed.
+   * ---------------------------------------------------------------- */
+  --accent: #007aff;
+  --accent-pressed: #0051d5;
+  --focus-ring: #007aff;
+
+  /* ----------------------------------------------------------------
+   * Status colors (semantic).
+   * ---------------------------------------------------------------- */
+  --status-green: #34c759;
   --status-orange: #ff9500;
   --status-red: #ff3b30;
+  --status-blue: #007aff;
 
-  /* Plot / node / link accents. Kept separate from the legacy names so a
-     palette change does not require touching every consumer. */
-  --plot-primary: #14b8a6;
-  --plot-secondary: #8b5cf6;
-  --plot-warning: #f59e0b;
-  --plot-muted: #94a3b8;
-  --plot-accent-pink: #ec4899;
+  /* ----------------------------------------------------------------
+   * Plot / node / link accents. Kept distinct from --accent so a
+   * palette change does not require touching every consumer.
+   * ---------------------------------------------------------------- */
+  --plot-primary: #007aff;
+  --plot-secondary: #af52de;
+  --plot-warning: #ff9500;
+  --plot-muted: #8e8e93;
+  --plot-accent-pink: #ff2d55;
 
-  /* Legacy names — preserved for the epistemic badge and any other
-     component that reads the older palette. */
+  /* ----------------------------------------------------------------
+   * Typography — Apple SF type scale. Sizes and line heights from
+   * HIG "Typography" (iOS 18 / macOS 15).
+   * ---------------------------------------------------------------- */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+
+  --fs-large-title: 34px;    --lh-large-title: 41px;
+  --fs-title-1: 28px;        --lh-title-1: 34px;
+  --fs-title-2: 22px;        --lh-title-2: 28px;
+  --fs-title-3: 20px;        --lh-title-3: 25px;
+  --fs-headline: 17px;       --lh-headline: 22px;
+  --fs-body: 17px;           --lh-body: 22px;
+  --fs-callout: 16px;        --lh-callout: 21px;
+  --fs-subheadline: 15px;    --lh-subheadline: 20px;
+  --fs-footnote: 13px;       --lh-footnote: 18px;
+  --fs-caption-1: 12px;      --lh-caption-1: 16px;
+  --fs-caption-2: 11px;      --lh-caption-2: 13px;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* ----------------------------------------------------------------
+   * Spacing — Apple standard 4-point grid.
+   * ---------------------------------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ----------------------------------------------------------------
+   * Corner radii. Apple's standard values.
+   * ---------------------------------------------------------------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;   /* card / grouped list */
+  --radius-xl: 12px;   /* sheet / alert */
+  --radius-2xl: 14px;  /* large sheet */
+  --radius-full: 9999px;
+
+  /* ----------------------------------------------------------------
+   * Shadows. Apple is famously restrained with shadows; most
+   * separations are done with 1px hairlines, not drop shadows.
+   * ---------------------------------------------------------------- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.10);
+  --shadow-focus: 0 0 0 4px rgba(0, 122, 255, 0.3);
+
+  /* ----------------------------------------------------------------
+   * Legacy aliases. Kept so the epistemic badge and any pre-existing
+   * component that reads the older palette continue to resolve.
+   * ---------------------------------------------------------------- */
   --color-bg: var(--bg-canvas);
   --color-fg: var(--ink-primary);
-  --color-accent-teal: #14b8a6;
-  --color-accent-violet: #8b5cf6;
-  --color-accent-amber: #f59e0b;
-  --color-accent-slate: #94a3b8;
+  --color-accent-teal: var(--sys-teal);
+  --color-accent-violet: var(--sys-purple);
+  --color-accent-amber: var(--sys-orange);
+  --color-accent-slate: var(--sys-gray);
 }
 
 .dark {
-  --bg-canvas: #0a0e14;
-  --bg-surface: #11161f;
-  --bg-sidebar: #0d131b;
-  --bg-subtle: #0f141b;
-  --ink-primary: #e6e8eb;
-  --ink-secondary: #9aa0a6;
-  --ink-tertiary: #6b7280;
-  --border-hairline: #1e2530;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --status-green: #34d058;
-  --status-orange: #ffa726;
-  --status-red: #ff5252;
-  --plot-primary: #2dd4bf;
-  --plot-secondary: #a78bfa;
-  --plot-warning: #fbbf24;
-  --plot-muted: #94a3b8;
-  --plot-accent-pink: #f472b6;
+  /* Apple system colors — dark appearance. Some are identical to
+   * light (yellow, orange, purple, teal); others are lifted for
+   * contrast on black. */
+  --sys-red: #ff453a;
+  --sys-orange: #ff9f0a;
+  --sys-yellow: #ffd60a;
+  --sys-green: #30d158;
+  --sys-mint: #63e6e2;
+  --sys-teal: #40cbe0;
+  --sys-cyan: #64d2ff;
+  --sys-blue: #0a84ff;
+  --sys-indigo: #5e5ce6;
+  --sys-purple: #bf5af2;
+  --sys-pink: #ff375f;
+  --sys-brown: #ac8e68;
+  --sys-gray: #8e8e93;
+  --sys-gray-2: #636366;
+  --sys-gray-3: #48484a;
+  --sys-gray-4: #3a3a3c;
+  --sys-gray-5: #2c2c2e;
+  --sys-gray-6: #1c1c1e;
+
+  --bg-canvas: #000000;           /* systemGroupedBackground (dark) */
+  --bg-surface: #1c1c1e;          /* secondarySystemGroupedBackground */
+  --bg-sidebar: #161618;          /* sidebar material (dark) */
+  --bg-subtle: #2c2c2e;           /* tertiarySystemBackground */
+  --bg-elevated: #2c2c2e;
+
+  --ink-primary: #ffffff;
+  --ink-secondary: rgba(235, 235, 245, 0.6);
+  --ink-tertiary: rgba(235, 235, 245, 0.3);
+  --ink-quaternary: rgba(235, 235, 245, 0.18);
+
+  --border-hairline: rgba(84, 84, 88, 0.65);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --separator-opaque: #38383a;
+
+  --fill-primary: rgba(120, 120, 128, 0.36);
+  --fill-secondary: rgba(120, 120, 128, 0.32);
+  --fill-tertiary: rgba(118, 118, 128, 0.24);
+
+  --accent: #0a84ff;
+  --accent-pressed: #409cff;
+  --focus-ring: #0a84ff;
+
+  --status-green: #30d158;
+  --status-orange: #ff9f0a;
+  --status-red: #ff453a;
+  --status-blue: #0a84ff;
+
+  --plot-primary: #0a84ff;
+  --plot-secondary: #bf5af2;
+  --plot-warning: #ff9f0a;
+  --plot-muted: #8e8e93;
+  --plot-accent-pink: #ff375f;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.50);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.60);
+  --shadow-focus: 0 0 0 4px rgba(10, 132, 255, 0.35);
+
   --color-bg: var(--bg-canvas);
   --color-fg: var(--ink-primary);
 }

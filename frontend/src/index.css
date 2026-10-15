@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "./styles/tokens.css";
 
+/* ============================================================
+   Global base — Apple HIG typography and body defaults.
+   ============================================================ */
+
 html,
 body,
 #root {
@@ -11,115 +15,275 @@ body,
 body {
   background: var(--bg-canvas);
   color: var(--ink-primary);
-  font-family:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
-    "Inter", system-ui, sans-serif;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-  letter-spacing: -0.011em;
+  font-family: var(--font-sans);
+  font-size: var(--fs-footnote);
+  line-height: var(--lh-footnote);
+  font-feature-settings:
+    "cv02" 1,   /* alternate a */
+    "cv03" 1,   /* alternate g */
+    "cv04" 1,   /* alternate i */
+    "cv11" 1;   /* alternate single-storey a */
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* Tabular numerals for every value display. */
+/* Remove the default focus outline and use a ring, matching Apple's
+ * focus appearance in macOS. */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Selection color = Apple's accent tint. */
+::selection {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--ink-primary);
+}
+
+/* ============================================================
+   Typography helpers — Apple SF type scale.
+   ============================================================ */
+
+.text-large-title { font-size: var(--fs-large-title); line-height: var(--lh-large-title); font-weight: var(--fw-bold); letter-spacing: -0.022em; }
+.text-title-1     { font-size: var(--fs-title-1);     line-height: var(--lh-title-1);     font-weight: var(--fw-bold); letter-spacing: -0.021em; }
+.text-title-2     { font-size: var(--fs-title-2);     line-height: var(--lh-title-2);     font-weight: var(--fw-semibold); letter-spacing: -0.019em; }
+.text-title-3     { font-size: var(--fs-title-3);     line-height: var(--lh-title-3);     font-weight: var(--fw-semibold); letter-spacing: -0.017em; }
+.text-headline    { font-size: var(--fs-headline);    line-height: var(--lh-headline);    font-weight: var(--fw-semibold); letter-spacing: -0.011em; }
+.text-body        { font-size: var(--fs-body);        line-height: var(--lh-body);        font-weight: var(--fw-regular); letter-spacing: -0.011em; }
+.text-callout     { font-size: var(--fs-callout);     line-height: var(--lh-callout);     font-weight: var(--fw-regular); letter-spacing: -0.009em; }
+.text-subheadline { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); font-weight: var(--fw-regular); letter-spacing: -0.008em; }
+.text-footnote    { font-size: var(--fs-footnote);    line-height: var(--lh-footnote);    font-weight: var(--fw-regular); letter-spacing: -0.006em; }
+.text-caption-1   { font-size: var(--fs-caption-1);   line-height: var(--lh-caption-1);   font-weight: var(--fw-regular); letter-spacing: 0; }
+.text-caption-2   { font-size: var(--fs-caption-2);   line-height: var(--lh-caption-2);   font-weight: var(--fw-regular); letter-spacing: 0.006em; }
+
+/* Tabular numerals — used for every measured value. */
 .font-mono,
 .tabular-nums {
-  font-family:
-    ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
   letter-spacing: -0.02em;
 }
 
-/* Apple-style surface card. */
+/* ============================================================
+   Surfaces — cards, subcards, grouped-list containers.
+   Apple's rule: separation is a hairline border, not a shadow.
+   Shadows are reserved for elevated modals and popovers.
+   ============================================================ */
+
 .apple-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-hairline);
-  border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .apple-subcard {
   background: var(--bg-subtle);
   border: 1px solid var(--border-hairline);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
-/* Segmented control (used in the title bar and in panel controls). */
+/* Grouped-list container (Apple "inset grouped table"). The rows
+ * inside use .apple-list-row. */
+.apple-group {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border-hairline);
+}
+
+.apple-list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-hairline);
+}
+.apple-list-row:last-child {
+  border-bottom: none;
+}
+
+/* ============================================================
+   Segmented control — Apple "Segmented Control" pattern.
+   ============================================================ */
+
 .segmented-track {
-  background: color-mix(in srgb, var(--border-hairline) 60%, transparent);
+  background: var(--fill-tertiary);
   padding: 2px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   display: inline-flex;
   align-items: center;
+  gap: 2px;
 }
 
 .segmented-item {
   padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--fs-caption-1);
+  line-height: var(--lh-caption-1);
+  font-weight: var(--fw-medium);
   border-radius: 6px;
   color: var(--ink-secondary);
   cursor: pointer;
   user-select: none;
+  background: transparent;
+  border: none;
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background 120ms ease-out,
+    color 120ms ease-out,
+    box-shadow 120ms ease-out;
   white-space: nowrap;
+}
+
+.segmented-item:hover:not(.active) {
+  color: var(--ink-primary);
 }
 
 .segmented-item.active {
   background: var(--bg-surface);
   color: var(--ink-primary);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.08),
+    0 0 0 0.5px rgba(0, 0, 0, 0.04);
 }
 
-/* Scrollbars — thin, unobtrusive, matching the light palette. */
+.dark .segmented-item.active {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 0 0 0.5px rgba(255, 255, 255, 0.04);
+}
+
+/* ============================================================
+   Buttons — Apple "Buttons" pattern.
+   ============================================================ */
+
+.apple-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 28px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-footnote);
+  line-height: var(--lh-footnote);
+  font-weight: var(--fw-medium);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background 120ms ease-out,
+    border-color 120ms ease-out,
+    color 120ms ease-out;
+  white-space: nowrap;
+}
+
+.apple-btn-primary {
+  background: var(--accent);
+  color: #ffffff;
+}
+.apple-btn-primary:hover { background: var(--accent-pressed); }
+.apple-btn-primary:active { background: var(--accent-pressed); }
+
+.apple-btn-secondary {
+  background: var(--bg-surface);
+  color: var(--ink-primary);
+  border-color: var(--border-hairline);
+}
+.apple-btn-secondary:hover { background: var(--bg-subtle); }
+
+/* ============================================================
+   Sidebar — Apple source-list pattern.
+   ============================================================ */
+
+.apple-sidebar-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: var(--fs-footnote);
+  line-height: var(--lh-footnote);
+  font-weight: var(--fw-regular);
+  color: var(--ink-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 90ms ease-out,
+    color 90ms ease-out;
+}
+
+.apple-sidebar-item:hover {
+  background: var(--fill-tertiary);
+}
+
+.apple-sidebar-item[aria-current="page"] {
+  background: var(--fill-primary);
+  font-weight: var(--fw-semibold);
+}
+
+/* ============================================================
+   Scrollbars — thin overlay, matches macOS appearance.
+   ============================================================ */
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--ink-tertiary) 35%, transparent);
-  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink-tertiary) 40%, transparent);
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--ink-tertiary) 55%, transparent);
+  background: color-mix(in srgb, var(--ink-secondary) 55%, transparent);
+  background-clip: padding-box;
 }
 
 /* ============================================================
    Epistemic badge — unchanged behavior, unchanged class names.
-   The band color is set per badge as an inline CSS custom property.
    ============================================================ */
 
 .epistemic-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.125rem 0.5rem 0.125rem 0.375rem;
-  border-radius: 9999px;
-  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-  background: color-mix(in srgb, currentColor 6%, transparent);
-  font-size: 0.6875rem;
-  font-weight: 500;
+  gap: 6px;
+  padding: 2px 8px 2px 6px;
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  font-size: var(--fs-caption-2);
+  font-weight: var(--fw-medium);
   line-height: 1.4;
   letter-spacing: 0.01em;
 }
 
 .epistemic-badge__dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 9999px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
   background: var(--epistemic-band-color, currentColor);
   flex-shrink: 0;
 }
 
 .epistemic-badge__level {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.625rem;
+  font-family: var(--font-mono);
+  font-size: 10px;
   opacity: 0.6;
-  margin-right: -0.125rem;
+  margin-right: -2px;
 }
 
 .epistemic-badge__label {
@@ -129,5 +293,14 @@ body {
 .tagged-output {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 8px;
+}
+
+/* ============================================================
+   Utility — hairline divider that works in both themes.
+   ============================================================ */
+
+.hairline {
+  height: 1px;
+  background: var(--border-hairline);
 }
