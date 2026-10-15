@@ -85,7 +85,7 @@ applied.
 
 ## 5. What remains open
 
-Updated 2026-10-15 after the Sprint 13 hypothesis sweep closed at
+Updated 2026-10-15 after the post-Sprint-12 hypothesis audit closed at
 `3480461`.
 
 | Item | Where |
@@ -132,7 +132,7 @@ sites), so the deferral is bounded.
 
 ---
 
-## 5c. Sprint 13 hypothesis sweep (PRs #147-#150)
+## 5c. Post-Sprint-12 hypothesis audit (PRs #147-#150)
 
 Five hypotheses moved off UNCOVERED. One — H4 — moved to a new status,
 FALSIFIED, because the test exercises the claim on a declared scope
