@@ -18,6 +18,7 @@ import math
 import random
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from functools import lru_cache
 
 from pydantic import BaseModel, Field
 from skyfield.timelib import Time  # type: ignore[import-untyped]
@@ -602,7 +603,13 @@ def _calibrate_atmosphere_surrogate(cfg: MissionConfig) -> AtmosphericSurrogate:
     return surrogate
 
 
-def _next_visible_time(sat: Satellite, cfg: MissionConfig) -> datetime:
+def _scan_first_visible_pass(
+    sat: Satellite,
+    ground_lat_deg: float,
+    ground_lon_deg: float,
+    ground_alt_m: float,
+    ground_name: str,
+) -> datetime:
     """Return the peak-elevation moment of the first visible pass,
     within 24 hours of the TLE epoch.
 
@@ -633,10 +640,10 @@ def _next_visible_time(sat: Satellite, cfg: MissionConfig) -> datetime:
     supply an explicit ``t_utc``; explicit times bypass the scan.
     """
     ground = GroundNode(
-        name=cfg.ground_station_name,
-        lat_deg=cfg.ground_lat_deg,
-        lon_deg=cfg.ground_lon_deg,
-        alt_m=cfg.ground_alt_m,
+        name=ground_name,
+        lat_deg=ground_lat_deg,
+        lon_deg=ground_lon_deg,
+        alt_m=ground_alt_m,
     )
     windows = visibility_windows(
         sat,
@@ -647,6 +654,27 @@ def _next_visible_time(sat: Satellite, cfg: MissionConfig) -> datetime:
         min_elevation_deg=5.0,
     )
     return windows[0].peak_time_utc if windows else sat.epoch_utc
+
+
+# Cache the pass scan. The scan calls Skyfield 1440 times (60 s steps
+# over 24 h) and costs ~108 ms; a profile of compute_mission_state
+# shows it is 91 percent of the request. The scan result is identical
+# for every request with the same satellite and ground station — the
+# mission state is deterministic given (config, t_utc), so the pass
+# time is a pure function of four numbers and one cached satellite
+# object. Bounded at 256 entries, which is more than any single user
+# will produce in a session.
+_scan_first_visible_pass_cached = lru_cache(maxsize=256)(_scan_first_visible_pass)
+
+
+def _next_visible_time(sat: Satellite, cfg: MissionConfig) -> datetime:
+    return _scan_first_visible_pass_cached(
+        sat,
+        cfg.ground_lat_deg,
+        cfg.ground_lon_deg,
+        cfg.ground_alt_m,
+        cfg.ground_station_name,
+    )
 
 
 def compute_mission_state(
