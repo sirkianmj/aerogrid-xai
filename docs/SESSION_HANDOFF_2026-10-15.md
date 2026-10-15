@@ -85,7 +85,8 @@ applied.
 
 ## 5. What remains open
 
-Updated 2026-10-15 after Sprint 12 closed at `73c4097`.
+Updated 2026-10-15 after the Sprint 13 hypothesis sweep closed at
+`3480461`.
 
 | Item | Where |
 |---|---|
@@ -94,8 +95,10 @@ Updated 2026-10-15 after Sprint 12 closed at `73c4097`.
 | `frontend/src/features/DesignStudio/svg/{FixedWingDetail,MultirotorDetail,SatelliteProfileSVG}.tsx` (3492 LOC) have no tests and have not been visually verified since the #127 coordinate fix | ongoing |
 | Z3 global-context finding (section 4) | **first-touch race fixed** in PR #145 (`main.py` forces `z3.main_ctx()` at import boundary). Full per-context fix deferred with pre-registered criteria in `test_z3_single_context_contract.py`. |
 | Frontend `App.test.tsx` mocks R3F canvas; two jsdom warnings remain | P32, P33 |
-| Four scientific hypotheses in `docs/SCIENTIFIC_CLAIMS.md` remain UNCOVERED (H1, H3, H4, H7) | by the project's own rule, these are **invalid** |
-| Four hypotheses remain PARTIAL (H2, H8, H10, H11) | gaps named in SCIENTIFIC_CLAIMS.md |
+| **H4** is FALSIFIED | New status in `SCIENTIFIC_CLAIMS.md`; the Tier 2 interval is constant-width. See §5c. |
+| H7 is UNCOVERED (capability absent) | `docs/H7_AVAILABILITY_SCOPE.md` names the six components that would have to be built |
+| Six hypotheses remain PARTIAL (H1, H2, H3, H8, H10, H11) | gaps named in SCIENTIFIC_CLAIMS.md |
+| SPEC §27 reconciliation with SCIENTIFIC_CLAIMS.md | H4 is falsified; H7 is capability-absent. Highest-priority non-code task. |
 | s3-8 (PWL soundness direction) | status decision needed; tracker says PENDING |
 | Phase 2 remainder: flip encoder default to physics variant (P28); whole-network flow balance | not started |
 | s11-6c (worker tuning) | deferred with rationale; baseline shows no saturation |
@@ -129,33 +132,64 @@ sites), so the deferral is bounded.
 
 ---
 
+## 5c. Sprint 13 hypothesis sweep (PRs #147-#150)
+
+Five hypotheses moved off UNCOVERED. One — H4 — moved to a new status,
+FALSIFIED, because the test exercises the claim on a declared scope
+and the claim does not hold there.
+
+| Hypothesis | Before | After | Evidence |
+|---|---|---|---|
+| H1 | UNCOVERED | PARTIAL | `test_h1_predictive_tracking.py` — predictive beats position-only on held-heading motion (gain +0.45 at L=2s, w=17m); "within disclosed uncertainty" clause not exercised |
+| H2 | PARTIAL (primitives only) | PARTIAL (mechanism covered) | `test_h2_nsga2_baseline.py` — joint beats split on all 5 seeds; mean relative hypervolume gap ~0.35%; "resilience" per se not tested |
+| H3 | UNCOVERED | PARTIAL | `test_h3_atmosphere_scheduling.py` — aware reduces failures (0.003 vs 7.155 per schedule); "optimization" is greedy max-forecast |
+| **H4** | **UNCOVERED** | **FALSIFIED** | `test_h4_uncertainty_decisions.py` — Tier 2 interval is constant-width; aware policy algebraically identical to a shifted point policy. **The claim cannot hold on this design.** |
+| H7 | UNCOVERED | UNCOVERED (capability absent) | `docs/H7_AVAILABILITY_SCOPE.md` — annual availability + regional aggregation do not exist |
+
+**H4 is the first FALSIFIED status in the project.** The specification's
+Section 27 H4 statement — *"Uncertainty-aware decisions are more
+robust under environmental variability than point estimates"* — is
+withdrawn as a property of the current system. Reconciling SPEC §27
+with `SCIENTIFIC_CLAIMS.md` is now the highest-priority non-code task.
+
+**H7's relabel** matters semantically. Everywhere else, UNCOVERED
+means "we have the mechanism, we have not tested it." For H7 it means
+"we do not have the mechanism." No test can move H7 off UNCOVERED
+without building the capability first.
+
+---
+
 ## 6. Where to go next
 
 Sprint 11 and Sprint 12 are complete. The Z3 finding is closed (see
 §5b). The next engineering decisions, in descending order of
 scientific value:
 
-1. **Address the four UNCOVERED scientific hypotheses (H1, H3, H4,
-   H7).** By the project's own s9-7 rule, they are invalid until a
-   test exists whose failure would falsify them. Each requires a
-   specific experiment: H1 needs a position-only tracking baseline;
-   H3 needs a weather-independent scheduling arm; H4 needs decision
-   robustness under environmental noise; H7 needs annual availability
-   computed across regions. **This is the single largest scientific
-   gap in the project.** Real experimental work — weeks per
-   hypothesis, not one session.
+1. **Reconcile SPEC §27 with `docs/SCIENTIFIC_CLAIMS.md`.** H4 is
+   now FALSIFIED; H7 is UNCOVERED (capability absent). Either the
+   spec statement is wrong or it is intended as a research direction
+   and should be relabelled. A spec that states falsified claims is
+   worse than one that states no claims. This is the single most
+   important non-code task.
 
 2. **Frontend test gaps.** `StatusView.tsx` has no test; the three
    large SVG drawings (`FixedWingDetail.tsx`, `MultirotorDetail.tsx`,
-   `SatelliteProfileSVG.tsx`, 3492 LOC total) have no tests. Smaller
-   scope, mechanical, safe.
+   `SatelliteProfileSVG.tsx`, 3492 LOC total) have no tests and no
+   browser verification since #127. Smaller scope, mechanical, safe.
 
 3. **s3-8 status decision.** The PWL soundness direction question in
-   `docs/DID/STR.md` section 6.3.7 is covered by `test_fuzz_soundness.py`
-   in the direction that is sound under the spec's literal encoding,
-   but the tracker still says PENDING. A decision, not code.
+   `docs/DID/STR.md` §6.3.7 is covered by `test_fuzz_soundness.py` in
+   the sound direction, but the tracker says PENDING. A decision, not
+   code.
 
-4. **The deferred Z3 per-context fix.** Pre-registered criteria are in
+4. **H7 build-out, if the direction is chosen.** Six components,
+   6-9 sessions. See `docs/H7_AVAILABILITY_SCOPE.md`. Do not begin
+   without an explicit decision that H7 is a research direction.
+
+5. **Phase 2 remainder.** Flip encoder default to the physics variant
+   (P28); add whole-network flow balance.
+
+6. **The deferred Z3 per-context fix.** Pre-registered criteria in
    `backend/tests/test_z3_single_context_contract.py`. Not urgent
    until something takes the pipeline off the single-threaded path.
 

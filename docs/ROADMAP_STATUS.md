@@ -551,3 +551,43 @@ Commit `9c477bf` (PR #145). Closes the latent Z3 finding from Sprint
   (3 tests). Its module docstring carries pre-registered acceptance
   criteria for the deferred full per-context fix (5 modules, ~60 call
   sites).
+
+## Sprint 13 - Hypothesis sweep (5 of 5 complete)
+
+Sprint 13 closed at `3480461`. Five PRs moved five hypotheses off
+UNCOVERED; one of them produced a falsification -- the first in the
+project.
+
+| ID | Task | Status |
+|----|------|--------|
+| s13-1 | Z3 first-touch race fix | COMPLETE (PR #145) -- `main.py` forces `z3.main_ctx()` at import; contract test in `test_z3_single_context_contract.py` |
+| s13-2 | H1 predictive beam tracking | COMPLETE (PR #147) -- `test_h1_predictive_tracking.py`; H1 -> PARTIAL |
+| s13-3 | H3 atmosphere-aware scheduling | COMPLETE (PR #148) -- `test_h3_atmosphere_scheduling.py`; H3 -> PARTIAL |
+| s13-4 | H4 uncertainty-aware decisions | COMPLETE (PR #149) -- `test_h4_uncertainty_decisions.py`; **H4 -> FALSIFIED** |
+| s13-5 | H2 joint NSGA-II + H7 scope | COMPLETE (PR #150) -- `test_h2_nsga2_baseline.py`, `docs/H7_AVAILABILITY_SCOPE.md`; H2 mechanism covered, H7 relabelled |
+
+### The H4 falsification
+
+The most significant result of the session. The platform's Tier 2
+interval is **constant-width** (one scalar residual quantile per
+estimator). An interval-aware policy at matched proceed rate is
+algebraically identical to a shifted point policy. H4 --
+"uncertainty-aware decisions are more robust than point estimates" --
+**cannot hold on this design**.
+
+A new status `FALSIFIED` was added to `SCIENTIFIC_CLAIMS.md`'s legend
+to record it. The consequence: SPEC section 27's H4 statement, if
+intended as a property of the current system, is withdrawn.
+
+### The H7 relabel
+
+H7 stays UNCOVERED, but with an explicit qualifier: "capability
+absent, not merely untested." `docs/H7_AVAILABILITY_SCOPE.md` names
+six components that would have to be built (6-9 sessions) and
+recommends reclassifying H7 in SPEC section 27 as a research
+direction.
+
+### Test count at Sprint 13 close
+
+1244 backend tests collected (was 1222 at session start; +22 across
+the sweep).
