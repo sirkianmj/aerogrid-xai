@@ -109,7 +109,6 @@ describe("FanetGraph", () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
-    window.localStorage.removeItem("aerogrid.token")
   })
 
   it("renders the heading and a loading state on mount", () => {

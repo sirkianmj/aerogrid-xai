@@ -97,10 +97,6 @@ export async function runClearD(
   signal?: AbortSignal,
 ): Promise<ClearDResponse> {
   const headers: Record<string, string> = { "Content-Type": "application/json" }
-  if (typeof window !== "undefined") {
-    const token = window.localStorage.getItem("aerogrid.token")
-    if (token) headers["Authorization"] = `Bearer ${token}`
-  }
   const response = await fetch("/api/discovery/run", {
     method: "POST",
     headers,

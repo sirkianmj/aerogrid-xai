@@ -164,7 +164,6 @@ describe("MissionControl", () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
-    window.localStorage.removeItem("aerogrid.token")
   })
 
   it("renders the section heading and a loading state on mount", () => {
@@ -282,7 +281,6 @@ describe("MissionControl", () => {
   })
 
   it("does not send an Authorization header even when a token is present", async () => {
-    window.localStorage.setItem("aerogrid.token", "some-token")
     const fn = stubFetchOk()
     renderWithProvider(<MissionControl />)
     await waitFor(() => expect(fn).toHaveBeenCalled())

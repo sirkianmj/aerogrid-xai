@@ -88,7 +88,6 @@ describe("ClearDDashboard", () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
-    window.localStorage.removeItem("aerogrid.token")
   })
 
   it("renders the heading and idle state on mount", () => {
@@ -239,23 +238,6 @@ describe("ClearDDashboard", () => {
       status: 200,
       json: () => Promise.resolve(SAMPLE),
     } as Response)
-  })
-
-  it("sends Authorization: Bearer on the CLEAR-D run when a token is stored", async () => {
-    window.localStorage.setItem("aerogrid.token", "test-token")
-    const fn = stubFetchOk()
-    const user = userEvent.setup()
-    renderWithProvider(<ClearDDashboard />)
-    await user.click(screen.getByRole("button", { name: /run clear-d/i }))
-    await waitFor(() => {
-      const urls = fn.mock.calls.map((c) => String(c[0]))
-      expect(urls.some((u) => u.includes("/discovery/run"))).toBe(true)
-    })
-    const discoveryCall = fn.mock.calls.find((c) =>
-      String(c[0]).includes("/discovery/run"),
-    )
-    const init = discoveryCall![1] as RequestInit
-    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer test-token")
   })
 
   it("renders the Section 21 simulation_result badge on success", async () => {

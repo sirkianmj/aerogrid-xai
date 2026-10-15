@@ -154,7 +154,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
-  window.localStorage.removeItem("aerogrid.token")
 })
 
 // --- tests ----------------------------------------------------------------
@@ -251,7 +250,6 @@ describe("App shell", () => {
   it("does not mount a session bar in the sidebar", () => {
     // The session bar (login / signup / paste-a-JWT) was removed when
     // the app was repackaged as a desktop binary that does not run
-    // PostgreSQL. The SessionBar, LoginForm, and SignupForm files
     // remain in the tree; only the mount was removed.
     render(<App />)
     expect(screen.queryByText(/^session$/i)).not.toBeInTheDocument()
