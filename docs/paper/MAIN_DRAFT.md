@@ -20,7 +20,7 @@
 
 ## Abstract
 
-Wireless power transfer between space, air, and ground nodes has been demonstrated in isolation at various technology readiness levels, but no system-level method exists to identify which architecture — which combination of node types, transmission modalities, and topology — is feasible under jointly binding physical, thermal, regulatory, and network constraints. We present CLEAR-D (Coupled-Loop Epistemic Architecture Reasoning and Discovery), a closed-loop method that couples a two-node electro-thermal receiver model to a piecewise-linear SMT encoding with a tracked approximation error, uses the unsatisfiable core of a rejected architecture to bias the next mutation of a context-free architecture grammar, operates the discovered architecture with a two-tier explanation-fidelity-preserving controller, and refines both the physics model and the formal encoding from operational data. The method's novel mechanism is the mapping from each clause of an unsatisfiable core back to the specific grammar production rule that generated the constraint. On a synthetic evaluator with the real Stage B encoder, the mechanism repairs infeasible architectures at 78.2% versus 23.8% for uniform random mutation at equal step budget (3.29×). The full A→E loop completes 100 generations without error; Stage E reduces the PWL approximation error by a factor of 8 (ratio 0.125) over 100 refinement cycles on a smooth target. All numeric results in this paper are reproduced by the test suite and notebooks committed with the manuscript; 1062 backend tests, 163 frontend tests, and ten executable notebooks pass at the tagged commit. Four of the paper's proposed hypotheses (H1, H3, H4, H7) remain untested and are reported as such.
+Wireless power transfer between space, air, and ground nodes has been demonstrated in isolation at various technology readiness levels, but no system-level method exists to identify which architecture — which combination of node types, transmission modalities, and topology — is feasible under jointly binding physical, thermal, regulatory, and network constraints. We present CLEAR-D (Coupled-Loop Epistemic Architecture Reasoning and Discovery), a closed-loop method that couples a two-node electro-thermal receiver model to a piecewise-linear SMT encoding with a tracked approximation error, uses the unsatisfiable core of a rejected architecture to bias the next mutation of a context-free architecture grammar, operates the discovered architecture with a two-tier explanation-fidelity-preserving controller, and refines both the physics model and the formal encoding from operational data. The method's novel mechanism is the mapping from each clause of an unsatisfiable core back to the specific grammar production rule that generated the constraint. On a synthetic evaluator with the real Stage B encoder, the mechanism repairs infeasible architectures at 78.2% versus 23.8% for uniform random mutation at equal step budget (3.29×). The full A→E loop completes 100 generations without error; Stage E reduces the PWL approximation error by a factor of 8 (ratio 0.125) over 100 refinement cycles on a smooth target. All numeric results in this paper are reproduced by the test suite and notebooks committed with the manuscript; 1244 backend tests, 248 frontend tests, and twelve executable notebooks pass at the current commit. The twelve proposed hypotheses in the specification's Section 27 are audited against the repository and reported individually: four are covered by a test whose failure would falsify them, six are partially covered with named gaps, one (H4) is falsified by direct test, and one (H7) requires a capability that does not yet exist. See docs/SCIENTIFIC_CLAIMS.md for the current status of every hypothesis.
 
 ## 1. Introduction
 
@@ -196,16 +196,40 @@ The repository is tagged at `c29f1e4`. A reproduction takes a single command:
 
 The nightly workflow at `.github/workflows/notebook-repro.yml` re-executes every notebook in a fresh container. The CI matrix runs the backend, frontend, formal-verification, CLA, RLS-isolation, and master-test jobs on every PR; all six are required branch-protection contexts.
 
-## 7. Limitations and untested hypotheses
+## 7. Limitations and hypothesis status
 
-This paper reports what the current repository supports and what it does not.
+This paper reports what the current repository supports and what it does
+not. The twelve hypotheses in the specification's Section 27 are audited
+individually in `docs/SCIENTIFIC_CLAIMS.md`. Summary as of this draft:
 
-**Untested hypotheses** (from the specification's Section 27):
+**Falsified by direct test:**
 
-- **H1** (predictive beam tracking improves energy delivery over position-only tracking) — untested. The trajectory predictor exists; no comparison against a position-only baseline has been run.
-- **H3** (atmosphere-aware optimization reduces transfer failures vs weather-independent scheduling) — untested. The physics is verified; the scheduling comparison is not.
-- **H4** (uncertainty-aware decisions are more robust under environmental variability than point estimates) — untested.
-- **H7** (hybrid laser+microwave outperforms single-modality for annual availability in most regions) — untested.
+- **H4** (uncertainty-aware decisions are more robust under
+  environmental variability than point estimates) — **falsified**. The
+  platform's Tier 2 interval is constant-width (a single scalar
+  residual quantile per estimator). An interval-aware policy that
+  proceeds iff ``interval.low >= T`` is algebraically identical to a
+  point policy that proceeds iff ``value >= T + q``. At matched
+  proceed rate there is no room for the claim to hold on this design.
+  Evidence: ``backend/tests/test_h4_uncertainty_decisions.py``.
+
+**Not testable without new capability:**
+
+- **H7** (hybrid laser+microwave outperforms single-modality for
+  annual availability in most regions) — **capability absent**. The
+  platform has no annual-availability computation and no regional
+  aggregation. ``docs/H7_AVAILABILITY_SCOPE.md`` names the six
+  components that would have to be built. No test can move H7 off
+  this status today.
+
+**Partially tested, with named gaps:**
+
+- **H1** (predictive beam tracking) — mechanism covered on a declared
+  scope; the "within disclosed uncertainty" clause is not exercised.
+- **H3** (atmosphere-aware scheduling) — mechanism covered on a
+  declared weather distribution; "optimization" is a greedy
+  max-forecast scheduler, and the failure criterion is an operational
+  threshold, not a spec-derived metric.
 
 **Partially tested** (mechanism verified; full scope not):
 
@@ -230,7 +254,7 @@ CLEAR-D is a closed-loop method for identifying and operating feasible architect
 
 The paper's contribution is the coupling: no prior work uses the formal verifier's unsat cores to *generate* the next candidate. The contribution is asserted as a method, and the accompanying repository provides the full implementation, test suite, and notebooks required to reproduce every numeric claim above.
 
-Four of the specification's stated research hypotheses remain untested and are reported as untested rather than as partially satisfied.
+The status of every specification hypothesis is reported individually in §7 and in `docs/SCIENTIFIC_CLAIMS.md`. No hypothesis is reported as "untested" without an explanation of what would be required to test it.
 
 ## 9. Data and code availability
 
