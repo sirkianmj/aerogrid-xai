@@ -27,4 +27,5 @@ export type TourContextValue = {
   progress: TourProgressPublic
   setNeverShow: () => void
   reset: () => void
+  onRequestView: ((view: string) => void) | null
 }

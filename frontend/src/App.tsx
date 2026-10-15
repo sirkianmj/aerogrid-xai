@@ -127,7 +127,7 @@ function LegalView() {
 function App() {
   const [activeView, setActiveView] = useState("twin")
   return (
-    <TourProvider>
+    <TourProvider onRequestView={setActiveView}>
       <MissionProvider>
       <AppShell
         navItems={NAV}
