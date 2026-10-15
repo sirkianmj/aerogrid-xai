@@ -13,18 +13,14 @@ import { Globe } from "./features/Globe/Globe"
 import { MissionConfigBar } from "./features/MissionControl/MissionConfigBar"
 import { MissionControl } from "./features/MissionControl/MissionControl"
 import { MissionProvider } from "./features/MissionControl/MissionProvider"
-import { TourFirstRunOffer } from "./features/Tour/TourFirstRunOffer"
-import { TourOverlay } from "./features/Tour/TourOverlay"
 import { TourProvider } from "./features/Tour/TourProvider"
 import { Telemetry } from "./features/Telemetry/Telemetry"
-import { TradeSpace } from "./features/TradeSpace/TradeSpace"
 import { XAITrace } from "./features/XAITrace/XAITrace"
 
 const NAV: AppShellNavItem[] = [
   { id: "twin", label: "Digital Twin & Orbit", tag: "4·7·10" },
   { id: "cleard", label: "CLEAR-D Synthesis", tag: "Part V" },
   { id: "xai", label: "Two-Tier XAI Core", tag: "15·26" },
-  { id: "tradespace", label: "Trade Space", tag: "14" },
   { id: "design", label: "Design Studio", tag: "P-V" },
   { id: "about", label: "About & Legend", tag: "21" },
   { id: "legal", label: "Terms & Privacy", tag: "S11·4" },
@@ -164,17 +160,10 @@ function App() {
             <DesignStudio />
           </div>
         )}
-        {activeView === "tradespace" && (
-          <div className="mx-auto max-w-5xl space-y-6">
-            <TradeSpace />
-          </div>
-        )}
         {activeView === "about" && <AboutView />}
         {activeView === "legal" && <LegalView />}
         {activeView === "status" && <StatusView />}
       </AppShell>
-      <TourOverlay />
-      <TourFirstRunOffer />
       </MissionProvider>
     </TourProvider>
   )

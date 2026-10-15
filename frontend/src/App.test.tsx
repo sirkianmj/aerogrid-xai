@@ -164,10 +164,10 @@ describe("App shell", () => {
     expect(screen.getByText("AeroGrid-XAI")).toBeInTheDocument()
   })
 
-  it("renders the eight module navigation items", () => {
+  it("renders the seven module navigation items", () => {
     render(<App />)
     const nav = screen.getByRole("navigation", { name: /workspace views/i })
-    expect(within(nav).getAllByRole("button").length).toBe(8)
+    expect(within(nav).getAllByRole("button").length).toBe(7)
   })
 
   it("renders the Tier-2 firewall invariant badge", () => {
@@ -206,16 +206,6 @@ describe("App shell", () => {
     )
     await waitFor(() =>
       expect(screen.getByTestId("panel-xai-trace")).toBeInTheDocument(),
-    )
-  })
-
-  it("switches to the Trade Space view", async () => {
-    const user = userEvent.setup()
-    render(<App />)
-    const sidebar = screen.getByRole("complementary", { name: /primary/i })
-    await user.click(within(sidebar).getByRole("button", { name: /trade space/i }))
-    await waitFor(() =>
-      expect(screen.getByTestId("panel-tradespace")).toBeInTheDocument(),
     )
   })
 

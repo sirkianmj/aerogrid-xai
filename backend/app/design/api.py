@@ -39,7 +39,7 @@ class SatelliteDesignRequest(BaseModel):
     raan_deg: float = Field(..., ge=0.0, lt=360.0)
     argp_deg: float = Field(..., ge=0.0, lt=360.0)
     m0_deg: float = Field(..., ge=0.0, lt=360.0)
-    epoch_utc: datetime
+    epoch_utc: datetime = Field(default_factory=lambda: datetime.now(UTC))
     transmitter_power_w: float = Field(10_000.0, gt=0.0, le=1e9)
     wavelength_nm: float = Field(1064.0, gt=0.0, le=10_000.0)
     transmitter_aperture_m: float = Field(0.02, gt=0.0, le=10.0)
