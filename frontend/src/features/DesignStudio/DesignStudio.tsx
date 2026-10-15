@@ -32,7 +32,6 @@ import {
   type SatellitePreset,
 } from "./designApi"
 import { OrbitDiagram } from "./svg/OrbitDiagram"
-import { SatelliteBusDiagram } from "./svg/SatelliteBusDiagram"
 import { SatelliteProfileSVG } from "./svg/SatelliteProfileSVG"
 import { DroneTopView } from "./svg/DroneTopView"
 
@@ -178,27 +177,31 @@ function SatelliteDesigner({ presets }: { presets: SatellitePreset[] }) {
   return (
     <div className="apple-card p-4 mb-6">
       <h3 className="mb-2 text-sm font-semibold">Satellite designer</h3>
+      {/* Profile drawing on its own row, full width of the card.
+          This is the primary figure: it shows the solar arrays, the
+          bus, the transmit dish, and the solar array design chain
+          from P_tx. The orbit diagram and the numeric inputs sit
+          below in a two-column sub-grid. */}
+      <div className="mb-4">
+        <SatelliteProfileSVG
+          transmitter_power_w={fields.transmitter_power_w}
+          transmitter_aperture_m={fields.transmitter_aperture_m}
+          onChange={(patch) => setFields((f) => ({ ...f, ...patch }))}
+        />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-4">
         <div className="space-y-3">
-          <SatelliteProfileSVG
-            transmitter_power_w={fields.transmitter_power_w}
-            transmitter_aperture_m={fields.transmitter_aperture_m}
-            onChange={(patch) => setFields((f) => ({ ...f, ...patch }))}
-          />
           <OrbitDiagram
             a_km={fields.a_km}
             e={fields.e}
             onChange={(patch) => setFields((f) => ({ ...f, ...patch }))}
           />
-          <SatelliteBusDiagram
-            transmitter_power_w={fields.transmitter_power_w}
-            transmitter_aperture_m={fields.transmitter_aperture_m}
-            onChange={(patch) => setFields((f) => ({ ...f, ...patch }))}
-          />
           <p className="text-[0.65rem] text-[var(--ink-tertiary)]">
             Drag the periapsis or apoapsis marker to change the orbit;
-            drag the aperture edge to widen or narrow the beam. Numbers
-            on the right stay in sync.
+            drag the aperture edge on the satellite profile above to
+            widen or narrow the beam. Numbers on the right stay in
+            sync.
           </p>
         </div>
 

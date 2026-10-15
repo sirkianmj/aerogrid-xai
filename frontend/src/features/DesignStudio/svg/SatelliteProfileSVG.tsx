@@ -815,7 +815,7 @@ export function SatelliteProfileSVG({
       ref={svgRef}
       viewBox={`0 0 ${FRAME_W} ${FRAME_H}`}
       className="w-full"
-      style={{ maxHeight: 560, touchAction: "none" }}
+      style={{ maxHeight: 780, touchAction: "none" }}
       role="img"
       aria-label="Satellite side profile, engineering drawing"
       data-testid="satellite-profile"
