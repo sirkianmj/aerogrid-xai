@@ -256,8 +256,8 @@ itself and in the PR description.
 |----|------|--------|
 | s10-4 | Prior-art / defensive-publication memo | COMPLETE (PR #88) — Revision 2, 301 lines, `docs/DEFENSIVE_PUBLICATION.md` |
 | s10-6 | Scientific gate: all references verified | COMPLETE — `docs/CITATION_AUDIT.md`; four High/Medium-priority external checks recorded for follow-up |
-| s10-1 | Q1 article draft | NOT STARTED |
-| s10-2 | DARPA DID-style documentation (SRS, Design Doc, Test Report) | NOT STARTED |
+| s10-1 | Q1 article draft scaffold | COMPLETE (PR #91) — scaffold with author metadata, competing-interests declaration, citation-audit flags; full draft in `docs/paper/MAIN_DRAFT.md` |
+| s10-2 | DARPA DID-style documentation (SRS, Design Doc, Test Report) | COMPLETE (PR #90) — `docs/DID/{SRS,SDD,STR}.md` |
 | s10-3 | Epistemic hierarchy audit | COMPLETE — `docs/EPISTEMIC_HIERARCHY_AUDIT.md`; P34 closed; four follow-up findings F-1..F-4 recorded |
 | s10-5 | Notebook 11 — reproducibility binder | COMPLETE — `notebooks/11_binder_ready.ipynb` + `binder/environment.yml` + `binder/postBuild`; executes 7/7 cells, all paper §5 gates pass |
 
@@ -413,3 +413,59 @@ fails on any skip.
   The audit confirms 6/6 top-level panels are correctly wrapped in
   `TaggedOutput`; four follow-up findings (F-1 through F-4) are recorded
   in that document but none is a live defect on a shipped output path.
+## Sprint 11 — Production hardening and load test (7 of 8 complete)
+
+Sprint 11 closed at `6b34390`. Tracked here because the earlier
+tracker had no Sprint 11 section.
+
+| ID | Task | Status |
+|----|------|--------|
+| s11-1 | launchd deployment for postgres, redis, minio, backend, frontend | COMPLETE (PR #106) |
+| — | Signup flow (interlock with s12-11) | COMPLETE (PR #131) |
+| — | Report export (s12-11 gap) | COMPLETE (PR #132) |
+| s11-2 | Prometheus + Grafana monitoring stack, native via Homebrew | COMPLETE (PR #133) |
+| s11-3 | Security hardening: headers, rate limit, CORS, audit | COMPLETE (PR #134) |
+| s11-4 | Terms of Service and Privacy Policy templates | COMPLETE (PR #135) |
+| s11-5 | Status page and incident response | COMPLETE (PR #136) |
+| s11-6a | Load test instrument (Locust, seeder, runner) | COMPLETE (PR #138) |
+| s11-6b | Load test baseline recorded from 13 runs | COMPLETE (PR #139) — `docs/LOAD_TEST_BASELINE.md` |
+| s11-6c | Tune `--workers` from baseline | DEFERRED — see note below |
+| s11-7 | Scientific gate under load (determinism) | COMPLETE (PR #140) — `backend/tests/test_discovery_concurrency.py` |
+
+### s11-6c deferral note
+
+The measured baseline in `docs/LOAD_TEST_BASELINE.md` shows the server
+is not saturated at 128 concurrent HTTP users: p50 flat at 13–21 ms
+across every user level, p95 growing only from ~37 ms at 4 users to
+~51 ms at 128 users, throughput linear with user count. There is no
+measured basis for a worker-count change. s11-6c is deferred until
+either (a) a workload change pushes the server into saturation, or
+(b) the deployment moves off the single-worker local dev machine, at
+which point the tuning must be re-measured anyway.
+
+### s11-7 finding (latent, not fixed here)
+
+The s11-7 test exposed two defects during development, neither in the
+endpoint:
+
+1. **Starlette `TestClient` SIGSEGVs under thread concurrency.** It
+   drives the ASGI app through `anyio.from_thread.BlockingPortal`.
+   Sharing one client across two threads, or constructing a fresh
+   client per thread, both crash. The test therefore uses
+   `httpx.AsyncClient` over an in-process `ASGITransport`, which
+   mirrors how uvicorn invokes the app.
+
+2. **Z3's Python bindings use a process-global context.** Two threads
+   concurrently building Z3 expressions raise
+   `Z3Exception: context mismatch` at
+   `app/verification/architecture_encoder.py:320`. Under some
+   orderings this hard-crashes rather than raising.
+
+The endpoint is not affected today: `@router.post("/run")` is
+`async def` with no `await`, so single-worker uvicorn runs it on the
+event loop one request at a time. The Z3 finding becomes a real defect
+the moment the discovery pipeline is moved into `run_in_threadpool` or
+any other threaded path. Fix options: a `threading.Lock` around
+`encode_architecture` (simple, serialises the encoder) or a per-thread
+Z3 context (keeps parallelism, more work). Neither is applied; the
+finding is recorded so it is not lost.
