@@ -36,6 +36,24 @@ z3_dylibs = [
 # Skyfield: .npz ephemeris data files that PyInstaller misses.
 skyfield_datas = collect_data_files("skyfield")
 
+# pywebview and its dependencies. On macOS, pywebview uses pyobjc
+# (Cocoa/WebKit). collect_all picks up the pywebview JS bridge files
+# that PyInstaller misses by default.
+webview_datas, webview_binaries, webview_hidden = collect_all("webview")
+webview_datas += collect_data_files("webview")
+
+# pyobjc frameworks required on macOS. collect_all for each so the
+# compiled .so files ship.
+pyobjc_frameworks = ("objc", "Foundation", "AppKit", "WebKit", "Quartz", "Cocoa")
+pyobjc_datas = []
+pyobjc_binaries = []
+pyobjc_hidden = []
+for fw in pyobjc_frameworks:
+    d, b, h = collect_all(fw)
+    pyobjc_datas += d
+    pyobjc_binaries += b
+    pyobjc_hidden += h
+
 # TLE fixtures. Kept at the same relative path the source uses, so
 # Path(__file__).parent / "data" / "tle" resolves the same in both modes.
 tle_datas = [
@@ -49,9 +67,14 @@ frontend_datas = [(str(FRONTEND_DIST), "frontend_dist")] if FRONTEND_DIST.is_dir
 a = Analysis(
     [str(REPO / "desktop_entry.py")],
     pathex=[str(BACKEND)],
-    binaries=z3_binaries + z3_dylibs,
-    datas=z3_datas + skyfield_datas + tle_datas + frontend_datas,
-    hiddenimports=z3_hidden,
+    binaries=z3_binaries + z3_dylibs + webview_binaries + pyobjc_binaries,
+    datas=z3_datas + skyfield_datas + tle_datas + frontend_datas
+        + webview_datas + pyobjc_datas,
+    hiddenimports=z3_hidden + webview_hidden + pyobjc_hidden + [
+        "webview.platforms.cocoa",
+        "bottle",
+        "proxy_tools",
+    ],
     hookspath=[],
     runtime_hooks=[],
     excludes=["tkinter", "matplotlib.tests", "numpy.tests", "scipy.tests"],
@@ -60,6 +83,9 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
+# console=False on macOS produces a windowed app that does not
+# open a Terminal when launched from Finder. On Windows, console=False
+# similarly suppresses the console window.
 exe = EXE(
     pyz,
     a.scripts,
@@ -70,7 +96,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=True,
+    console=False,
 )
 
 coll = COLLECT(
@@ -81,3 +107,47 @@ coll = COLLECT(
     upx=False,
     name="aerogrid-desktop",
 )
+
+# macOS .app bundle. Wraps the COLLECT output in a proper
+# AeroGrid-XAI.app that Finder treats as an application (draggable to
+# /Applications, has the icon, has a bundle identifier).
+#
+# The entrypoint opens a pywebview window (Cocoa/WebKit on macOS) and
+# starts FastAPI on an OS-chosen free port in a background thread.
+# Closing the window exits the process.
+#
+# The BUNDLE step is skipped on non-macOS platforms. PyInstaller's
+# BUNDLE is macOS-only; on Linux and Windows this section is a no-op
+# and dist/aerogrid-desktop/ remains the deliverable.
+import sys as _sys
+if _sys.platform == "darwin":
+    app = BUNDLE(
+        coll,
+        name="AeroGrid-XAI.app",
+        icon=str(REPO / "packaging" / "aerogrid.icns"),
+        bundle_identifier="com.forgex4.aerogrid",
+        info_plist={
+            "CFBundleName": "AeroGrid-XAI",
+            "CFBundleDisplayName": "AeroGrid-XAI",
+            "CFBundleShortVersionString": "0.1.0",
+            "CFBundleVersion": "0.1.0",
+            "NSHighResolutionCapable": True,
+            "LSMinimumSystemVersion": "11.0",
+            "LSApplicationCategoryType": "public.app-category.developer-tools",
+            # App Transport Security: the app loads http://localhost
+            # (not https) inside WKWebView. macOS blocks plain HTTP by
+            # default; these exceptions allow only local traffic.
+            "NSAppTransportSecurity": {
+                "NSAllowsLocalNetworking": True,
+                "NSExceptionDomains": {
+                    "localhost": {
+                        "NSExceptionAllowsInsecureHTTPLoads": True,
+                        "NSIncludesSubdomains": True,
+                    },
+                    "127.0.0.1": {
+                        "NSExceptionAllowsInsecureHTTPLoads": True,
+                    },
+                },
+            },
+        },
+    )

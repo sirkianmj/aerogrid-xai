@@ -42,9 +42,6 @@ vi.mock("./features/Telemetry/Telemetry", () => ({
 vi.mock("./features/TradeSpace/TradeSpace", () => ({
   TradeSpace: () => <div data-testid="panel-tradespace" />,
 }))
-vi.mock("./features/AdminPanel/AdminPanel", () => ({
-  AdminPanel: () => <div data-testid="panel-admin" />,
-}))
 vi.mock("./features/XAITrace/XAITrace", () => ({
   XAITrace: () => <div data-testid="panel-xai-trace" />,
 }))
@@ -168,10 +165,10 @@ describe("App shell", () => {
     expect(screen.getByText("AeroGrid-XAI")).toBeInTheDocument()
   })
 
-  it("renders the nine module navigation items", () => {
+  it("renders the eight module navigation items", () => {
     render(<App />)
     const nav = screen.getByRole("navigation", { name: /workspace views/i })
-    expect(within(nav).getAllByRole("button").length).toBe(9)
+    expect(within(nav).getAllByRole("button").length).toBe(8)
   })
 
   it("renders the Tier-2 firewall invariant badge", () => {
@@ -223,14 +220,16 @@ describe("App shell", () => {
     )
   })
 
-  it("switches to the SaaS & Admin view", async () => {
-    const user = userEvent.setup()
+  it("does not show the SaaS & Admin tab", () => {
+    // The Admin tab was removed when the app was repackaged as a
+    // desktop binary that does not run PostgreSQL or Redis. The
+    // AdminPanel component and its tests remain in the tree; only
+    // the nav entry and the conditional render were removed.
     render(<App />)
     const sidebar = screen.getByRole("complementary", { name: /primary/i })
-    await user.click(within(sidebar).getByRole("button", { name: /saas & admin/i }))
-    await waitFor(() =>
-      expect(screen.getByTestId("panel-admin")).toBeInTheDocument(),
-    )
+    expect(
+      within(sidebar).queryByRole("button", { name: /saas & admin/i }),
+    ).not.toBeInTheDocument()
   })
 
   it("switches to the About view and shows all seven Section 21 badges", async () => {
