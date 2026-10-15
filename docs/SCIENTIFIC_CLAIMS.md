@@ -19,6 +19,9 @@ Status legend:
   stated scope; the gap is named.
 - `UNCOVERED` — no test exercises the claim. **The claim is invalid
   until coverage is added.**
+- `FALSIFIED` — a test exercises the claim under a declared
+  scope and the claim does not hold there. The declaration is
+  withdrawn, not merely uncovered.
 - `N/A` — the item is not a scientific claim (e.g. an architectural
   invariant, which is tested structurally rather than falsified).
 
@@ -29,7 +32,7 @@ Status legend:
 | H1 | Predictive beam tracking improves expected energy delivery over position-only tracking, within disclosed uncertainty | `PARTIAL` | `backend/tests/test_h1_predictive_tracking.py` (4 tests). Mechanism covered on a declared scope; "within disclosed uncertainty" clause not covered. See H1 scope below. |
 | H2 | Joint NSGA-II optimization of energy and topology improves resilience over independent UAV management | `PARTIAL` | `backend/tests/test_nsga2.py` verifies NSGA-II primitives (dominance, crowding, hypervolume). No test constructs a matched independent-management baseline. |
 | H3 | Atmosphere-aware optimization reduces energy-transfer failures vs weather-independent scheduling | `PARTIAL` | `backend/tests/test_h3_atmosphere_scheduling.py` (4 tests). Mechanism covered on a declared weather distribution; "optimization" is a greedy max-forecast scheduler and the failure criterion is an operational threshold, not a spec-derived metric. See H3 scope below. |
-| H4 | Uncertainty-aware decisions are more robust under environmental variability than point estimates | **UNCOVERED** | Tier 2 estimates carry intervals (`test_tier2.py`), but no test measures decision robustness under environmental noise with vs without uncertainty conditioning. |
+| H4 | Uncertainty-aware decisions are more robust under environmental variability than point estimates | `FALSIFIED` | `backend/tests/test_h4_uncertainty_decisions.py` (4 tests). The platform's Tier 2 interval is constant-width; an interval-aware policy at matched proceed rate is algebraically identical to a shifted point policy. The claim cannot hold on this design. See H4 scope below. |
 | H5 | The two-tier architecture allows engineers to identify dominant factors with fidelity to the model's own logic | `COVERED` | `test_tier1.py`, `test_xai_fidelity_audit.py`; audit at `docs/XAI_FIDELITY_AUDIT.md`. |
 | H6 | PWL-encoded Z3 verification proves feasibility or infeasibility within a disclosed approximation error before full simulation | `COVERED` | `test_pwl.py`, `test_pwl_tune.py`, `test_z3_end_to_end.py`, `test_scientific_validation/test_*`. |
 | H7 | Hybrid laser+microwave architectures outperform single-modality for annual availability in most regions | **UNCOVERED** | The `Hybrid_Link` modality exists and the MPE constraint fires on both mechanisms (`test_encoder_physics.py`), but no test computes annual availability across regions. |
@@ -134,6 +137,70 @@ Not covered:
   forecasting system with bias, correlation, or regime changes.
 - No integration with the platform's actual policy or control layer;
   none exists in the repository.
+
+### H4 scope
+
+The H4 test does not merely fail to find support; it identifies the
+mechanism by which the claim cannot hold on the platform as built.
+
+Finding
+-------
+
+The platform's Tier 2 interval is **constant-width**:
+
+- ``AtmosphericSurrogate.calibrate`` (``app/control/tier2.py``)
+  stores a single scalar residual quantile.
+- ``estimate_atmospheric_loss`` returns
+  ``[value - q, value + q]`` where ``q`` is the same number for every
+  input.
+- An interval-aware policy that proceeds iff ``interval.low >=
+  threshold_aware`` is therefore algebraically identical to a point
+  policy that proceeds iff ``value >= threshold_aware + q``.
+
+At matched proceed rate, the two policies are the same policy up to a
+threshold shift. H4 requires the interval to carry information beyond
+its midpoint; the current design does not provide it.
+
+Evidence (declared scope, from the test file)
+
+- True transmittance: log-normal, median 0.5, log-sigma 0.5.
+- Point error: sigma_v = 0.10.
+- Interval half-width: q = 0.05 + |N(0, 0.05)|.
+- Environmental noise: sigma_env = 0.15.
+- Failure: post-decision actual transmittance < 0.35.
+- 2000 calibration, 2000 evaluation, target proceed rate 0.50.
+
+Observed:
+
+| Quantity | Value |
+|---|---|
+| Threshold shift (point - aware) | 0.0851 (= 2 x Q_BASE, as algebra predicts) |
+| False-proceed, point | 0.0552 |
+| False-proceed, aware | 0.0558 |
+| Gap | -0.0006 |
+
+The gap is within Monte-Carlo noise around zero. This is the
+diagnosis, not a measurement artefact: the shift equals the interval
+half-width, exactly as the algebra requires.
+
+What would change the answer
+----------------------------
+
+A per-input interval whose width correlates with the actual error.
+Group-conditional (Mondrian) conformal, or any scheme that estimates
+a residual quantile as a function of the input rather than as a
+scalar, would make the interval actionable. That is a design change
+to ``AtmosphericSurrogate`` (or to the interval wrapper), not a test
+change. It is not applied here.
+
+Consequence for the specification
+---------------------------------
+
+H4 is withdrawn as a stated claim. It is not merely uncovered; on
+the platform as built it cannot be true. If the specification's
+Section 27 intends H4 as a research direction rather than as a
+property of the current system, that should be stated. As written,
+it is falsified by direct test.
 
 ## Real-world benchmark claims (specification Section 6)
 
