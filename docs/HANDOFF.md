@@ -1,8 +1,13 @@
 # Handoff Document — AeroGrid-XAI (next AI agent)
 
 **Written:** 2026-10-13. Section 12 updated 2026-10-14 for `043ef8e`.
-**Repository state:** `main` at commit `043ef8e`. Sections 0-11 remain valid
-for the deep technical content (CLEAR-D pipeline structure, physics constants,
+**State pointer (2026-10-15):** `main` is at commit `6b34390` (Sprint 11
+complete). The state claims in the header and in sections 0-9 below are
+stale and were falsified by the 2026-10-15 session. For current state see
+`docs/SESSION_HANDOFF_2026-10-15.md`. Sections 0-11 remain valid for the
+deep technical content (CLEAR-D pipeline, physics constants, tooling
+facts) except where explicitly superseded by that document.
+**Repository state at time of writing:** `main` at commit `043ef8e`. for the deep technical content (CLEAR-D pipeline structure, physics constants,
 attributions, tooling facts). Section 12 supersedes any state claim in
 sections 0-9.
 **Supersedes:** the prior handoff document describing commit `ef428bf`
