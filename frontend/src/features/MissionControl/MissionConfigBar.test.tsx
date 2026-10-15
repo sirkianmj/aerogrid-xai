@@ -100,7 +100,6 @@ describe("MissionConfigBar", () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
-    window.localStorage.removeItem("aerogrid.token")
   })
 
   it("renders the config bar heading and all nine inputs", () => {
