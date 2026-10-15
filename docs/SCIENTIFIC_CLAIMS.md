@@ -28,7 +28,7 @@ Status legend:
 |----|------------------|--------|---------|
 | H1 | Predictive beam tracking improves expected energy delivery over position-only tracking, within disclosed uncertainty | `PARTIAL` | `backend/tests/test_h1_predictive_tracking.py` (4 tests). Mechanism covered on a declared scope; "within disclosed uncertainty" clause not covered. See H1 scope below. |
 | H2 | Joint NSGA-II optimization of energy and topology improves resilience over independent UAV management | `PARTIAL` | `backend/tests/test_nsga2.py` verifies NSGA-II primitives (dominance, crowding, hypervolume). No test constructs a matched independent-management baseline. |
-| H3 | Atmosphere-aware optimization reduces energy-transfer failures vs weather-independent scheduling | **UNCOVERED** | `test_atmosphere.py` verifies the physics; no end-to-end test compares the two scheduling regimes. |
+| H3 | Atmosphere-aware optimization reduces energy-transfer failures vs weather-independent scheduling | `PARTIAL` | `backend/tests/test_h3_atmosphere_scheduling.py` (4 tests). Mechanism covered on a declared weather distribution; "optimization" is a greedy max-forecast scheduler and the failure criterion is an operational threshold, not a spec-derived metric. See H3 scope below. |
 | H4 | Uncertainty-aware decisions are more robust under environmental variability than point estimates | **UNCOVERED** | Tier 2 estimates carry intervals (`test_tier2.py`), but no test measures decision robustness under environmental noise with vs without uncertainty conditioning. |
 | H5 | The two-tier architecture allows engineers to identify dominant factors with fidelity to the model's own logic | `COVERED` | `test_tier1.py`, `test_xai_fidelity_audit.py`; audit at `docs/XAI_FIDELITY_AUDIT.md`. |
 | H6 | PWL-encoded Z3 verification proves feasibility or infeasibility within a disclosed approximation error before full simulation | `COVERED` | `test_pwl.py`, `test_pwl_tune.py`, `test_z3_end_to_end.py`, `test_scientific_validation/test_*`. |
@@ -73,6 +73,67 @@ a few metres over the tracking horizon, small against the 17 m beam
 radius. The predictor is only lightly penalized. A stronger
 adversarial case would require turn rates producing deviations
 comparable to the beam radius. That regime is not tested.
+
+### H3 scope
+
+The H3 test compares two scheduling policies on a declared weather
+distribution. It is a design experiment: no scheduler exists in the
+repository (`grep -rn 'schedule' backend/app/` returns no relevant
+hits). The test constructs both policies and compares them.
+
+- Weather-independent policy: round-robin over UAVs, ignoring weather.
+- Atmosphere-aware policy: for each slot, compute forecast
+  atmospheric transmittance for every UAV and pick the maximum.
+
+Declared scope:
+
+- Fleet: 6 UAVs at fixed slant paths 500, 1000, 2000, 3000, 4000,
+  5000 m. Wavelength 1064 nm.
+- Weather per slot: log-normal visibility (median 15 km, log-sigma
+  0.6); Beta(2, 5) cloud factor. Slots drawn independently.
+- Forecast: truth plus Gaussian noise (visibility sigma 2 km, cloud
+  sigma 0.10), clipped to valid ranges.
+- Failure criterion: actual transmittance below eta_min = 0.35.
+- Schedule: 12 slots; both policies attempt 12 transfers, so the
+  denominators match.
+- Repeats: 400 schedules per condition.
+
+Observed:
+
+| Condition | aware | independent | gap |
+|---|---|---|---|
+| Constant weather (scale 0.0) | 0.000 | 8.000 | +8.000 |
+| Half variance (0.5) | -- | -- | +7.830 |
+| Full declared (1.0) | 0.003 | 7.155 | +7.152 |
+| 1.5x variance | -- | -- | +6.340 |
+
+Mechanism result: on this declared scope, atmosphere awareness
+strictly reduces failures, and the gap remains positive across the
+tested variance range.
+
+Non-monotonicity: the marginal value of awareness is not monotone in
+weather variance. At low variance the fixed effect of path-length
+choice dominates and awareness nearly eliminates failures; at high
+variance some slots are bad enough that even the best UAV falls
+below threshold and there is nothing left for awareness to recover.
+The gap peaks at low variance (8.00) and decreases toward higher
+variance (6.34 at 1.5x). This was discovered when a test asserting
+monotonicity failed during development; the test now asserts only
+that the gap stays positive across the range.
+
+Not covered:
+
+- "Optimization": the aware policy is a greedy max-forecast choice,
+  not a multi-slot optimizer. A scheduler that forecasts further
+  ahead, or trades off across slots, is not tested.
+- The failure criterion (transmittance < 0.35) is an operational
+  threshold, not a spec-derived metric. Changing it changes the
+  absolute numbers and, in principle, the direction of the gap.
+- Weather is synthetic. No real meteorological data is used. The
+  forecast model is Gaussian noise around truth, not a real
+  forecasting system with bias, correlation, or regime changes.
+- No integration with the platform's actual policy or control layer;
+  none exists in the repository.
 
 ## Real-world benchmark claims (specification Section 6)
 
