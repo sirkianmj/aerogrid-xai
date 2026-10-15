@@ -7,16 +7,34 @@
  * DOM-altering code except the overlay.
  */
 
-import { useCallback, useMemo, useState, type ReactNode } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react"
 import { ALL_STEPS } from "./tourDefinitions"
 import { TourContext } from "./TourContext"
 import type { TourContextValue, TourMode } from "./tourTypes"
 import { useTourProgress } from "./useTourProgress"
 
-export function TourProvider({ children }: { children: ReactNode }) {
+export function TourProvider({
+  children,
+  onRequestView,
+}: {
+  children: ReactNode
+  onRequestView?: (view: string) => void
+}) {
   const progressApi = useTourProgress()
   const [mode, setMode] = useState<TourMode | null>(null)
   const [stepIndex, setStepIndex] = useState(0)
+
+  useEffect(() => {
+    if (mode === null) return
+    const step = ALL_STEPS[stepIndex]
+    if (step?.view && onRequestView) onRequestView(step.view)
+  }, [mode, stepIndex, onRequestView])
 
   const start = useCallback(
     (m: TourMode, fromStepId?: string) => {
@@ -73,8 +91,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
       progress: progressApi.progress,
       setNeverShow: progressApi.setNeverShow,
       reset: progressApi.reset,
+      onRequestView: onRequestView ?? null,
     }),
-    [mode, stepIndex, start, next, back, skip, progressApi],
+    [mode, stepIndex, start, next, back, skip, progressApi, onRequestView],
   )
 
   return <TourContext.Provider value={value}>{children}</TourContext.Provider>

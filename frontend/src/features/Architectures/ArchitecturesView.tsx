@@ -68,7 +68,9 @@ export function ArchitecturesView() {
   }
 
   return (
-    <section aria-labelledby="architectures-heading" className="mb-10">
+    <section
+      data-tour-id="architectures"
+      aria-labelledby="architectures-heading" className="mb-10">
       <h2 id="architectures-heading" className="mb-1 text-lg font-semibold">
         Discovered architectures (Part V, Stage C)
       </h2>

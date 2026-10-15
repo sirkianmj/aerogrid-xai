@@ -109,7 +109,11 @@ export function Telemetry({
   const isActive = status === "open" || status === "connecting"
 
   return (
-    <section aria-labelledby="telemetry-heading" className="mb-10">
+    <section
+      data-tour-id="telemetry"
+      aria-labelledby="telemetry-heading"
+      className="mb-10"
+    >
       <h2 id="telemetry-heading" className="mb-1 text-lg font-medium">
         Telemetry (real-time)
       </h2>

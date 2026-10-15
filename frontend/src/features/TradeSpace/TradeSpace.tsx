@@ -73,7 +73,9 @@ export function TradeSpace() {
   }
 
   return (
-    <section aria-labelledby="tradespace-heading" className="mb-10">
+    <section
+      data-tour-id="tradespace"
+      aria-labelledby="tradespace-heading" className="mb-10">
       <h2 id="tradespace-heading" className="mb-1 text-lg font-semibold">
         Trade Space (Section 14)
       </h2>
