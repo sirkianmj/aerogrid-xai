@@ -13,6 +13,7 @@
 import { useRef, useState } from "react"
 import { TaggedOutput } from "../../components/EpistemicBadge/EpistemicBadge"
 import { useMission, type MissionConfig } from "../MissionControl/missionContext"
+import { exportArtifact } from "../../lib/download"
 import {
   ClearDApiError,
   runClearD,
@@ -203,8 +204,22 @@ function ResultView({ result, cfg }: { result: ClearDResponse; cfg: MissionConfi
         )}
       </div>
 
-      <footer className="mt-4 border-t border-current/10 pt-3 font-mono text-xs opacity-60">
-        {`artefact: cleard_loop · seed ${cfg.seed} · population ${Math.max(4, cfg.n_uavs)}`}
+      <footer className="mt-4 flex flex-wrap items-center gap-3 border-t border-current/10 pt-3 font-mono text-xs opacity-60">
+        <span>
+          {`artefact: cleard_loop · seed ${cfg.seed} · population ${Math.max(4, cfg.n_uavs)}`}
+        </span>
+        <button
+          type="button"
+          onClick={() =>
+            exportArtifact("cleard-loop", "simulation_result", result, {
+              mission_config: cfg,
+            })
+          }
+          className="ml-auto rounded border border-[var(--border-hairline)] px-2 py-0.5 text-[0.65rem] uppercase tracking-wider hover:bg-[var(--bg-subtle)]"
+          data-testid="export-cleard-json"
+        >
+          Export JSON
+        </button>
       </footer>
     </TaggedOutput>
   )
