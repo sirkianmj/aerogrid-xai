@@ -81,7 +81,9 @@ export function SensitivityPanel() {
   }
 
   return (
-    <section aria-labelledby="sensitivity-heading" className="mb-10">
+    <section
+      data-tour-id="sensitivity"
+      aria-labelledby="sensitivity-heading" className="mb-10">
       <h2 id="sensitivity-heading" className="mb-1 text-lg font-semibold">
         Design suggestions (Section 22)
       </h2>

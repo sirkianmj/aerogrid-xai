@@ -19,7 +19,8 @@
  * so they exist regardless of the loading state.
  */
 
-import { render } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import App from "../../App"
 import { ALL_STEPS } from "./tourDefinitions"
@@ -54,13 +55,29 @@ beforeEach(() => {
 })
 
 describe("tour anchors", () => {
-  it("every step anchor exists in the rendered app", () => {
+  it("every step anchor exists across all views", async () => {
+    const user = userEvent.setup()
     render(<App />)
-    const missing: string[] = []
-    for (const step of ALL_STEPS) {
-      const el = document.querySelector(`[data-tour-id="${step.anchor}"]`)
-      if (!el) missing.push(`${step.id} -> ${step.anchor}`)
+    const found = new Set<string>()
+
+    const collect = () => {
+      document.querySelectorAll("[data-tour-id]").forEach((el) => {
+        const id = el.getAttribute("data-tour-id")
+        if (id) found.add(id)
+      })
     }
+
+    collect()
+    const sidebar = screen.getByRole("complementary", { name: /primary/i })
+    const buttons = within(sidebar).getAllByRole("button")
+    for (const btn of buttons) {
+      await user.click(btn)
+      collect()
+    }
+
+    const missing = ALL_STEPS
+      .filter((s) => !found.has(s.anchor))
+      .map((s) => `${s.id} -> ${s.anchor}`)
     expect(missing, `missing anchors: ${missing.join(", ")}`).toEqual([])
   })
 
