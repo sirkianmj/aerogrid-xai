@@ -24,6 +24,7 @@
 
 import { useState } from "react"
 import { TaggedOutput } from "../../components/EpistemicBadge/EpistemicBadge"
+import { exportArtifact } from "../../lib/download"
 import {
   postChargeDecision,
   XaiTraceApiError,
@@ -203,6 +204,16 @@ function TraceView({ trace }: { trace: ChargeDecisionResponse }) {
         <span className="font-mono text-xs opacity-60" data-artifact-kind>
           artefact: {trace.epistemic_tag}
         </span>
+        <button
+          type="button"
+          onClick={() =>
+            exportArtifact("xai-trace", "simulation_result", trace)
+          }
+          className="ml-auto rounded border border-[var(--border-hairline)] px-2 py-0.5 text-[0.65rem] uppercase tracking-wider hover:bg-[var(--bg-subtle)]"
+          data-testid="export-xai-json"
+        >
+          Export JSON
+        </button>
       </footer>
     </TaggedOutput>
   )
