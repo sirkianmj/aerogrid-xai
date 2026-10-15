@@ -168,10 +168,10 @@ describe("App shell", () => {
     expect(screen.getByText("AeroGrid-XAI")).toBeInTheDocument()
   })
 
-  it("renders the eight module navigation items", () => {
+  it("renders the nine module navigation items", () => {
     render(<App />)
     const nav = screen.getByRole("navigation", { name: /workspace views/i })
-    expect(within(nav).getAllByRole("button").length).toBe(8)
+    expect(within(nav).getAllByRole("button").length).toBe(9)
   })
 
   it("renders the Tier-2 firewall invariant badge", () => {
