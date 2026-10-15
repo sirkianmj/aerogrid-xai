@@ -248,12 +248,13 @@ describe("App shell", () => {
     expect(badges.length).toBeGreaterThanOrEqual(7)
   })
 
-  it("mounts the SessionBar inside the sidebar", () => {
+  it("does not mount a session bar in the sidebar", () => {
+    // The session bar (login / signup / paste-a-JWT) was removed when
+    // the app was repackaged as a desktop binary that does not run
+    // PostgreSQL. The SessionBar, LoginForm, and SignupForm files
+    // remain in the tree; only the mount was removed.
     render(<App />)
-    const sidebar = screen.getByRole("complementary", { name: /primary/i })
-    expect(
-      within(sidebar).getByRole("heading", { name: /^session$/i }),
-    ).toBeInTheDocument()
+    expect(screen.queryByText(/^session$/i)).not.toBeInTheDocument()
   })
 
   it("renders the Legal view when the Terms & Privacy nav item is clicked", async () => {

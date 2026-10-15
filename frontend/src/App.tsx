@@ -2,7 +2,6 @@ import { useState } from "react"
 import { AppShell, type AppShellNavItem } from "./components/AppShell/AppShell"
 import { EpistemicBadge } from "./components/EpistemicBadge/EpistemicBadge"
 import { ALL_TAGS, EPISTEMIC_TAGS } from "./components/EpistemicBadge/epistemic"
-import { SessionBar } from "./components/Session/SessionBar"
 import { ArchitecturesView } from "./features/Architectures/ArchitecturesView"
 import { SensitivityPanel } from "./features/Sensitivity/SensitivityPanel"
 import { DesignStudio } from "./features/DesignStudio/DesignStudio"
@@ -130,14 +129,6 @@ function App() {
         navItems={NAV}
         activeView={activeView}
         onViewChange={setActiveView}
-        sidebarExtra={
-          <div className="space-y-3">
-            <div className="px-2.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-tertiary)]">
-              Session
-            </div>
-            <SessionBar />
-          </div>
-        }
       >
         <div className="mb-8">
           <MissionConfigBar />
