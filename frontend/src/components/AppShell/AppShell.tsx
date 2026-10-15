@@ -106,9 +106,13 @@ export function AppShell({
   void applyTheme
 
   return (
-    <div className="flex h-screen w-screen bg-[var(--bg-canvas)] text-[var(--ink-primary)]">
+    <div
+      data-tour-id="app-root"
+      className="flex h-screen w-screen bg-[var(--bg-canvas)] text-[var(--ink-primary)]"
+    >
       <aside
         aria-label="Primary"
+        data-tour-id="app-sidebar"
         className="flex w-[236px] shrink-0 flex-col overflow-y-auto border-r border-[var(--border-hairline)] bg-[var(--bg-sidebar)]"
       >
         {/* Identity block — Apple's "sidebar header". */}
@@ -153,7 +157,10 @@ export function AppShell({
           <div className="flex flex-col gap-3 px-3 py-2">{sidebarExtra}</div>
         ) : null}
 
-        <div className="mt-auto flex flex-col gap-2 p-3">
+        <div
+          data-tour-id="app-invariants"
+          className="mt-auto flex flex-col gap-2 p-3"
+        >
           <InvariantBadge
             label="Tier-2 Firewall Verified"
             title="The backend static analyzer (backend/app/control/static_analyzer.py) is a required CI gate: no Tier 2 function is reachable from the action interface without passing through Tier 1."
