@@ -168,10 +168,10 @@ describe("App shell", () => {
     expect(screen.getByText("AeroGrid-XAI")).toBeInTheDocument()
   })
 
-  it("renders the seven module navigation items", () => {
+  it("renders the eight module navigation items", () => {
     render(<App />)
     const nav = screen.getByRole("navigation", { name: /workspace views/i })
-    expect(within(nav).getAllByRole("button").length).toBe(7)
+    expect(within(nav).getAllByRole("button").length).toBe(8)
   })
 
   it("renders the Tier-2 firewall invariant badge", () => {
@@ -256,4 +256,16 @@ describe("App shell", () => {
       within(sidebar).getByRole("heading", { name: /^session$/i }),
     ).toBeInTheDocument()
   })
+
+  it("renders the Legal view when the Terms & Privacy nav item is clicked", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    const nav = screen.getByRole("navigation", { name: /workspace views/i })
+    const legal = within(nav).getByRole("button", { name: /Terms & Privacy/i })
+    await user.click(legal)
+    expect(await screen.findByTestId("legal-view")).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: /Terms of Service/i })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: /Privacy Policy/i })).toBeInTheDocument()
+  })
+
 })
