@@ -646,10 +646,10 @@ export function SatelliteProfileSVG({
         <line x1={x1} y1={y - tick} x2={x1} y2={y + tick} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
         <line x1={x2} y1={y - tick} x2={x2} y2={y + tick} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
         <rect
-          x={(x1 + x2) / 2 - (label.length * 4.8) - 2}
+          x={(x1 + x2) / 2 - (label.length * 2.8)}
           y={y - tick - 10}
-          width={(label.length * 9.6) + 4}
-          height={12}
+          width={label.length * 5.6}
+          height={10}
           fill="var(--bg-canvas)"
         />
         <text
@@ -668,8 +668,8 @@ export function SatelliteProfileSVG({
 
   // --- Callout positions ----------------------------------------------
   // Anchor: physical position. Label: pixel position of the label text.
-  const leftLabelX = 120
-  const rightLabelX = FRAME_W - 120
+  const leftLabelX = 140
+  const rightLabelX = FRAME_W - 140
   const callouts: Array<{
     ax: number
     ay: number
@@ -690,7 +690,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 100,
+      ly: 120,
       label: "SOLAR ARRAY",
       sublabel: `${N_PANELS_PER_SIDE} panels / wing · ${totalArrayAreaM2.toFixed(1)} m² · ${cellsTotal.toLocaleString()} cells`,
       side: "left",
@@ -703,7 +703,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 180,
+      ly: 200,
       label: "SADA",
       sublabel: "drive assembly",
       side: "left",
@@ -716,7 +716,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 260,
+      ly: 280,
       label: "BUS",
       sublabel: `${BUS_W_M.toFixed(1)} × ${BUS_H_M.toFixed(1)} m`,
       side: "left",
@@ -729,7 +729,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 340,
+      ly: 360,
       label: "RADIATOR",
       sublabel: "active thermal",
       side: "left",
@@ -742,7 +742,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 420,
+      ly: 440,
       label: "FEED",
       sublabel:
         transmitter_aperture_m >= 0.01
@@ -758,7 +758,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 340,
+      ly: 440,
       label: "TRANSMIT DISH",
       sublabel: `Ø ${dishDiamM.toFixed(2)} m · λ 1064 nm`,
       side: "right",
@@ -771,7 +771,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 260,
+      ly: 360,
       label: "STAR TRACKER ×2",
       sublabel: "15° sun exclusion",
       side: "right",
@@ -784,7 +784,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 180,
+      ly: 280,
       label: "THRUSTER ×2",
       sublabel: "monopropellant, 1 N",
       side: "right",
@@ -797,7 +797,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 100,
+      ly: 200,
       label: "TT&C ANTENNA",
       sublabel: "S-band, 2 W",
       side: "right",
@@ -810,7 +810,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 420,
+      ly: 120,
       label: "AVIONICS BAY",
       sublabel: "rad-hard, internally redundant",
       side: "right",
@@ -851,7 +851,7 @@ export function SatelliteProfileSVG({
 
         {/* Bottom dimension: array span */}
         {renderDimH(
-          botY_M + 0.5,
+          botY_M + 1.2,
           -halfWidthM,
           halfWidthM,
           `array span ${(2 * halfWidthM).toFixed(2)} m`,
@@ -883,16 +883,16 @@ export function SatelliteProfileSVG({
         <g>
           <rect
             x={60}
-            y={450}
+            y={520}
             width={520}
-            height={190}
+            height={210}
             fill="var(--bg-surface)"
             stroke="var(--ink-secondary)"
             strokeWidth={SW_THIN}
           />
           <text
             x={72}
-            y={470}
+            y={540}
             fontFamily="ui-monospace, monospace"
             fontSize={10}
             fontWeight={600}
@@ -902,15 +902,15 @@ export function SatelliteProfileSVG({
           </text>
           <line
             x1={60}
-            y1={480}
+            y1={550}
             x2={580}
-            y2={480}
+            y2={550}
             stroke="var(--ink-tertiary)"
             strokeWidth={SW_HAIR}
           />
           {(() => {
-            const rowY0 = 500
-            const rowStep = 16
+            const rowY0 = 570
+            const rowStep = 15
             const rows: Array<[string, string]> = [
               ["I_AM0", `${I_AM0_W_PER_M2.toFixed(0)} W/m²`],
               ["η_cell · packing · PSE", `${ETA_CELL.toFixed(2)} · ${PACKING_FACTOR.toFixed(2)} · ${PSE_EFFICIENCY.toFixed(2)}`],
@@ -958,7 +958,7 @@ export function SatelliteProfileSVG({
         {/* Footnote safely below the box */}
         <text
           x={60}
-          y={670}
+          y={680}
           fontFamily="ui-monospace, monospace"
           fontSize={8}
           fill="var(--ink-tertiary)"
@@ -971,8 +971,8 @@ export function SatelliteProfileSVG({
             key={i}
             x={c.ax}
             y={c.ay}
-            labelX={c.side === "left" ? c.ax - 15 : c.ax + 15}
-            labelY={c.ay - 5}
+            labelX={c.lx}
+            labelY={c.ly}
             label={c.label}
             sublabel={c.sublabel}
             arrow={c.side === "left" ? "left" : "right"}
@@ -984,7 +984,7 @@ export function SatelliteProfileSVG({
         {/* Scale bar, bottom-left of the content area */}
         <ScaleBar
           x={70}
-          y={470}
+          y={540}
           widthData={Math.min(200, CONTENT_W * 0.25)}
           label={`${(Math.min(200, CONTENT_W * 0.25) / scale).toFixed(1)} m`}
           fontSize={9}
