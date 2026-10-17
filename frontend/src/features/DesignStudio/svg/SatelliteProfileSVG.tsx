@@ -685,7 +685,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
+      ly: 60,
       label: "SOLAR ARRAY",
       sublabel: `${N_PANELS_PER_SIDE} panels / wing · ${totalArrayAreaM2.toFixed(1)} m² · ${cellsTotal.toLocaleString()} cells`,
       side: "left",
@@ -698,7 +698,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
+      ly: 110,
       label: "SADA",
       sublabel: "drive assembly",
       side: "left",
@@ -711,7 +711,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
+      ly: 160,
       label: "BUS",
       sublabel: `${BUS_W_M.toFixed(1)} × ${BUS_H_M.toFixed(1)} m`,
       side: "left",
@@ -724,7 +724,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
+      ly: 210,
       label: "RADIATOR",
       sublabel: "active thermal",
       side: "left",
@@ -737,7 +737,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
+      ly: 260,
       label: "FEED",
       sublabel:
         transmitter_aperture_m >= 0.01
@@ -753,7 +753,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
+      ly: 260,
       label: "TRANSMIT DISH",
       sublabel: `Ø ${dishDiamM.toFixed(2)} m · λ 1064 nm`,
       side: "right",
@@ -766,7 +766,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
+      ly: 210,
       label: "STAR TRACKER ×2",
       sublabel: "15° sun exclusion",
       side: "right",
@@ -779,7 +779,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
+      ly: 160,
       label: "THRUSTER ×2",
       sublabel: "monopropellant, 1 N",
       side: "right",
@@ -792,7 +792,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
+      ly: 110,
       label: "TT&C ANTENNA",
       sublabel: "S-band, 2 W",
       side: "right",
@@ -805,7 +805,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
+      ly: 60,
       label: "AVIONICS BAY",
       sublabel: "rad-hard, internally redundant",
       side: "right",
@@ -863,8 +863,8 @@ export function SatelliteProfileSVG({
             key={i}
             x={c.ax}
             y={c.ay}
-            labelX={c.side === "left" ? c.ax - 15 : c.ax + 15}
-            labelY={c.ay - 5}
+            labelX={c.lx}
+            labelY={c.ly}
             label={c.label}
             sublabel={c.sublabel}
             arrow={c.side === "left" ? "left" : "right"}
