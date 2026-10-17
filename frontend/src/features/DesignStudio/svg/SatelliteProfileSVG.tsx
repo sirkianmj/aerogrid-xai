@@ -830,7 +830,6 @@ export function SatelliteProfileSVG({
         scaleLabel={`SCALE 1:${Math.round(1000 / scale)}`}
         revision="A"
         note="units = metres · parametric"
-        footnote="dimensions derived from physical parameters; see body for equations"
       >
         {/* Drawing content, positioned in the frame's pixel space */}
         {renderSolarArray(-1)}
@@ -878,7 +877,7 @@ export function SatelliteProfileSVG({
             x={70}
             y={338}
             width={420}
-            height={118}
+            height={135}
             fill="var(--bg-surface)"
             stroke="var(--ink-secondary)"
             strokeWidth={SW_THIN}
@@ -938,14 +937,23 @@ export function SatelliteProfileSVG({
             ))
           })()}
           <text
-            x={484}
-            y={394}
-            textAnchor="end"
+            x={78}
+            y={460}
             fontFamily="ui-monospace, monospace"
             fontSize={7}
             fill="var(--ink-tertiary)"
           >
             {`${CELL_SIZE_M * 1000}mm cell · ${CELL_GAP_M * 1000}mm gap · ${(CELL_PITCH_M * 1000).toFixed(0)}mm pitch`}
+          </text>
+          {/* Footnote moved here so it does not overlap the title block or the box */}
+          <text
+            x={78}
+            y={485}
+            fontFamily="ui-monospace, monospace"
+            fontSize={7}
+            fill="var(--ink-tertiary)"
+          >
+            dimensions derived from physical parameters; see body for equations
           </text>
         </g>
 
