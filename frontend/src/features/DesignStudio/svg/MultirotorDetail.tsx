@@ -1031,7 +1031,7 @@ export function MultirotorDetail({
         {renderPlan()}
         {renderProfile()}
         {renderFront()}
-        {renderMotorSection()}
+        {false && renderMotorSection()}
 
         {callouts.map((c, i) => (
           <Callout

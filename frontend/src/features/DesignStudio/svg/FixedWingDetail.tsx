@@ -1298,7 +1298,7 @@ export function FixedWingDetail({
         {renderPlan()}
         {renderProfile()}
         {renderFront()}
-        {renderAirfoil()}
+        {false && renderAirfoil()}
 
         {callouts.map((c, i) => (
           <Callout
