@@ -116,6 +116,12 @@ describe("DesignStudio", () => {
     await waitFor(() =>
       expect(screen.getByTestId("use-fleet")).toBeInTheDocument(),
     )
+    // Adoption is gated: evaluate every row first, then the button
+    // becomes enabled. That is what a real user must do.
+    await userEvent.click(screen.getByTestId("evaluate-fleet"))
+    await waitFor(() =>
+      expect(screen.getByTestId("use-fleet")).toBeEnabled(),
+    )
     await userEvent.click(screen.getByTestId("use-fleet"))
     expect(applyConfigMock).toHaveBeenCalledTimes(1)
     const call = applyConfigMock.mock.calls[0][0]
