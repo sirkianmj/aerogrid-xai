@@ -164,10 +164,10 @@ describe("App shell", () => {
     expect(screen.getByText("AeroGrid-XAI")).toBeInTheDocument()
   })
 
-  it("renders the eight module navigation items", () => {
+  it("renders the ten navigation items", () => {
     render(<App />)
     const nav = screen.getByRole("navigation", { name: /workspace views/i })
-    expect(within(nav).getAllByRole("button").length).toBe(8)
+    expect(within(nav).getAllByRole("button").length).toBe(10)
   })
 
   it("renders the Tier-2 firewall invariant badge", () => {
@@ -175,29 +175,22 @@ describe("App shell", () => {
     expect(screen.getByText(/tier-2 firewall verified/i)).toBeInTheDocument()
   })
 
-  it("defaults to the Digital Twin view (mission control panel mounted)", () => {
+  it("defaults to the Design Studio view (step 1 of the workflow)", () => {
     render(<App />)
-    expect(screen.getByTestId("panel-mission-control")).toBeInTheDocument()
-    expect(screen.getByTestId("panel-globe")).toBeInTheDocument()
-    expect(screen.getByTestId("panel-digital-twin")).toBeInTheDocument()
-    expect(screen.getByTestId("panel-telemetry")).toBeInTheDocument()
+    expect(screen.getByTestId("panel-design")).toBeInTheDocument()
   })
 
-  it("switches to the CLEAR-D view and mounts the correct panels", async () => {
+  it("switches to the Discovery view and mounts the correct panels", async () => {
     const user = userEvent.setup()
     render(<App />)
     const sidebar = screen.getByRole("complementary", { name: /primary/i })
     await user.click(
-      within(sidebar).getByRole("button", { name: /clear-d synthesis/i }),
+      within(sidebar).getByRole("button", { name: /3 · Discovery/i }),
     )
     await waitFor(() =>
       expect(screen.getByTestId("panel-cleard")).toBeInTheDocument(),
     )
     expect(screen.getByTestId("panel-fanet")).toBeInTheDocument()
-    // The Digital Twin panels stay mounted but hidden when another
-    // view is active, so their state survives a tab switch. The
-    // assertion is therefore visibility, not presence.
-    expect(screen.queryByTestId("panel-mission-control")).not.toBeVisible()
   })
 
   it("switches to the XAI view and mounts the trace panel", async () => {
@@ -205,7 +198,7 @@ describe("App shell", () => {
     render(<App />)
     const sidebar = screen.getByRole("complementary", { name: /primary/i })
     await user.click(
-      within(sidebar).getByRole("button", { name: /two-tier xai core/i }),
+      within(sidebar).getByRole("button", { name: /trust & xai/i }),
     )
     await waitFor(() =>
       expect(screen.getByTestId("panel-xai-trace")).toBeInTheDocument(),
@@ -216,7 +209,7 @@ describe("App shell", () => {
     const user = userEvent.setup()
     render(<App />)
     const sidebar = screen.getByRole("complementary", { name: /primary/i })
-    await user.click(within(sidebar).getByRole("button", { name: /trade space/i }))
+    await user.click(within(sidebar).getByRole("button", { name: /4 · Selection/i }))
     await waitFor(() =>
       expect(screen.getByTestId("panel-tradespace")).toBeInTheDocument(),
     )
@@ -239,7 +232,7 @@ describe("App shell", () => {
     const { container } = render(<App />)
     const sidebar = screen.getByRole("complementary", { name: /primary/i })
     await user.click(
-      within(sidebar).getByRole("button", { name: /about & legend/i }),
+      within(sidebar).getByRole("button", { name: /about/i }),
     )
     await waitFor(() =>
       expect(
@@ -262,7 +255,7 @@ describe("App shell", () => {
     const user = userEvent.setup()
     render(<App />)
     const nav = screen.getByRole("navigation", { name: /workspace views/i })
-    const legal = within(nav).getByRole("button", { name: /Terms & Privacy/i })
+    const legal = within(nav).getByRole("button", { name: /legal/i })
     await user.click(legal)
     expect(await screen.findByTestId("legal-view")).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: /Terms of Service/i })).toBeInTheDocument()
