@@ -477,7 +477,7 @@ export function FixedWingDetail({
           fontSize={FS_LABEL * 1.1}
           fill="var(--ink-secondary)"
         >
-          PLAN
+          PLAN (top view)
         </text>
       </g>
     )
@@ -1214,13 +1214,12 @@ export function FixedWingDetail({
     const planAil = planT(chordRoot / 2 + fusWidth * 0.5 - sweepOffset * 0.7, -halfSpan * 0.72)
     const planFlap = planT(chordRoot / 2 + fusWidth * 0.5 - sweepOffset * 0.3, -halfSpan * 0.3)
     const planTurret = planT(noseX - fusWidth * 0.9, 0)
-    const planProp = planT(noseX + noseR * 0.3, 0)
 
     callouts.push(
       {
         ax: planWing[0],
         ay: planWing[1],
-        lx: 160,
+        lx: 100,
         ly: 80,
         label: "WING",
         sublabel: `aspect ratio ${(span / chordRoot).toFixed(1)} · taper ${RATIO.taperRatio}`,
@@ -1229,7 +1228,7 @@ export function FixedWingDetail({
       {
         ax: planAil[0],
         ay: planAil[1],
-        lx: 160,
+        lx: 100,
         ly: 120,
         label: "AILERON",
         sublabel: "outboard 55–90 % TE",
@@ -1238,7 +1237,7 @@ export function FixedWingDetail({
       {
         ax: planFlap[0],
         ay: planFlap[1],
-        lx: 160,
+        lx: 100,
         ly: 160,
         label: "FLAP",
         sublabel: "inboard 10–50 % TE",
@@ -1247,7 +1246,7 @@ export function FixedWingDetail({
       {
         ax: planNose[0],
         ay: planNose[1],
-        lx: 660,
+        lx: 720,
         ly: 80,
         label: "PROPELLER",
         sublabel: `3-blade · r ${propR.toFixed(3)} m`,
@@ -1256,7 +1255,7 @@ export function FixedWingDetail({
       {
         ax: planTurret[0],
         ay: planTurret[1],
-        lx: 660,
+        lx: 720,
         ly: 120,
         label: "SENSOR TURRET",
         sublabel: `Ø ${(2 * turretR).toFixed(3)} m`,
@@ -1265,16 +1264,16 @@ export function FixedWingDetail({
       {
         ax: planTail[0],
         ay: planTail[1],
-        lx: 660,
+        lx: 720,
         ly: 160,
         label: "H-STAB + ELEVATOR",
         sublabel: `span ${tailSpan.toFixed(2)} m`,
         side: "right",
       },
       {
-        ax: planProp[0],
-        ay: planProp[1],
-        lx: 660,
+        ax: planNose[0],
+        ay: planNose[1],
+        lx: 720,
         ly: 200,
         label: "FUSELAGE",
         sublabel: `length ${fusLen.toFixed(2)} m · width ${fusWidth.toFixed(3)} m`,
