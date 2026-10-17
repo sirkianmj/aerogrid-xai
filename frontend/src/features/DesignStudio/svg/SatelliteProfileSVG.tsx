@@ -640,19 +640,16 @@ export function SatelliteProfileSVG({
     const [x2] = toPx(x2M, yM)
     const tick = 4
     const fontSize = 8
-    // Approximate text width: monospace font is ~0.6 * fontSize per char.
-    const textWidth = label.length * fontSize * 0.6
     return (
       <g>
         <line x1={x1} y1={y} x2={x2} y2={y} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
         <line x1={x1} y1={y - tick} x2={x1} y2={y + tick} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
         <line x1={x2} y1={y - tick} x2={x2} y2={y + tick} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
-        {/* Masking rect to hide the dimension line under the text */}
         <rect
-          x={(x1 + x2) / 2 - textWidth / 2 - 4}
-          y={y - tick - 3 - fontSize + 2}
-          width={textWidth + 8}
-          height={fontSize + 2}
+          x={(x1 + x2) / 2 - (label.length * 4.8) - 2}
+          y={y - tick - 10}
+          width={(label.length * 9.6) + 4}
+          height={12}
           fill="var(--bg-canvas)"
         />
         <text
@@ -693,7 +690,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 100,
+      ly: 160,
       label: "SOLAR ARRAY",
       sublabel: `${N_PANELS_PER_SIDE} panels / wing · ${totalArrayAreaM2.toFixed(1)} m² · ${cellsTotal.toLocaleString()} cells`,
       side: "left",
@@ -732,7 +729,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 260,
+      ly: 320,
       label: "RADIATOR",
       sublabel: "active thermal",
       side: "left",
@@ -870,8 +867,8 @@ export function SatelliteProfileSVG({
 
         {/* Aperture indicator below the dish */}
         <text
-          x={feedPx + 15}
-          y={feedPy + 5}
+          x={feedPx + 20}
+          y={feedPy - 5}
           textAnchor="start"
           fontFamily="ui-monospace, monospace"
           fontSize={8}
@@ -886,16 +883,16 @@ export function SatelliteProfileSVG({
         <g>
           <rect
             x={60}
-            y={510}
+            y={460}
             width={520}
-            height={160}
+            height={210}
             fill="var(--bg-surface)"
             stroke="var(--ink-secondary)"
             strokeWidth={SW_THIN}
           />
           <text
             x={72}
-            y={530}
+            y={485}
             fontFamily="ui-monospace, monospace"
             fontSize={10}
             fontWeight={600}
@@ -905,15 +902,15 @@ export function SatelliteProfileSVG({
           </text>
           <line
             x1={60}
-            y1={540}
+            y1={495}
             x2={580}
-            y2={540}
+            y2={495}
             stroke="var(--ink-tertiary)"
             strokeWidth={SW_HAIR}
           />
           {(() => {
-            const rowY0 = 560
-            const rowStep = 15
+            const rowY0 = 520
+            const rowStep = 16
             const rows: Array<[string, string]> = [
               ["I_AM0", `${I_AM0_W_PER_M2.toFixed(0)} W/m²`],
               ["η_cell · packing · PSE", `${ETA_CELL.toFixed(2)} · ${PACKING_FACTOR.toFixed(2)} · ${PSE_EFFICIENCY.toFixed(2)}`],
@@ -961,7 +958,7 @@ export function SatelliteProfileSVG({
         {/* Footnote safely below the box */}
         <text
           x={60}
-          y={690}
+          y={705}
           fontFamily="ui-monospace, monospace"
           fontSize={8}
           fill="var(--ink-tertiary)"
