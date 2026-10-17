@@ -155,8 +155,6 @@ export function MultirotorDetail({
     const rad = (deg * Math.PI) / 180
     return { x: armLen * Math.cos(rad), y: armLen * Math.sin(rad), deg }
   })
-  // Front-right motor, used for the arm-end drag handle.
-  const armHandleMotor = motors[3]
 
   // --- View helpers ---------------------------------------------------
 
@@ -432,8 +430,8 @@ export function MultirotorDetail({
           strokeWidth={SW_MED}
         />
         <circle
-          cx={planT(hubR * 0.2 + apertureR, 0)[0]}
-          cy={planT(hubR * 0.2 + apertureR, 0)[1]}
+          cx={planT(hubR * 0.2, 0)[0] + apertureR * scale}
+          cy={planT(hubR * 0.2, 0)[1]}
           r={5}
           fill="var(--status-orange)"
           stroke="var(--ink-primary)"
@@ -445,8 +443,8 @@ export function MultirotorDetail({
 
         {/* Arm-end drag handle on the front-right motor */}
         <circle
-          cx={planT(armHandleMotor.x, armHandleMotor.y)[0]}
-          cy={planT(armHandleMotor.x, armHandleMotor.y)[1]}
+          cx={planT(armLen * 0.9, armLen * 0.9)[0]}
+          cy={planT(armLen * 0.9, armLen * 0.9)[1]}
           r={5}
           fill="var(--status-green)"
           stroke="var(--ink-primary)"
