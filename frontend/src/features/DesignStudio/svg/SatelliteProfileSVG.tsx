@@ -95,11 +95,11 @@ const PLUME_M = 0.5
 const DISH_MARGIN_M = 0.35
 
 // --- Frame and content layout (pixels) --------------------------------
-const FRAME_W = 1200
-const FRAME_H = 800
+const FRAME_W = 1000
+const FRAME_H = 700
 const ORIGIN_X = FRAME_W / 2
 const ORIGIN_Y = FRAME_H / 2 + 30
-const CONTENT_PAD_X = 240
+const CONTENT_PAD_X = 160
 const CONTENT_W = FRAME_W - 2 * CONTENT_PAD_X
 
 export type SatelliteProfileSVGProps = {
@@ -660,8 +660,8 @@ export function SatelliteProfileSVG({
 
   // --- Callout positions ----------------------------------------------
   // Anchor: physical position. Label: pixel position of the label text.
-  const leftLabelX = 80
-  const rightLabelX = FRAME_W - 320
+  const leftLabelX = 120
+  const rightLabelX = FRAME_W - 120
   const callouts: Array<{
     ax: number
     ay: number
@@ -860,7 +860,7 @@ export function SatelliteProfileSVG({
         {/* Aperture indicator below the dish */}
         <text
           x={feedPx}
-          y={feedPy + 30}
+          y={feedPy + 20}
           textAnchor="middle"
           fontFamily="ui-monospace, monospace"
           fontSize={8}
@@ -874,17 +874,17 @@ export function SatelliteProfileSVG({
             solar array design chain, not a displayed constant. */}
         <g>
           <rect
-            x={80}
-            y={550}
-            width={540}
-            height={190}
+            x={60}
+            y={510}
+            width={520}
+            height={160}
             fill="var(--bg-surface)"
             stroke="var(--ink-secondary)"
             strokeWidth={SW_THIN}
           />
           <text
-            x={92}
-            y={570}
+            x={72}
+            y={530}
             fontFamily="ui-monospace, monospace"
             fontSize={10}
             fontWeight={600}
@@ -893,15 +893,15 @@ export function SatelliteProfileSVG({
             SOLAR ARRAY DESIGN CHAIN
           </text>
           <line
-            x1={80}
-            y1={580}
-            x2={620}
-            y2={580}
+            x1={60}
+            y1={540}
+            x2={580}
+            y2={540}
             stroke="var(--ink-tertiary)"
             strokeWidth={SW_HAIR}
           />
           {(() => {
-            const rowY0 = 600
+            const rowY0 = 560
             const rowStep = 15
             const rows: Array<[string, string]> = [
               ["I_AM0", `${I_AM0_W_PER_M2.toFixed(0)} W/m²`],
@@ -915,7 +915,7 @@ export function SatelliteProfileSVG({
             return rows.map(([k, v], i) => (
               <g key={k}>
                 <text
-                  x={92}
+                  x={72}
                   y={rowY0 + i * rowStep}
                   fontFamily="ui-monospace, monospace"
                   fontSize={9}
@@ -924,7 +924,7 @@ export function SatelliteProfileSVG({
                   {k}
                 </text>
                 <text
-                  x={600}
+                  x={560}
                   y={rowY0 + i * rowStep}
                   textAnchor="end"
                   fontFamily="ui-monospace, monospace"
@@ -937,8 +937,8 @@ export function SatelliteProfileSVG({
             ))
           })()}
           <text
-            x={92}
-            y={720}
+            x={72}
+            y={655}
             fontFamily="ui-monospace, monospace"
             fontSize={8}
             fill="var(--ink-tertiary)"
@@ -949,8 +949,8 @@ export function SatelliteProfileSVG({
 
         {/* Footnote safely below the box */}
         <text
-          x={80}
-          y={760}
+          x={60}
+          y={690}
           fontFamily="ui-monospace, monospace"
           fontSize={8}
           fill="var(--ink-tertiary)"
