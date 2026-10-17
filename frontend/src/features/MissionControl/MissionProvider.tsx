@@ -106,7 +106,15 @@ function requestBody(c: MissionConfig): MissionStateRequest {
 }
 
 
-export function MissionProvider({ children }: { children: ReactNode }) {
+export function MissionProvider({
+  children,
+  initialCompletedSteps,
+}: {
+  children: ReactNode
+  /** Test-only: pre-seed the completed-steps set. Production mounts
+   *  MissionProvider without this prop, so the set starts empty. */
+  initialCompletedSteps?: readonly number[]
+}) {
   const [config, setConfig] = useState<MissionConfig>(DEFAULT_CONFIG)
   const [state, setState] = useState<MissionLoad>({ status: "loading" })
   const [refreshNonce, setRefreshNonce] = useState(0)
@@ -123,7 +131,7 @@ export function MissionProvider({ children }: { children: ReactNode }) {
     setLastDiscoveryRunState(null)
   }, [])
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(
-    () => new Set(),
+    () => new Set(initialCompletedSteps ?? []),
   )
   const markStepComplete = useCallback((step: number) => {
     setCompletedSteps((prev) => {

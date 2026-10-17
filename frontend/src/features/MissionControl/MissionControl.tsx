@@ -94,7 +94,7 @@ function fmtRelativeSeconds(seconds: number): string {
 }
 
 export function MissionControl() {
-  const { state: load, refresh } = useMission()
+  const { state: load, refresh, markStepComplete } = useMission()
 
   return (
     <section
@@ -157,6 +157,21 @@ export function MissionControl() {
           </div>
         </TaggedOutput>
       )}
+          <div
+        className="mt-8 flex flex-wrap items-center gap-3 border-t border-[var(--border-hairline)] pt-4"
+      >
+        <button
+          type="button"
+          onClick={() => markStepComplete(2)}
+          className="apple-btn apple-btn-primary"
+          data-testid="confirm-mission"
+        >
+          Confirm this mission
+        </button>
+        <span className="text-[11px] text-[var(--ink-tertiary)]">
+          Marks step 2 complete. Required before Discovery can run.
+        </span>
+      </div>
     </section>
   )
 }

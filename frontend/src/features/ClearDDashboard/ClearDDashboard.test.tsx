@@ -81,7 +81,14 @@ function stubFetchOk(payload: ClearDResponse = SAMPLE): ReturnType<typeof vi.fn>
 }
 
 function renderWithProvider(ui: React.ReactElement) {
-  return render(ui, { wrapper: MissionProvider })
+  // Seed the completed-steps set so the gates let this panel render.
+  // MissionProvider reads initialCompletedSteps only as a test hook;
+  // production mounts it with an empty set and the user must complete
+  // steps 1 and 2 in the real UI before Run CLEAR-D is enabled.
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <MissionProvider initialCompletedSteps={[1, 2]}>{children}</MissionProvider>
+  )
+  return render(ui, { wrapper: Wrapper })
 }
 
 describe("ClearDDashboard", () => {

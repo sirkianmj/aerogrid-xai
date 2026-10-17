@@ -28,7 +28,7 @@ import { useMission } from "../MissionControl/missionContext"
 const OBJECTIVE_LABELS = ["C", "R", "E", "N", "T", "U"] as const
 
 export function ArchitecturesView() {
-  const { config, applyConfig, lastDiscoveryRun } = useMission()
+  const { config, applyConfig, lastDiscoveryRun, markStepComplete } = useMission()
   // Read the shared CLEAR-D result. The discovery panel writes it when
   // a run succeeds; this panel updates without a second button press.
   const result = lastDiscoveryRun
@@ -84,14 +84,15 @@ export function ArchitecturesView() {
                 key={i}
                 arch={arch}
                 index={i}
-                onLoad={(a) =>
+                onLoad={(a) => {
                   applyConfig({
                     selected_architecture: {
                       node_list: a.node_list,
                       link_list: a.link_list,
                     },
                   })
-                }
+                  markStepComplete(4)
+                }}
               />
             ))}
           </div>

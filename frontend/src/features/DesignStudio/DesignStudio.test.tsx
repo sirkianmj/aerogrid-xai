@@ -29,6 +29,11 @@ vi.mock("../MissionControl/missionContext", () => ({
     applyConfig: applyConfigMock,
     refresh: () => {},
     reset: () => {},
+    markStepComplete: () => {},
+    completedSteps: new Set<number>(),
+    lastDiscoveryRun: null,
+    setLastDiscoveryRun: () => {},
+    clearLastDiscoveryRun: () => {},
   }),
 }))
 

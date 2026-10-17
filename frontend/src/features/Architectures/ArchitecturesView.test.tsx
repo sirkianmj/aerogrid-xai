@@ -32,6 +32,7 @@ vi.mock("../MissionControl/missionContext", () => ({
     reset: () => {},
     lastDiscoveryRun: lastRunRef.current,
     setLastDiscoveryRun: () => {},
+    markStepComplete: () => {},
     clearLastDiscoveryRun: () => {},
   }),
 }))

@@ -100,7 +100,7 @@ type SatFields = {
 }
 
 function SatelliteDesigner({ presets }: { presets: SatellitePreset[] }) {
-  const { config, applyConfig } = useMission()
+  const { config, applyConfig, markStepComplete } = useMission()
   const [fields, setFields] = useState<SatFields>(() => ({
     a_km: 6771.0,
     e: 0,
@@ -160,6 +160,7 @@ function SatelliteDesigner({ presets }: { presets: SatellitePreset[] }) {
   }
 
   function useThisSatellite() {
+    markStepComplete(1)
     applyConfig({
       satellite_elements: {
         epoch_utc: fields.epoch_utc,
@@ -330,7 +331,7 @@ function defaultDrone(): DroneDraft {
 }
 
 function DroneDesigner({ presets }: { presets: DronePreset[] }) {
-  const { config, applyConfig } = useMission()
+  const { config, applyConfig, markStepComplete } = useMission()
   const [rows, setRows] = useState<DroneDraft[]>(() => [defaultDrone()])
   const [reports, setReports] = useState<Record<string, FeasibilityReport>>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -389,6 +390,7 @@ function DroneDesigner({ presets }: { presets: DronePreset[] }) {
   }
 
   function useThisFleet() {
+    markStepComplete(1)
     applyConfig({
       uav_hardware_list: rows.map((r) => ({
         receiver_aperture_m2: r.receiver_aperture_m2,
