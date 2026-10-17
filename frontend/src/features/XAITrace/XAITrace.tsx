@@ -76,7 +76,11 @@ export function XAITrace() {
   }
 
   return (
-    <section aria-labelledby="xai-trace-heading" className="mb-10">
+    <section
+      data-tour-id="xai-trace"
+      aria-labelledby="xai-trace-heading"
+      className="mb-10"
+    >
       <h2 id="xai-trace-heading" className="mb-1 text-lg font-medium">
         XAI trace (Section 15.5)
       </h2>

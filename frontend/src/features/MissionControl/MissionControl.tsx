@@ -97,7 +97,11 @@ export function MissionControl() {
   const { state: load, refresh } = useMission()
 
   return (
-    <section aria-labelledby="mission-control-heading" className="mb-10">
+    <section
+      data-tour-id="mission-control"
+      aria-labelledby="mission-control-heading"
+      className="mb-10"
+    >
       <div className="mb-1 flex flex-wrap items-baseline gap-3">
         <h2 id="mission-control-heading" className="text-lg font-semibold">
           Mission Control

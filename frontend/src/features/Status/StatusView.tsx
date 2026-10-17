@@ -61,7 +61,9 @@ export function StatusView() {
   }, [])
 
   return (
-    <section aria-labelledby="status-heading" className="mb-10" data-testid="status-view">
+    <section
+      data-tour-id="status-view"
+      aria-labelledby="status-heading" className="mb-10" data-testid="status-view">
       <h2 id="status-heading" className="mb-1 text-lg font-semibold">
         Platform status
       </h2>

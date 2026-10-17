@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { AppShell, type AppShellNavItem } from "./components/AppShell/AppShell"
 import { EpistemicBadge } from "./components/EpistemicBadge/EpistemicBadge"
 import { ALL_TAGS, EPISTEMIC_TAGS } from "./components/EpistemicBadge/epistemic"
@@ -13,8 +13,6 @@ import { Globe } from "./features/Globe/Globe"
 import { MissionConfigBar } from "./features/MissionControl/MissionConfigBar"
 import { MissionControl } from "./features/MissionControl/MissionControl"
 import { MissionProvider } from "./features/MissionControl/MissionProvider"
-import { TourFirstRunOffer } from "./features/Tour/TourFirstRunOffer"
-import { TourOverlay } from "./features/Tour/TourOverlay"
 import { TourProvider } from "./features/Tour/TourProvider"
 import { Telemetry } from "./features/Telemetry/Telemetry"
 import { TradeSpace } from "./features/TradeSpace/TradeSpace"
@@ -126,55 +124,98 @@ function LegalView() {
 
 function App() {
   const [activeView, setActiveView] = useState("twin")
+  // Views that have been visited at least once. Once a view is in
+  // this set, it stays mounted forever (hidden when inactive) so its
+  // local state — playhead position, last CLEAR-D run, edited design,
+  // selected satellite — survives a tab switch.
+  const [visited, setVisited] = useState<Set<string>>(
+    () => new Set(["twin"]),
+  )
+
+  const handleViewChange = useCallback((id: string) => {
+    setActiveView(id)
+    setVisited((prev) => {
+      if (prev.has(id)) return prev
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+  }, [])
+
   return (
-    <TourProvider>
+    <TourProvider onRequestView={handleViewChange}>
       <MissionProvider>
       <AppShell
         navItems={NAV}
         activeView={activeView}
-        onViewChange={setActiveView}
+        onViewChange={handleViewChange}
       >
         <div className="mb-8">
           <MissionConfigBar />
         </div>
 
-        {activeView === "twin" && (
-          <div className="mx-auto max-w-5xl space-y-6">
+        {visited.has("twin") && (
+          <div
+            hidden={activeView !== "twin"}
+            className="mx-auto max-w-5xl space-y-6"
+          >
             <MissionControl />
             <Globe />
             <DigitalTwin />
             <Telemetry />
           </div>
         )}
-        {activeView === "cleard" && (
-          <div className="mx-auto max-w-5xl space-y-6">
+        {visited.has("cleard") && (
+          <div
+            hidden={activeView !== "cleard"}
+            className="mx-auto max-w-5xl space-y-6"
+          >
             <ClearDDashboard />
             <ArchitecturesView />
             <SensitivityPanel />
             <FanetGraph />
           </div>
         )}
-        {activeView === "xai" && (
-          <div className="mx-auto max-w-5xl space-y-6">
+        {visited.has("xai") && (
+          <div
+            hidden={activeView !== "xai"}
+            className="mx-auto max-w-5xl space-y-6"
+          >
             <XAITrace />
           </div>
         )}
-        {activeView === "design" && (
-          <div className="mx-auto max-w-5xl space-y-6">
+        {visited.has("design") && (
+          <div
+            hidden={activeView !== "design"}
+            className="mx-auto max-w-5xl space-y-6"
+          >
             <DesignStudio />
           </div>
         )}
-        {activeView === "tradespace" && (
-          <div className="mx-auto max-w-5xl space-y-6">
+        {visited.has("tradespace") && (
+          <div
+            hidden={activeView !== "tradespace"}
+            className="mx-auto max-w-5xl space-y-6"
+          >
             <TradeSpace />
           </div>
         )}
-        {activeView === "about" && <AboutView />}
-        {activeView === "legal" && <LegalView />}
-        {activeView === "status" && <StatusView />}
+        {visited.has("about") && (
+          <div hidden={activeView !== "about"}>
+            <AboutView />
+          </div>
+        )}
+        {visited.has("legal") && (
+          <div hidden={activeView !== "legal"}>
+            <LegalView />
+          </div>
+        )}
+        {visited.has("status") && (
+          <div hidden={activeView !== "status"}>
+            <StatusView />
+          </div>
+        )}
       </AppShell>
-      <TourOverlay />
-      <TourFirstRunOffer />
       </MissionProvider>
     </TourProvider>
   )

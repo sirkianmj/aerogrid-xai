@@ -161,7 +161,11 @@ export function Globe() {
   }, [state, playheadIndex])
 
   return (
-    <section aria-labelledby="globe-heading" className="mb-10">
+    <section
+      data-tour-id="globe-canvas"
+      aria-labelledby="globe-heading"
+      className="mb-10"
+    >
       <h2 id="globe-heading" className="mb-1 text-lg font-semibold">
         Globe (Section 7)
       </h2>
@@ -171,6 +175,7 @@ export function Globe() {
         returned.
       </p>
 
+      <div data-tour-id="globe-controls">
       {state.status === "loading" && <p className="text-[var(--ink-secondary)]">Loading orbital data...</p>}
 
       {state.status === "error" && (
@@ -292,6 +297,7 @@ export function Globe() {
           </footer>
         </TaggedOutput>
       )}
+      </div>
     </section>
   )
 }

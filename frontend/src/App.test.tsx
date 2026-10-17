@@ -194,7 +194,10 @@ describe("App shell", () => {
       expect(screen.getByTestId("panel-cleard")).toBeInTheDocument(),
     )
     expect(screen.getByTestId("panel-fanet")).toBeInTheDocument()
-    expect(screen.queryByTestId("panel-mission-control")).not.toBeInTheDocument()
+    // The Digital Twin panels stay mounted but hidden when another
+    // view is active, so their state survives a tab switch. The
+    // assertion is therefore visibility, not presence.
+    expect(screen.queryByTestId("panel-mission-control")).not.toBeVisible()
   })
 
   it("switches to the XAI view and mounts the trace panel", async () => {

@@ -16,6 +16,8 @@ disabled.
 from __future__ import annotations
 
 import os
+
+os.environ.setdefault("AEROGRID_DESKTOP", "1")
 import socket
 import sys
 import threading

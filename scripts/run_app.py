@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import os
 import sys
+
+os.environ.setdefault("AEROGRID_DESKTOP", "1")
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent

@@ -58,7 +58,9 @@ export function DesignStudio() {
   }, [])
 
   return (
-    <section aria-labelledby="design-studio-heading" className="mb-10">
+    <section
+      data-tour-id="design-studio"
+      aria-labelledby="design-studio-heading" className="mb-10">
       <h2 id="design-studio-heading" className="mb-1 text-lg font-semibold">
         Design Studio
       </h2>

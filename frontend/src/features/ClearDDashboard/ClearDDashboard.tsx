@@ -79,7 +79,9 @@ export function ClearDDashboard() {
   }
 
   return (
-    <section aria-labelledby="cleard-heading" className="mb-10">
+    <section
+      data-tour-id="cleard-dashboard"
+      aria-labelledby="cleard-heading" className="mb-10">
       <div className="mb-1 flex items-baseline gap-3">
         <h2 id="cleard-heading" className="text-lg font-medium">
           CLEAR-D Discovery
@@ -99,6 +101,7 @@ export function ClearDDashboard() {
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <button
+          data-tour-id="cleard-run"
           type="button"
           onClick={run}
           disabled={state.status === "loading"}

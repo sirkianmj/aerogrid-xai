@@ -44,6 +44,7 @@ attempts over-limit operations sees its counter rise.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from enum import StrEnum
@@ -168,12 +169,30 @@ class FakeQuotaStore:
         return self._counts.get(key, 0)
 
 
+def _is_desktop_mode() -> bool:
+    return os.environ.get("AEROGRID_DESKTOP") == "1"
+
+
+class NoOpQuotaStore:
+    """A quota store that does nothing. Used in desktop mode."""
+
+    def increment(self, tenant_id: UUID, metric: Metric, period: date) -> int:
+        return 0
+
+    def peek(self, tenant_id: UUID, metric: Metric, period: date) -> int:
+        return 0
+
+
 def get_tenant_plan(ctx: TenantContext = Depends(require_tenant)) -> Plan:
     """FastAPI dependency: resolve the caller's plan from the tenants table.
 
     Raises:
         HTTPException 404 if the tenant row does not exist.
+
+    In desktop mode returns Plan.PRO without touching the database.
     """
+    if _is_desktop_mode():
+        return Plan.PRO
     with admin_session() as s:
         row = s.execute(
             text("SELECT stripe_subscription_status FROM tenants WHERE id = :i"),
@@ -192,7 +211,11 @@ def get_quota_store(request: Request) -> QuotaStore:
 
     Lazily instantiated as a PostgresQuotaStore on first use. Tests
     override by setting app.dependency_overrides[get_quota_store].
+
+    In desktop mode returns a no-op store.
     """
+    if _is_desktop_mode():
+        return NoOpQuotaStore()
     store: QuotaStore | None = getattr(request.app.state, "quota_store", None)
     if store is None:
         store = PostgresQuotaStore()
