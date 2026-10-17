@@ -18,28 +18,79 @@ import { Telemetry } from "./features/Telemetry/Telemetry"
 import { TradeSpace } from "./features/TradeSpace/TradeSpace"
 import { XAITrace } from "./features/XAITrace/XAITrace"
 
-const NAV: AppShellNavItem[] = [
-  { id: "twin", label: "Digital Twin & Orbit", tag: "4·7·10" },
-  { id: "cleard", label: "CLEAR-D Synthesis", tag: "Part V" },
-  { id: "xai", label: "Two-Tier XAI Core", tag: "15·26" },
-  { id: "tradespace", label: "Trade Space", tag: "14" },
-  { id: "design", label: "Design Studio", tag: "P-V" },
-  { id: "about", label: "About & Legend", tag: "21" },
-  { id: "legal", label: "Terms & Privacy", tag: "S11·4" },
+// The linear workflow. Order matters: it is the order the user is
+// meant to walk through the instrument, from designing hardware to
+// producing a report.
+const WORKFLOW_STEPS: AppShellNavItem[] = [
+  { id: "design", label: "1 · Design", tag: "P-V" },
+  { id: "twin", label: "2 · Mission", tag: "4·7·10" },
+  { id: "cleard", label: "3 · Discovery", tag: "Part V" },
+  { id: "tradespace", label: "4 · Selection", tag: "14" },
+  { id: "simulation", label: "5 · Simulation", tag: "S12" },
+  { id: "report", label: "6 · Report", tag: "S12" },
+]
+
+const META_ITEMS: AppShellNavItem[] = [
+  { id: "xai", label: "Trust & XAI", tag: "15·26" },
+  { id: "about", label: "About", tag: "21" },
+  { id: "legal", label: "Legal", tag: "S11·4" },
   { id: "status", label: "Status", tag: "S11·5" },
 ]
+
+const NAV: AppShellNavItem[] = [...WORKFLOW_STEPS, ...META_ITEMS]
+
+const STEP_OF: Record<string, number> = {
+  design: 1, twin: 2, cleard: 3, tradespace: 4, simulation: 5, report: 6,
+}
+
+function nextStepFor(view: string): string | null {
+  const step = STEP_OF[view]
+  if (!step || step === WORKFLOW_STEPS.length) return null
+  return WORKFLOW_STEPS[step]?.id ?? null
+}
+
+function NextButton({ view, onGo }: { view: string; onGo: (id: string) => void }) {
+  const next = nextStepFor(view)
+  if (!next) return null
+  const target = WORKFLOW_STEPS.find((s) => s.id === next)
+  return (
+    <div className="mx-auto mt-10 max-w-5xl border-t border-[var(--border-hairline)] pt-6">
+      <button
+        type="button"
+        onClick={() => onGo(next)}
+        className="apple-btn apple-btn-primary"
+        data-testid={`next-step-${next}`}
+      >
+        Next: {target?.label.replace(/^\d+ · /, "")} →
+      </button>
+    </div>
+  )
+}
+
+function Placeholder({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="mx-auto max-w-3xl">
+      <div className="apple-card p-8">
+        <h2 className="text-title-2 mb-3">{title}</h2>
+        <p className="text-footnote text-[var(--ink-secondary)]">{description}</p>
+        <p className="mt-6 text-caption-1 text-[var(--ink-tertiary)]">
+          This step is part of the linear workflow. It will be wired
+          to the backend in a follow-up. The panels above are fully
+          functional; this one is a placeholder that records the
+          workflow slot.
+        </p>
+      </div>
+    </div>
+  )
+}
 
 function AboutView() {
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <div className="apple-card space-y-3 p-5">
-        <h2 className="text-[15px] font-semibold">
-          Section 21 epistemic hierarchy
-        </h2>
+        <h2 className="text-[15px] font-semibold">Section 21 epistemic hierarchy</h2>
         <p className="text-[12px] text-[var(--ink-secondary)]">
-          Every output artifact from the platform is tagged with one of
-          seven categories, ordered from strongest to weakest evidentiary
-          status. The badge component enforces the tag at the type level.
+          Every output artifact is tagged with one of seven categories.
         </p>
         <ul className="space-y-2">
           {ALL_TAGS.map((tag) => (
@@ -63,56 +114,18 @@ function LegalView() {
         <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-tertiary)]">
           Legal — Sprint 11 s11-4
         </div>
-        <h2 id="tos-heading" className="text-lg font-semibold">
-          Terms of Service
-        </h2>
+        <h2 id="tos-heading" className="text-lg font-semibold">Terms of Service</h2>
         <p className="text-[12px] text-[var(--ink-secondary)]">
-          Version 0.1 (template). Not legal advice; requires review by
-          counsel before public deployment.
+          Version 0.1 (template). Not legal advice; requires review by counsel before public deployment.
         </p>
-        <ol className="list-decimal space-y-2 pl-5 text-[12px] text-[var(--ink-secondary)]">
-          <li><b className="text-[var(--ink-primary)]">Acceptance.</b> By accessing the Service you agree to be bound by these Terms.</li>
-          <li><b className="text-[var(--ink-primary)]">About the Service.</b>{" "}AeroGrid-XAI is a software-only research instrument. It does not build, test, or deploy physical hardware.</li>
-          <li><b className="text-[var(--ink-primary)]">Licence.</b> Source code is dual-licensed AGPL-3.0 (community) and a proprietary Commercial EULA (enterprise).</li>
-          <li><b className="text-[var(--ink-primary)]">Accounts.</b> You are responsible for the confidentiality of your credentials and all activity under your account.</li>
-          <li><b className="text-[var(--ink-primary)]">Acceptable use.</b>{" "}No unauthorised access, no exceeding rate limits, no designing physical weapon systems.</li>
-          <li><b className="text-[var(--ink-primary)]">Your content.</b>{" "}You retain all rights to mission configurations, architecture definitions, and designs you create.</li>
-          <li><b className="text-[var(--ink-primary)]">Availability.</b>{" "}Provided as-is; no uptime commitment unless separately agreed.</li>
-          <li><b className="text-[var(--ink-primary)]">Disclaimers.</b> No warranty, express or implied, of any simulation result, formal verification verdict, or AI prediction.</li>
-          <li><b className="text-[var(--ink-primary)]">Liability.</b> No indirect, incidental, or consequential damages.</li>
-          <li><b className="text-[var(--ink-primary)]">Termination.</b>{" "}Either party may terminate with reasonable notice.</li>
-        </ol>
         <p className="text-[11px] text-[var(--ink-tertiary)]">
           Full text: <code className="font-mono">docs/legal/TERMS_OF_SERVICE.md</code>
         </p>
       </div>
-
       <div className="apple-card space-y-3 p-6">
-        <h2 id="privacy-heading" className="text-lg font-semibold">
-          Privacy Policy
-        </h2>
+        <h2 id="privacy-heading" className="text-lg font-semibold">Privacy Policy</h2>
         <p className="text-[12px] text-[var(--ink-secondary)]">
-          Version 0.1 (template). Not legal advice; requires review by
-          counsel before public deployment.
-        </p>
-        <h3 className="text-sm font-semibold text-[var(--ink-primary)]">What we collect</h3>
-        <ul className="list-disc space-y-1 pl-5 text-[12px] text-[var(--ink-secondary)]">
-          <li>Account data: slug, display name, bcrypt-hashed password.</li>
-          <li>Session data: a JWT in browser localStorage, 24-hour expiry.</li>
-          <li>Request metadata: IP, path, status, duration.</li>
-          <li>Content you create: mission configurations, designs, exports.</li>
-        </ul>
-        <h3 className="text-sm font-semibold text-[var(--ink-primary)]">What we do NOT collect</h3>
-        <p className="text-[12px] text-[var(--ink-secondary)]">
-          No cookies. No third-party analytics. No tracking pixels. No email addresses. No biometric data.
-        </p>
-        <h3 className="text-sm font-semibold text-[var(--ink-primary)]">Where data lives</h3>
-        <p className="text-[12px] text-[var(--ink-secondary)]">
-          Everything runs on the operator&apos;s local macOS deployment: PostgreSQL, Redis, MinIO, Prometheus. No data leaves the machine unless you deliberately export it. Stripe sees billing details only if paid subscriptions are enabled.
-        </p>
-        <h3 className="text-sm font-semibold text-[var(--ink-primary)]">Your rights</h3>
-        <p className="text-[12px] text-[var(--ink-secondary)]">
-          Access, correction, deletion, and portability. Contact <code className="font-mono">sirkianmj@forgex4.com</code>.
+          Version 0.1 (template). Not legal advice; requires review by counsel.
         </p>
         <p className="text-[11px] text-[var(--ink-tertiary)]">
           Full text: <code className="font-mono">docs/legal/PRIVACY_POLICY.md</code>
@@ -123,14 +136,8 @@ function LegalView() {
 }
 
 function App() {
-  const [activeView, setActiveView] = useState("twin")
-  // Views that have been visited at least once. Once a view is in
-  // this set, it stays mounted forever (hidden when inactive) so its
-  // local state — playhead position, last CLEAR-D run, edited design,
-  // selected satellite — survives a tab switch.
-  const [visited, setVisited] = useState<Set<string>>(
-    () => new Set(["twin"]),
-  )
+  const [activeView, setActiveView] = useState("design")
+  const [visited, setVisited] = useState<Set<string>>(() => new Set(["design"]))
 
   const handleViewChange = useCallback((id: string) => {
     setActiveView(id)
@@ -145,77 +152,96 @@ function App() {
   return (
     <TourProvider onRequestView={handleViewChange}>
       <MissionProvider>
-      <AppShell
-        navItems={NAV}
-        activeView={activeView}
-        onViewChange={handleViewChange}
-      >
-        <div className="mb-8">
-          <MissionConfigBar />
-        </div>
+        <AppShell
+          navItems={NAV}
+          activeView={activeView}
+          onViewChange={handleViewChange}
+        >
+          <div className="mb-8">
+            <MissionConfigBar />
+          </div>
 
-        {visited.has("twin") && (
-          <div
-            hidden={activeView !== "twin"}
-            className="mx-auto max-w-5xl space-y-6"
-          >
-            <MissionControl />
-            <Globe />
-            <DigitalTwin />
-            <Telemetry />
-          </div>
-        )}
-        {visited.has("cleard") && (
-          <div
-            hidden={activeView !== "cleard"}
-            className="mx-auto max-w-5xl space-y-6"
-          >
-            <ClearDDashboard />
-            <ArchitecturesView />
-            <SensitivityPanel />
-            <FanetGraph />
-          </div>
-        )}
-        {visited.has("xai") && (
-          <div
-            hidden={activeView !== "xai"}
-            className="mx-auto max-w-5xl space-y-6"
-          >
-            <XAITrace />
-          </div>
-        )}
-        {visited.has("design") && (
-          <div
-            hidden={activeView !== "design"}
-            className="mx-auto max-w-5xl space-y-6"
-          >
-            <DesignStudio />
-          </div>
-        )}
-        {visited.has("tradespace") && (
-          <div
-            hidden={activeView !== "tradespace"}
-            className="mx-auto max-w-5xl space-y-6"
-          >
-            <TradeSpace />
-          </div>
-        )}
-        {visited.has("about") && (
-          <div hidden={activeView !== "about"}>
-            <AboutView />
-          </div>
-        )}
-        {visited.has("legal") && (
-          <div hidden={activeView !== "legal"}>
-            <LegalView />
-          </div>
-        )}
-        {visited.has("status") && (
-          <div hidden={activeView !== "status"}>
-            <StatusView />
-          </div>
-        )}
-      </AppShell>
+          {visited.has("design") && (
+            <div hidden={activeView !== "design"}>
+              <div className="mx-auto max-w-5xl space-y-6">
+                <DesignStudio />
+              </div>
+              <NextButton view="design" onGo={handleViewChange} />
+            </div>
+          )}
+
+          {visited.has("twin") && (
+            <div hidden={activeView !== "twin"}>
+              <div className="mx-auto max-w-5xl space-y-6">
+                <MissionControl />
+                <Globe />
+                <DigitalTwin />
+                <Telemetry />
+              </div>
+              <NextButton view="twin" onGo={handleViewChange} />
+            </div>
+          )}
+
+          {visited.has("cleard") && (
+            <div hidden={activeView !== "cleard"}>
+              <div className="mx-auto max-w-5xl space-y-6">
+                <ClearDDashboard />
+                <ArchitecturesView />
+                <SensitivityPanel />
+                <FanetGraph />
+              </div>
+              <NextButton view="cleard" onGo={handleViewChange} />
+            </div>
+          )}
+
+          {visited.has("tradespace") && (
+            <div hidden={activeView !== "tradespace"}>
+              <div className="mx-auto max-w-5xl space-y-6">
+                <TradeSpace />
+              </div>
+              <NextButton view="tradespace" onGo={handleViewChange} />
+            </div>
+          )}
+
+          {visited.has("simulation") && (
+            <div hidden={activeView !== "simulation"}>
+              <Placeholder
+                title="5 · Simulation"
+                description="Runs the selected architecture against the mission over a full orbit: power delivered over time, thermal margins, eclipse intervals, cumulative energy. Backend endpoint not yet wired."
+              />
+              <NextButton view="simulation" onGo={handleViewChange} />
+            </div>
+          )}
+
+          {visited.has("report") && (
+            <div hidden={activeView !== "report"}>
+              <Placeholder
+                title="6 · Report"
+                description="The DARPA-grade export: PDF, structured JSON with per-number provenance, chart exports, manifest, reproduce.sh. Backend generator not yet built."
+              />
+            </div>
+          )}
+
+          {visited.has("xai") && (
+            <div hidden={activeView !== "xai"}>
+              <div className="mx-auto max-w-5xl space-y-6">
+                <XAITrace />
+              </div>
+            </div>
+          )}
+
+          {visited.has("about") && (
+            <div hidden={activeView !== "about"}><AboutView /></div>
+          )}
+
+          {visited.has("legal") && (
+            <div hidden={activeView !== "legal"}><LegalView /></div>
+          )}
+
+          {visited.has("status") && (
+            <div hidden={activeView !== "status"}><StatusView /></div>
+          )}
+        </AppShell>
       </MissionProvider>
     </TourProvider>
   )
