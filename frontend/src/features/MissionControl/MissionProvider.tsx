@@ -27,6 +27,7 @@ import {
   MissionCtx,
   type MissionConfig,
   type MissionLoad,
+  type SharedDiscoveryRun,
 } from "./missionContext"
 
 function describeError(err: unknown): { message: string; status_code?: number } {
@@ -109,6 +110,18 @@ export function MissionProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<MissionConfig>(DEFAULT_CONFIG)
   const [state, setState] = useState<MissionLoad>({ status: "loading" })
   const [refreshNonce, setRefreshNonce] = useState(0)
+  const [lastDiscoveryRun, setLastDiscoveryRunState] =
+    useState<SharedDiscoveryRun | null>(null)
+  const setLastDiscoveryRun = useCallback((data: unknown) => {
+    setLastDiscoveryRunState({
+      kind: "discovery_run",
+      data,
+      at: Date.now(),
+    })
+  }, [])
+  const clearLastDiscoveryRun = useCallback(() => {
+    setLastDiscoveryRunState(null)
+  }, [])
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
@@ -148,7 +161,18 @@ export function MissionProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <MissionCtx.Provider value={{ config, state, applyConfig, refresh, reset }}>
+    <MissionCtx.Provider
+      value={{
+        config,
+        state,
+        applyConfig,
+        refresh,
+        reset,
+        lastDiscoveryRun,
+        setLastDiscoveryRun,
+        clearLastDiscoveryRun,
+      }}
+    >
       {children}
     </MissionCtx.Provider>
   )

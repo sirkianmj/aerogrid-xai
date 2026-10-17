@@ -1,9 +1,12 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { ArchitecturesView } from "./ArchitecturesView"
 
-const { applyConfigMock } = vi.hoisted(() => ({ applyConfigMock: vi.fn() }))
+const { applyConfigMock, lastRunRef } = vi.hoisted(() => ({
+  applyConfigMock: vi.fn(),
+  lastRunRef: { current: null as null | { kind: string; data: unknown; at: number } },
+}))
 
 vi.mock("../MissionControl/missionContext", () => ({
   useMission: () => ({
@@ -27,6 +30,9 @@ vi.mock("../MissionControl/missionContext", () => ({
     applyConfig: applyConfigMock,
     refresh: () => {},
     reset: () => {},
+    lastDiscoveryRun: lastRunRef.current,
+    setLastDiscoveryRun: () => {},
+    clearLastDiscoveryRun: () => {},
   }),
 }))
 
@@ -59,105 +65,53 @@ const RESPONSE_BODY = {
   ],
 }
 
-/** Stub fetch with an immediately-resolving response. */
-function stubRun() {
-  const fn = vi.fn(() =>
-    Promise.resolve({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(RESPONSE_BODY),
-    } as Response),
-  )
-  vi.stubGlobal("fetch", fn)
-  return fn
+function withRun(data: unknown) {
+  lastRunRef.current = { kind: "discovery_run", data, at: Date.now() }
 }
 
-/**
- * Stub fetch that never resolves until the test releases it. This is
- * the only way to observe the loading state: a promise that resolves
- * on the same microtask the click lives on is already done by the time
- * `userEvent.click` returns.
- */
-function stubRunDeferred() {
-  let release!: () => void
-  const gate = new Promise<void>((resolve) => {
-    release = resolve
-  })
-  const fn = vi.fn(async () => {
-    await gate
-    return {
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(RESPONSE_BODY),
-    } as Response
-  })
-  vi.stubGlobal("fetch", fn)
-  return { fn, release }
+function withNoRun() {
+  lastRunRef.current = null
 }
 
 describe("ArchitecturesView", () => {
   afterEach(() => {
     vi.restoreAllMocks()
-    vi.unstubAllGlobals()
+    applyConfigMock.mockClear()
+    lastRunRef.current = null
   })
 
-  it("renders the heading and an idle state on mount", () => {
+  it("renders the heading and an idle state when no CLEAR-D run exists", () => {
+    withNoRun()
     render(<ArchitecturesView />)
     expect(
       screen.getByRole("heading", { name: /Discovered architectures/i }),
     ).toBeInTheDocument()
-    expect(screen.getByText(/No run yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/No CLEAR-D run yet/i)).toBeInTheDocument()
   })
 
-  it("disables the button while the run is in flight", async () => {
-    const { release } = stubRunDeferred()
+  it("renders a card per discovered architecture from the shared run", () => {
+    withRun(RESPONSE_BODY)
     render(<ArchitecturesView />)
-    const btn = screen.getByRole("button", { name: /Discover architectures/i })
-    await userEvent.click(btn)
-    // The deferred promise has not resolved, so the panel is still in
-    // the loading state: the button label has changed and is disabled.
-    const loading = screen.getByRole("button", { name: /Discovering/i })
-    expect(loading).toBeDisabled()
-    // Release the promise so the test does not leak a pending timer.
-    release()
-    await waitFor(() =>
-      expect(screen.getByTestId("arch-card-0")).toBeInTheDocument(),
-    )
-  })
-
-  it("renders one card per discovered architecture after the run", async () => {
-    stubRun()
-    render(<ArchitecturesView />)
-    await userEvent.click(
-      screen.getByRole("button", { name: /Discover architectures/i }),
-    )
-    await waitFor(() =>
-      expect(screen.getByTestId("arch-card-0")).toBeInTheDocument(),
-    )
+    expect(screen.getByTestId("arch-card-0")).toBeInTheDocument()
     expect(screen.getByText(/3N 2L/)).toBeInTheDocument()
   })
 
-  it("renders the objective values for each architecture", async () => {
-    stubRun()
+  it("renders the objective values for each architecture", () => {
+    withRun(RESPONSE_BODY)
     render(<ArchitecturesView />)
-    await userEvent.click(
-      screen.getByRole("button", { name: /Discover architectures/i }),
-    )
-    await waitFor(() => expect(screen.getByTestId("arch-card-0")).toBeInTheDocument())
-    // Spot check: the first objective value for C should appear.
     expect(screen.getByText("0.70")).toBeInTheDocument()
   })
 
-  it("load button calls applyConfig with the selected architecture", async () => {
-    applyConfigMock.mockClear()
-    stubRun()
+  it("shows the feasible-count and seed for a successful run", () => {
+    withRun(RESPONSE_BODY)
     render(<ArchitecturesView />)
-    await userEvent.click(
-      screen.getByRole("button", { name: /Discover architectures/i }),
-    )
-    await waitFor(() =>
-      expect(screen.getByTestId("arch-card-0")).toBeInTheDocument(),
-    )
+    expect(screen.getByText(/1 feasible/)).toBeInTheDocument()
+    expect(screen.getByText(/seed 20261014/)).toBeInTheDocument()
+  })
+
+  it("load button calls applyConfig with the selected architecture", async () => {
+    withRun(RESPONSE_BODY)
+    render(<ArchitecturesView />)
     await userEvent.click(screen.getByTestId("load-arch-0"))
     expect(applyConfigMock).toHaveBeenCalledTimes(1)
     const call = applyConfigMock.mock.calls[0][0]
@@ -166,4 +120,11 @@ describe("ArchitecturesView", () => {
     expect(call.selected_architecture.link_list.length).toBeGreaterThan(0)
   })
 
+  it("shows the empty state when the shared run discovered nothing", () => {
+    withRun({ ...RESPONSE_BODY, discovered: [] })
+    render(<ArchitecturesView />)
+    expect(
+      screen.getByText(/no feasible architectures with/i),
+    ).toBeInTheDocument()
+  })
 })

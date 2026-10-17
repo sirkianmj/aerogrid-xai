@@ -17,55 +17,26 @@
  * output. Section 21 category: simulation_result.
  */
 
-import { useState } from "react"
 import { TaggedOutput } from "../../components/EpistemicBadge/EpistemicBadge"
-import {
-  runClearD,
-  ClearDApiError,
-  type ClearDResponse,
-  type DiscoveredArchitecture,
+import type {
+  ClearDResponse,
+  DiscoveredArchitecture,
 } from "../ClearDDashboard/clearDApi"
 import { ArchitectureSketch } from "./ArchitectureSketch"
 import { useMission } from "../MissionControl/missionContext"
 
 const OBJECTIVE_LABELS = ["C", "R", "E", "N", "T", "U"] as const
 
-type PanelState =
-  | { status: "idle" }
-  | { status: "loading" }
-  | { status: "ok"; result: ClearDResponse; elapsedMs: number }
-  | { status: "error"; message: string; status_code?: number }
-
 export function ArchitecturesView() {
-  const { config, applyConfig } = useMission()
-  const [state, setState] = useState<PanelState>({ status: "idle" })
-
-  async function run() {
-    setState({ status: "loading" })
-    const started = Date.now()
-    try {
-      const result = await runClearD({
-        population_size: 8,
-        n_generations: 3,
-        seed: config.seed,
-        ground_station_lat_deg: config.ground_lat_deg,
-        ground_station_lon_deg: config.ground_lon_deg,
-      })
-      setState({
-        status: "ok",
-        result,
-        elapsedMs: Date.now() - started,
-      })
-    } catch (err) {
-      if (err instanceof ClearDApiError) {
-        setState({ status: "error", message: err.detail, status_code: err.status })
-      } else if (err instanceof Error) {
-        setState({ status: "error", message: err.message })
-      } else {
-        setState({ status: "error", message: String(err) })
-      }
-    }
-  }
+  const { config, applyConfig, lastDiscoveryRun } = useMission()
+  // Read the shared CLEAR-D result. The discovery panel writes it when
+  // a run succeeds; this panel updates without a second button press.
+  const result = lastDiscoveryRun
+    ? (lastDiscoveryRun.data as ClearDResponse)
+    : null
+  const isEmpty = result === null
+  const hasNone = result !== null && result.discovered.length === 0
+  const hasSome = result !== null && result.discovered.length > 0
 
   return (
     <section
@@ -81,54 +52,34 @@ export function ArchitecturesView() {
         continuity, T thermal margin, U uncertainty (minimized).
       </p>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={run}
-          disabled={state.status === "loading"}
-          className="rounded border border-[var(--border-hairline)] px-3 py-1.5 text-sm hover:bg-[var(--bg-subtle)] disabled:opacity-50"
-        >
-          {state.status === "loading"
-            ? "Discovering..."
-            : "Discover architectures"}
-        </button>
-        {state.status === "ok" && (
-          <>
-            <span className="text-xs text-[var(--ink-tertiary)]">
-              {`${state.result.discovered.length} feasible`}
-            </span>
-            <span className="text-xs text-[var(--ink-tertiary)]">
-              {`seed ${config.seed}`}
-            </span>
-            <span className="text-xs text-[var(--ink-tertiary)]">
-              {`elapsed ${state.elapsedMs} ms`}
-            </span>
-          </>
-        )}
-      </div>
+      {result && (
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <span className="text-xs text-[var(--ink-tertiary)]">
+            {`${result.discovered.length} feasible`}
+          </span>
+          <span className="text-xs text-[var(--ink-tertiary)]">
+            {`seed ${config.seed}`}
+          </span>
+        </div>
+      )}
 
-      {state.status === "idle" && (
+      {isEmpty && (
         <p className="text-sm text-[var(--ink-secondary)]">
-          No run yet. Press Discover architectures to start one.
+          No CLEAR-D run yet. Press Run CLEAR-D in the Discovery panel above.
         </p>
       )}
 
-      {state.status === "error" && (
-        <p className="text-sm" style={{ color: "var(--status-red)" }}>
-          Error{state.status_code ? ` (${state.status_code})` : ""}: {state.message}
-        </p>
-      )}
-
-      {state.status === "ok" && state.result.discovered.length === 0 && (
+      {hasNone && (
         <p className="text-sm text-[var(--ink-secondary)]">
-          No feasible architectures discovered with the current seed.
+          The last CLEAR-D run discovered no feasible architectures with
+          the current seed.
         </p>
       )}
 
-      {state.status === "ok" && state.result.discovered.length > 0 && (
+      {hasSome && result && (
         <TaggedOutput tag="simulation_result">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-            {state.result.discovered.map((arch, i) => (
+            {result.discovered.map((arch, i) => (
               <ArchitectureCard
                 key={i}
                 arch={arch}
