@@ -954,8 +954,8 @@ export function MultirotorDetail({
 
     callouts.push(
       {
-        ax: planT(0, -hubR * 0.2)[0],
-        ay: planT(0, -hubR * 0.2)[1],
+        ax: planT(0, 0)[0],
+        ay: planT(0, 0)[1],
         lx: 100,
         ly: 80,
         label: "RECEIVER APERTURE",
@@ -963,8 +963,8 @@ export function MultirotorDetail({
         side: "left",
       },
       {
-        ax: planT(-armLen * 0.8, -armLen * 0.8)[0],
-        ay: planT(-armLen * 0.8, -armLen * 0.8)[1],
+        ax: planT(motors[2].x, motors[2].y)[0],
+        ay: planT(motors[2].x, motors[2].y)[1],
         lx: 100,
         ly: 120,
         label: "MOTOR HOUSING",
@@ -972,8 +972,8 @@ export function MultirotorDetail({
         side: "left",
       },
       {
-        ax: planT(-armLen * 0.8, armLen * 0.8)[0],
-        ay: planT(-armLen * 0.8, armLen * 0.8)[1],
+        ax: planT(motors[1].x, motors[1].y)[0],
+        ay: planT(motors[1].x, motors[1].y)[1],
         lx: 100,
         ly: 160,
         label: "PROPELLER",
@@ -981,8 +981,8 @@ export function MultirotorDetail({
         side: "left",
       },
       {
-        ax: planT(0, -hubR * 0.2)[0],
-        ay: planT(0, -hubR * 0.2)[1],
+        ax: planT(motors[3].x, motors[3].y)[0],
+        ay: planT(motors[3].x, motors[3].y)[1],
         lx: 720,
         ly: 80,
         label: "HUB",
@@ -990,8 +990,8 @@ export function MultirotorDetail({
         side: "right",
       },
       {
-        ax: planT(armLen * 0.8, -armLen * 0.8)[0],
-        ay: planT(armLen * 0.8, -armLen * 0.8)[1],
+        ax: planT(motors[3].x, motors[3].y)[0],
+        ay: planT(motors[3].x, motors[3].y)[1],
         lx: 720,
         ly: 120,
         label: "ANTENNA ×2",
@@ -999,8 +999,8 @@ export function MultirotorDetail({
         side: "right",
       },
       {
-        ax: planT(armLen * 0.8, armLen * 0.8)[0],
-        ay: planT(armLen * 0.8, armLen * 0.8)[1],
+        ax: planT(motors[0].x, motors[0].y)[0],
+        ay: planT(motors[0].x, motors[0].y)[1],
         lx: 720,
         ly: 160,
         label: "GIMBAL CAMERA",
