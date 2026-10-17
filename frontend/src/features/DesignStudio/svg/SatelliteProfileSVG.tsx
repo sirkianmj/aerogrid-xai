@@ -95,11 +95,11 @@ const PLUME_M = 0.5
 const DISH_MARGIN_M = 0.35
 
 // --- Frame and content layout (pixels) --------------------------------
-const FRAME_W = 820
-const FRAME_H = 520
+const FRAME_W = 1200
+const FRAME_H = 800
 const ORIGIN_X = FRAME_W / 2
 const ORIGIN_Y = FRAME_H / 2 + 30
-const CONTENT_PAD_X = 60
+const CONTENT_PAD_X = 240
 const CONTENT_W = FRAME_W - 2 * CONTENT_PAD_X
 
 export type SatelliteProfileSVGProps = {
@@ -660,8 +660,8 @@ export function SatelliteProfileSVG({
 
   // --- Callout positions ----------------------------------------------
   // Anchor: physical position. Label: pixel position of the label text.
-  const leftLabelX = 70
-  const rightLabelX = 750
+  const leftLabelX = 80
+  const rightLabelX = FRAME_W - 320
   const callouts: Array<{
     ax: number
     ay: number
@@ -681,7 +681,7 @@ export function SatelliteProfileSVG({
     callouts.push({
       ax,
       ay,
-      lx: Math.max(80, leftLabelX),
+      lx: leftLabelX,
       ly: 100,
       label: "SOLAR ARRAY",
       sublabel: `${N_PANELS_PER_SIDE} panels / wing · ${totalArrayAreaM2.toFixed(1)} m² · ${cellsTotal.toLocaleString()} cells`,
@@ -694,7 +694,7 @@ export function SatelliteProfileSVG({
     callouts.push({
       ax,
       ay,
-      lx: Math.max(80, leftLabelX),
+      lx: leftLabelX,
       ly: 175,
       label: "SADA",
       sublabel: "drive assembly",
@@ -707,7 +707,7 @@ export function SatelliteProfileSVG({
     callouts.push({
       ax,
       ay,
-      lx: Math.max(80, leftLabelX),
+      lx: leftLabelX,
       ly: 220,
       label: "BUS",
       sublabel: `${BUS_W_M.toFixed(1)} × ${BUS_H_M.toFixed(1)} m`,
@@ -720,7 +720,7 @@ export function SatelliteProfileSVG({
     callouts.push({
       ax,
       ay,
-      lx: Math.max(80, leftLabelX),
+      lx: leftLabelX,
       ly: 260,
       label: "RADIATOR",
       sublabel: "active thermal",
@@ -733,7 +733,7 @@ export function SatelliteProfileSVG({
     callouts.push({
       ax,
       ay,
-      lx: Math.max(80, leftLabelX),
+      lx: leftLabelX,
       ly: 320,
       label: "FEED",
       sublabel:
@@ -749,7 +749,7 @@ export function SatelliteProfileSVG({
     callouts.push({
       ax,
       ay,
-      lx: Math.min(FRAME_W - 80, rightLabelX),
+      lx: rightLabelX,
       ly: 320,
       label: "TRANSMIT DISH",
       sublabel: `Ø ${dishDiamM.toFixed(2)} m · λ 1064 nm`,
@@ -762,7 +762,7 @@ export function SatelliteProfileSVG({
     callouts.push({
       ax,
       ay,
-      lx: Math.min(FRAME_W - 80, rightLabelX),
+      lx: rightLabelX,
       ly: 220,
       label: "STAR TRACKER ×2",
       sublabel: "15° sun exclusion",
@@ -775,7 +775,7 @@ export function SatelliteProfileSVG({
     callouts.push({
       ax,
       ay,
-      lx: Math.min(FRAME_W - 80, rightLabelX),
+      lx: rightLabelX,
       ly: 175,
       label: "THRUSTER ×2",
       sublabel: "monopropellant, 1 N",
@@ -788,7 +788,7 @@ export function SatelliteProfileSVG({
     callouts.push({
       ax,
       ay,
-      lx: Math.min(FRAME_W - 80, rightLabelX),
+      lx: rightLabelX,
       ly: 130,
       label: "TT&C ANTENNA",
       sublabel: "S-band, 2 W",
@@ -801,7 +801,7 @@ export function SatelliteProfileSVG({
     callouts.push({
       ax,
       ay,
-      lx: Math.min(FRAME_W - 80, rightLabelX),
+      lx: rightLabelX,
       ly: 100,
       label: "AVIONICS BAY",
       sublabel: "rad-hard, internally redundant",
@@ -874,35 +874,35 @@ export function SatelliteProfileSVG({
             solar array design chain, not a displayed constant. */}
         <g>
           <rect
-            x={70}
-            y={305}
-            width={420}
-            height={135}
+            x={80}
+            y={550}
+            width={540}
+            height={190}
             fill="var(--bg-surface)"
             stroke="var(--ink-secondary)"
             strokeWidth={SW_THIN}
           />
           <text
-            x={78}
-            y={319}
+            x={92}
+            y={570}
             fontFamily="ui-monospace, monospace"
-            fontSize={9}
+            fontSize={10}
             fontWeight={600}
             fill="var(--ink-primary)"
           >
             SOLAR ARRAY DESIGN CHAIN
           </text>
           <line
-            x1={70}
-            y1={325}
-            x2={490}
-            y2={325}
+            x1={80}
+            y1={580}
+            x2={620}
+            y2={580}
             stroke="var(--ink-tertiary)"
             strokeWidth={SW_HAIR}
           />
           {(() => {
-            const rowY0 = 340
-            const rowStep = 12
+            const rowY0 = 600
+            const rowStep = 15
             const rows: Array<[string, string]> = [
               ["I_AM0", `${I_AM0_W_PER_M2.toFixed(0)} W/m²`],
               ["η_cell · packing · PSE", `${ETA_CELL.toFixed(2)} · ${PACKING_FACTOR.toFixed(2)} · ${PSE_EFFICIENCY.toFixed(2)}`],
@@ -915,20 +915,20 @@ export function SatelliteProfileSVG({
             return rows.map(([k, v], i) => (
               <g key={k}>
                 <text
-                  x={78}
+                  x={92}
                   y={rowY0 + i * rowStep}
                   fontFamily="ui-monospace, monospace"
-                  fontSize={8}
+                  fontSize={9}
                   fill="var(--ink-tertiary)"
                 >
                   {k}
                 </text>
                 <text
-                  x={300}
+                  x={600}
                   y={rowY0 + i * rowStep}
                   textAnchor="end"
                   fontFamily="ui-monospace, monospace"
-                  fontSize={8}
+                  fontSize={9}
                   fill="var(--ink-primary)"
                 >
                   {v}
@@ -937,25 +937,26 @@ export function SatelliteProfileSVG({
             ))
           })()}
           <text
-            x={78}
-            y={460}
+            x={92}
+            y={720}
             fontFamily="ui-monospace, monospace"
-            fontSize={7}
+            fontSize={8}
             fill="var(--ink-tertiary)"
-           >
+          >
             {`${CELL_SIZE_M * 1000}mm cell · ${CELL_GAP_M * 1000}mm gap · ${(CELL_PITCH_M * 1000).toFixed(0)}mm pitch`}
           </text>
-          {/* Footnote moved here so it does not overlap the title block or the box */}
-          <text
-            x={78}
-            y={485}
-            fontFamily="ui-monospace, monospace"
-            fontSize={7}
-            fill="var(--ink-tertiary)"
-           >
-            dimensions derived from physical parameters; see body for equations
-          </text>
         </g>
+
+        {/* Footnote safely below the box */}
+        <text
+          x={80}
+          y={760}
+          fontFamily="ui-monospace, monospace"
+          fontSize={8}
+          fill="var(--ink-tertiary)"
+        >
+          dimensions derived from physical parameters; see body for equations
+        </text>
 
         {callouts.map((c, i) => (
           <Callout
