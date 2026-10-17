@@ -26,6 +26,9 @@ vi.mock("../MissionControl/missionContext", () => ({
     applyConfig: () => {},
     refresh: () => {},
     reset: () => {},
+    lastDiscoveryRun: null,
+    setLastDiscoveryRun: () => {},
+    clearLastDiscoveryRun: () => {},
   }),
 }))
 
@@ -89,36 +92,56 @@ describe("SensitivityPanel", () => {
     vi.unstubAllGlobals()
   })
 
-  it("renders the heading and idle state on mount", () => {
+  it("renders the heading", () => {
+    stubFetch()
     render(<SensitivityPanel />)
     expect(
       screen.getByRole("heading", { name: /Design suggestions/i }),
     ).toBeInTheDocument()
-    expect(screen.getByText(/No analysis yet/i)).toBeInTheDocument()
   })
 
-  it("renders the ranked table after a run", async () => {
+  it("auto-runs the analysis on mount and shows the ranked table", async () => {
     stubFetch()
     render(<SensitivityPanel />)
-    await userEvent.click(
-      screen.getByRole("button", { name: /Analyse sensitivities/i }),
-    )
     await waitFor(() =>
-      expect(screen.getByTestId("sensitivity-row-uav_receiver_aperture_m2")).toBeInTheDocument(),
+      expect(
+        screen.getByTestId("sensitivity-row-uav_receiver_aperture_m2"),
+      ).toBeInTheDocument(),
     )
-    expect(screen.getByText("uav_receiver_aperture_m2")).toBeInTheDocument()
     expect(screen.getByText("transmitter_power_w")).toBeInTheDocument()
     expect(screen.getByText("cloud_factor")).toBeInTheDocument()
   })
 
-  it("shows the base delivered power in the header line", async () => {
+  it("shows base delivered power and verdict after the auto-run", async () => {
     stubFetch()
     render(<SensitivityPanel />)
+    await waitFor(() =>
+      expect(screen.getByText(/base delivered power/i)).toBeInTheDocument(),
+    )
+    expect(screen.getByText(/verdict sat/i)).toBeInTheDocument()
+  })
+
+  it("re-runs on manual button press", async () => {
+    const fn = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(SAMPLE),
+      } as Response),
+    )
+    vi.stubGlobal("fetch", fn)
+    render(<SensitivityPanel />)
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("sensitivity-row-uav_receiver_aperture_m2"),
+      ).toBeInTheDocument(),
+    )
+    const callsAfterAuto = fn.mock.calls.length
     await userEvent.click(
       screen.getByRole("button", { name: /Analyse sensitivities/i }),
     )
     await waitFor(() =>
-      expect(screen.getByText(/base delivered power/i)).toBeInTheDocument(),
+      expect(fn.mock.calls.length).toBeGreaterThan(callsAfterAuto),
     )
   })
 })

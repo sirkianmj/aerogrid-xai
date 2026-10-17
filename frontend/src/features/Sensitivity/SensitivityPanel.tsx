@@ -12,7 +12,7 @@
  * under perturbed parameters.
  */
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { TaggedOutput } from "../../components/EpistemicBadge/EpistemicBadge"
 import { useMission } from "../MissionControl/missionContext"
 import {
@@ -80,6 +80,31 @@ export function SensitivityPanel() {
     }
   }
 
+  // Auto-run the analysis once on mount so the panel shows real data
+  // instead of "No analysis yet". A second effect re-runs when the
+  // seed changes: that is the config parameter most likely to represent
+  // a materially different mission. Other config changes are honoured
+  // by pressing the button, which uses the current config snapshot.
+  const mounted = useRef(false)
+  useEffect(() => {
+    if (mounted.current) return
+    mounted.current = true
+    void run()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const seedRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (seedRef.current === null) {
+      seedRef.current = config.seed
+      return
+    }
+    if (seedRef.current === config.seed) return
+    seedRef.current = config.seed
+    void run()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.seed])
+
   return (
     <section
       data-tour-id="sensitivity"
@@ -113,7 +138,7 @@ export function SensitivityPanel() {
 
       {state.status === "idle" && (
         <p className="text-sm text-[var(--ink-secondary)]">
-          No analysis yet. Press Analyse sensitivities to run one.
+          Preparing analysis...
         </p>
       )}
 
