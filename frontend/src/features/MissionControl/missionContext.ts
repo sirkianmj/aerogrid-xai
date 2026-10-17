@@ -101,12 +101,27 @@ export type MissionLoad =
   | { status: "ok"; data: MissionState; configUsed: MissionConfig }
   | { status: "error"; message: string; status_code?: number }
 
+/** A discovery run, kept across tab switches and shared between panels.
+ *  The shape mirrors ClearDResponse in clearDApi.ts. Kept loose (unknown)
+ *  here so missionContext has no dependency on the discovery module;
+ *  consumers cast to ClearDResponse. */
+export type SharedDiscoveryRun = {
+  readonly kind: "discovery_run"
+  readonly data: unknown
+  readonly at: number
+}
+
 export type MissionContextValue = {
   config: MissionConfig
   state: MissionLoad
   applyConfig: (patch: Partial<MissionConfig>) => void
   refresh: () => void
   reset: () => void
+  /** The most recent CLEAR-D run, shared across panels. Null until a
+   *  run has succeeded. Consumers cast `data` to ClearDResponse. */
+  lastDiscoveryRun: SharedDiscoveryRun | null
+  setLastDiscoveryRun: (data: unknown) => void
+  clearLastDiscoveryRun: () => void
 }
 
 export const MissionCtx = createContext<MissionContextValue | null>(null)
