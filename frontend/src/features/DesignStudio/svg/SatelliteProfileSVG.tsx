@@ -99,7 +99,7 @@ const FRAME_W = 1000
 const FRAME_H = 700
 const ORIGIN_X = FRAME_W / 2
 const ORIGIN_Y = FRAME_H / 2 + 30
-const CONTENT_PAD_X = 160
+const CONTENT_PAD_X = 180
 const CONTENT_W = FRAME_W - 2 * CONTENT_PAD_X
 
 export type SatelliteProfileSVGProps = {
@@ -690,7 +690,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 160,
+      ly: 100,
       label: "SOLAR ARRAY",
       sublabel: `${N_PANELS_PER_SIDE} panels / wing · ${totalArrayAreaM2.toFixed(1)} m² · ${cellsTotal.toLocaleString()} cells`,
       side: "left",
@@ -703,7 +703,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 175,
+      ly: 180,
       label: "SADA",
       sublabel: "drive assembly",
       side: "left",
@@ -716,7 +716,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 220,
+      ly: 260,
       label: "BUS",
       sublabel: `${BUS_W_M.toFixed(1)} × ${BUS_H_M.toFixed(1)} m`,
       side: "left",
@@ -729,7 +729,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 320,
+      ly: 340,
       label: "RADIATOR",
       sublabel: "active thermal",
       side: "left",
@@ -742,7 +742,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 320,
+      ly: 420,
       label: "FEED",
       sublabel:
         transmitter_aperture_m >= 0.01
@@ -758,7 +758,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 320,
+      ly: 340,
       label: "TRANSMIT DISH",
       sublabel: `Ø ${dishDiamM.toFixed(2)} m · λ 1064 nm`,
       side: "right",
@@ -771,7 +771,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 220,
+      ly: 260,
       label: "STAR TRACKER ×2",
       sublabel: "15° sun exclusion",
       side: "right",
@@ -784,7 +784,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 175,
+      ly: 180,
       label: "THRUSTER ×2",
       sublabel: "monopropellant, 1 N",
       side: "right",
@@ -797,7 +797,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 130,
+      ly: 100,
       label: "TT&C ANTENNA",
       sublabel: "S-band, 2 W",
       side: "right",
@@ -810,7 +810,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 100,
+      ly: 420,
       label: "AVIONICS BAY",
       sublabel: "rad-hard, internally redundant",
       side: "right",
@@ -883,16 +883,16 @@ export function SatelliteProfileSVG({
         <g>
           <rect
             x={60}
-            y={460}
+            y={450}
             width={520}
-            height={210}
+            height={190}
             fill="var(--bg-surface)"
             stroke="var(--ink-secondary)"
             strokeWidth={SW_THIN}
           />
           <text
             x={72}
-            y={485}
+            y={470}
             fontFamily="ui-monospace, monospace"
             fontSize={10}
             fontWeight={600}
@@ -902,14 +902,14 @@ export function SatelliteProfileSVG({
           </text>
           <line
             x1={60}
-            y1={495}
+            y1={480}
             x2={580}
-            y2={495}
+            y2={480}
             stroke="var(--ink-tertiary)"
             strokeWidth={SW_HAIR}
           />
           {(() => {
-            const rowY0 = 520
+            const rowY0 = 500
             const rowStep = 16
             const rows: Array<[string, string]> = [
               ["I_AM0", `${I_AM0_W_PER_M2.toFixed(0)} W/m²`],
@@ -958,7 +958,7 @@ export function SatelliteProfileSVG({
         {/* Footnote safely below the box */}
         <text
           x={60}
-          y={705}
+          y={670}
           fontFamily="ui-monospace, monospace"
           fontSize={8}
           fill="var(--ink-tertiary)"
@@ -971,8 +971,8 @@ export function SatelliteProfileSVG({
             key={i}
             x={c.ax}
             y={c.ay}
-            labelX={c.lx}
-            labelY={c.ly}
+            labelX={c.side === "left" ? c.ax - 15 : c.ax + 15}
+            labelY={c.ay - 5}
             label={c.label}
             sublabel={c.sublabel}
             arrow={c.side === "left" ? "left" : "right"}
