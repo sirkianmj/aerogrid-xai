@@ -163,7 +163,13 @@ export function MissionControl() {
         <button
           type="button"
           onClick={() => markStepComplete(2)}
-          className="apple-btn apple-btn-primary"
+          disabled={load.status !== "ok"}
+          title={
+            load.status !== "ok"
+              ? "The mission state has not loaded. Confirm is only available after the backend has computed a mission."
+              : undefined
+          }
+          className="apple-btn apple-btn-primary disabled:cursor-not-allowed disabled:opacity-40"
           data-testid="confirm-mission"
         >
           Confirm this mission
