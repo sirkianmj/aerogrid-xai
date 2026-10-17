@@ -41,7 +41,6 @@
 import { useRef, type ReactElement } from "react"
 import { useDragSvg } from "./useDragSvg"
 import { ScaleBar } from "./ScaleBar"
-import { DrawingFrame } from "./DrawingFrame"
 import { Callout } from "./Callout"
 
 // --- Drawing frame and view regions (pixels) --------------------------
@@ -114,10 +113,10 @@ export function FixedWingDetail({
 
   // --- Common scale across all views (pixels per metre) ---------------
   // Constrain by plan width, plan height, profile length, and front width.
-  const planUsableW = PLAN.w * 0.85
-  const planUsableH = PLAN.h * 0.85
-  const profileUsableW = PROFILE.w * 0.85
-  const frontUsableW = FRONT.w * 0.85
+  const planUsableW = PLAN.w * 0.55
+  const planUsableH = PLAN.h * 0.55
+  const profileUsableW = PROFILE.w * 0.55
+  const frontUsableW = FRONT.w * 0.55
   const scale = Math.min(
     planUsableW / (span + 2 * propR),
     planUsableH / (fusLen * 1.15),
@@ -1221,8 +1220,8 @@ export function FixedWingDetail({
       {
         ax: planWing[0],
         ay: planWing[1],
-        lx: 200,
-        ly: 100,
+        lx: 160,
+        ly: 80,
         label: "WING",
         sublabel: `aspect ratio ${(span / chordRoot).toFixed(1)} · taper ${RATIO.taperRatio}`,
         side: "left",
@@ -1230,8 +1229,8 @@ export function FixedWingDetail({
       {
         ax: planAil[0],
         ay: planAil[1],
-        lx: 200,
-        ly: 130,
+        lx: 160,
+        ly: 120,
         label: "AILERON",
         sublabel: "outboard 55–90 % TE",
         side: "left",
@@ -1239,7 +1238,7 @@ export function FixedWingDetail({
       {
         ax: planFlap[0],
         ay: planFlap[1],
-        lx: 200,
+        lx: 160,
         ly: 160,
         label: "FLAP",
         sublabel: "inboard 10–50 % TE",
@@ -1248,8 +1247,8 @@ export function FixedWingDetail({
       {
         ax: planNose[0],
         ay: planNose[1],
-        lx: 520,
-        ly: 100,
+        lx: 660,
+        ly: 80,
         label: "PROPELLER",
         sublabel: `3-blade · r ${propR.toFixed(3)} m`,
         side: "right",
@@ -1257,8 +1256,8 @@ export function FixedWingDetail({
       {
         ax: planTurret[0],
         ay: planTurret[1],
-        lx: 520,
-        ly: 130,
+        lx: 660,
+        ly: 120,
         label: "SENSOR TURRET",
         sublabel: `Ø ${(2 * turretR).toFixed(3)} m`,
         side: "right",
@@ -1266,7 +1265,7 @@ export function FixedWingDetail({
       {
         ax: planTail[0],
         ay: planTail[1],
-        lx: 520,
+        lx: 660,
         ly: 160,
         label: "H-STAB + ELEVATOR",
         sublabel: `span ${tailSpan.toFixed(2)} m`,
@@ -1275,8 +1274,8 @@ export function FixedWingDetail({
       {
         ax: planProp[0],
         ay: planProp[1],
-        lx: 520,
-        ly: 190,
+        lx: 660,
+        ly: 200,
         label: "FUSELAGE",
         sublabel: `length ${fusLen.toFixed(2)} m · width ${fusWidth.toFixed(3)} m`,
         side: "right",
@@ -1295,18 +1294,7 @@ export function FixedWingDetail({
       aria-label="Fixed-wing UAV engineering drawing, three views and section"
       data-testid="drone-top-view"
     >
-      <DrawingFrame
-        x={0}
-        y={0}
-        width={FRAME_W}
-        height={FRAME_H}
-        title="UAV — FIXED WING — 3 VIEWS"
-        drawingNumber="AG-DRW-UAV-FW-001"
-        scaleLabel={`SCALE 1:${Math.round(1000 / scale)}`}
-        revision="A"
-        note="units = metres · parametric"
-        footnote="plan, profile, front views share one scale; section at 4×"
-      >
+      <g>
         {renderPlan()}
         {renderProfile()}
         {renderFront()}
@@ -1336,29 +1324,8 @@ export function FixedWingDetail({
         />
 
         {/* Materials key, drawn in the top-right corner above the section box */}
-        <g>
-          <text
-            x={FRAME_W - 30}
-            y={18}
-            textAnchor="end"
-            fontFamily="ui-monospace, monospace"
-            fontSize={9}
-            fill="var(--ink-secondary)"
-          >
-            MATERIAL KEY
-          </text>
-          <text
-            x={FRAME_W - 30}
-            y={28}
-            textAnchor="end"
-            fontFamily="ui-monospace, monospace"
-            fontSize={8}
-            fill="var(--ink-tertiary)"
-          >
-            ─── composite · ~ ~ ~ foam core · /// metal
-          </text>
-        </g>
-      </DrawingFrame>
+        
+      </g>
     </svg>
   )
 }

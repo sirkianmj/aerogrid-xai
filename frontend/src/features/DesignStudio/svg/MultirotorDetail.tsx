@@ -38,7 +38,6 @@
 import { useRef, type ReactElement } from "react"
 import { useDragSvg } from "./useDragSvg"
 import { ScaleBar } from "./ScaleBar"
-import { DrawingFrame } from "./DrawingFrame"
 import { Callout } from "./Callout"
 
 // --- Drawing frame and view regions (pixels) --------------------------
@@ -963,8 +962,8 @@ export function MultirotorDetail({
       {
         ax: hubCrown[0],
         ay: hubCrown[1],
-        lx: 200,
-        ly: 100,
+        lx: 160,
+        ly: 80,
         label: "RECEIVER APERTURE",
         sublabel: `A ${receiver_aperture_m2.toFixed(3)} m² · Ø ${(2 * apertureR).toFixed(3)} m`,
         side: "left",
@@ -972,8 +971,8 @@ export function MultirotorDetail({
       {
         ax: armTip[0],
         ay: armTip[1],
-        lx: 200,
-        ly: 130,
+        lx: 160,
+        ly: 120,
         label: "MOTOR HOUSING",
         sublabel: `Ø ${motorDia.toFixed(3)} m · 12 fins`,
         side: "left",
@@ -981,7 +980,7 @@ export function MultirotorDetail({
       {
         ax: propEdge[0],
         ay: propEdge[1],
-        lx: 200,
+        lx: 160,
         ly: 160,
         label: "PROPELLER",
         sublabel: `2-blade · r ${propR.toFixed(3)} m`,
@@ -990,8 +989,8 @@ export function MultirotorDetail({
       {
         ax: hubCrown[0],
         ay: hubCrown[1],
-        lx: 500,
-        ly: 100,
+        lx: 660,
+        ly: 80,
         label: "HUB",
         sublabel: `Ø ${hubDia.toFixed(3)} m`,
         side: "right",
@@ -999,8 +998,8 @@ export function MultirotorDetail({
       {
         ax: antenna[0],
         ay: antenna[1],
-        lx: 500,
-        ly: 130,
+        lx: 660,
+        ly: 120,
         label: "ANTENNA ×2",
         sublabel: `whip · ${antennaLen.toFixed(3)} m`,
         side: "right",
@@ -1008,7 +1007,7 @@ export function MultirotorDetail({
       {
         ax: gimbal[0],
         ay: gimbal[1],
-        lx: 500,
+        lx: 660,
         ly: 160,
         label: "GIMBAL CAMERA",
         sublabel: `Ø ${(gimbalR * 2).toFixed(3)} m`,
@@ -1028,18 +1027,7 @@ export function MultirotorDetail({
       aria-label="Multirotor UAV engineering drawing, three views and motor section"
       data-testid="drone-top-view"
     >
-      <DrawingFrame
-        x={0}
-        y={0}
-        width={FRAME_W}
-        height={FRAME_H}
-        title="UAV — MULTIROTOR — 3 VIEWS"
-        drawingNumber="AG-DRW-UAV-MR-001"
-        scaleLabel={`SCALE 1:${Math.round(1000 / scale)}`}
-        revision="A"
-        note="units = metres · parametric"
-        footnote="plan, profile, front views share one scale; motor section at 8×"
-      >
+      <g>
         {renderPlan()}
         {renderProfile()}
         {renderFront()}
@@ -1068,29 +1056,8 @@ export function MultirotorDetail({
           fontSize={9}
         />
 
-        <g>
-          <text
-            x={FRAME_W - 30}
-            y={18}
-            textAnchor="end"
-            fontFamily="ui-monospace, monospace"
-            fontSize={9}
-            fill="var(--ink-secondary)"
-          >
-            MATERIAL KEY
-          </text>
-          <text
-            x={FRAME_W - 30}
-            y={28}
-            textAnchor="end"
-            fontFamily="ui-monospace, monospace"
-            fontSize={8}
-            fill="var(--ink-tertiary)"
-          >
-            ─── carbon composite · /// metal · ··· dashed = outline
-          </text>
-        </g>
-      </DrawingFrame>
+        
+      </g>
     </svg>
   )
 }
