@@ -60,13 +60,28 @@ export class DesignApiError extends Error {
   }
 }
 
+
+function extractDetail(payload: { detail?: unknown }, fallback: string): string {
+  if (typeof payload.detail === "string") return payload.detail
+  if (Array.isArray(payload.detail)) {
+    return payload.detail
+      .map((err: any) => {
+        const loc = Array.isArray(err?.loc) ? err.loc.slice(1).join(".") : ""
+        const msg = err?.msg || "Invalid value"
+        return loc ? `${loc}: ${msg}` : msg
+      })
+      .join("; ")
+  }
+  return fallback
+}
+
 async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(path, { signal })
   if (!response.ok) {
     let detail = `HTTP ${response.status}`
     try {
       const payload = (await response.json()) as { detail?: unknown }
-      if (typeof payload.detail === "string") detail = payload.detail
+      detail = extractDetail(payload, detail)
     } catch {
       // not JSON
     }
@@ -90,7 +105,7 @@ async function postJson<TReq, TRes>(
     let detail = `HTTP ${response.status}`
     try {
       const payload = (await response.json()) as { detail?: unknown }
-      if (typeof payload.detail === "string") detail = payload.detail
+      detail = extractDetail(payload, detail)
     } catch {
       // not JSON
     }

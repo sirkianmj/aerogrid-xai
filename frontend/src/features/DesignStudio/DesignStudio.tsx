@@ -244,17 +244,17 @@ function SatelliteDesigner({ presets }: { presets: SatellitePreset[] }) {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {(
               [
-                ["a_km", "a (km)"],
-                ["e", "e"],
-                ["i_deg", "i (deg)"],
-                ["raan_deg", "RAAN (deg)"],
-                ["argp_deg", "argp (deg)"],
-                ["m0_deg", "M0 (deg)"],
-                ["transmitter_power_w", "P_tx (W)"],
-                ["wavelength_nm", "λ (nm)"],
-                ["transmitter_aperture_m", "aperture (m)"],
-              ] as const
-            ).map(([key, label]) => (
+                { key: "a_km", label: "a (km)", min: 0.001 },
+                { key: "e", label: "e", min: 0, max: 0.999999 },
+                { key: "i_deg", label: "i (deg)", min: 0, max: 180 },
+                { key: "raan_deg", label: "RAAN (deg)", min: 0, max: 359.999999 },
+                { key: "argp_deg", label: "argp (deg)", min: 0, max: 359.999999 },
+                { key: "m0_deg", label: "M0 (deg)", min: 0, max: 359.999999 },
+                { key: "transmitter_power_w", label: "P_tx (W)", min: 0.001 },
+                { key: "wavelength_nm", label: "λ (nm)", min: 0.001 },
+                { key: "transmitter_aperture_m", label: "aperture (m)", min: 0.001 },
+              ] as { key: keyof SatFields; label: string; min: number; max?: number }[]
+            ).map(({ key, label, min, max }) => (
               <label key={key} className="flex flex-col gap-1">
                 <span className="text-[0.6rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
                   {label}
@@ -262,6 +262,8 @@ function SatelliteDesigner({ presets }: { presets: SatellitePreset[] }) {
                 <input
                   type="number"
                   step="any"
+                  min={min}
+                  max={max}
                   aria-label={label}
                   value={fields[key]}
                   onChange={(e) => {
