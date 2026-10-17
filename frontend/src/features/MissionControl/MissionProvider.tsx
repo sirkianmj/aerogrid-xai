@@ -122,6 +122,17 @@ export function MissionProvider({ children }: { children: ReactNode }) {
   const clearLastDiscoveryRun = useCallback(() => {
     setLastDiscoveryRunState(null)
   }, [])
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(
+    () => new Set(),
+  )
+  const markStepComplete = useCallback((step: number) => {
+    setCompletedSteps((prev) => {
+      if (prev.has(step)) return prev
+      const next = new Set(prev)
+      next.add(step)
+      return next
+    })
+  }, [])
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
@@ -171,6 +182,8 @@ export function MissionProvider({ children }: { children: ReactNode }) {
         lastDiscoveryRun,
         setLastDiscoveryRun,
         clearLastDiscoveryRun,
+        completedSteps,
+        markStepComplete,
       }}
     >
       {children}
