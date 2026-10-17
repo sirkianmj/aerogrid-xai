@@ -13,6 +13,7 @@ import { Globe } from "./features/Globe/Globe"
 import { MissionConfigBar } from "./features/MissionControl/MissionConfigBar"
 import { MissionControl } from "./features/MissionControl/MissionControl"
 import { MissionProvider } from "./features/MissionControl/MissionProvider"
+import { useMission } from "./features/MissionControl/missionContext"
 import { TourProvider } from "./features/Tour/TourProvider"
 import { Telemetry } from "./features/Telemetry/Telemetry"
 import { TradeSpace } from "./features/TradeSpace/TradeSpace"
@@ -135,6 +136,124 @@ function LegalView() {
   )
 }
 
+const STEP_TO_VIEW: Record<number, string> = {
+  1: "design",
+  2: "twin",
+  3: "cleard",
+  4: "tradespace",
+  5: "simulation",
+  6: "report",
+}
+
+type AppInnerProps = {
+  activeView: string
+  visited: ReadonlySet<string>
+  handleViewChange: (id: string) => void
+}
+
+function AppInner({ activeView, visited, handleViewChange }: AppInnerProps) {
+  const { completedSteps } = useMission()
+  const completedViewIds = new Set<string>()
+  for (const step of completedSteps) {
+    const v = STEP_TO_VIEW[step]
+    if (v) completedViewIds.add(v)
+  }
+
+  return (
+    <AppShell
+      navItems={NAV}
+      activeView={activeView}
+      onViewChange={handleViewChange}
+      completedViewIds={completedViewIds}
+    >
+      <div className="mb-8">
+        <MissionConfigBar />
+      </div>
+
+      {visited.has("design") && (
+        <div hidden={activeView !== "design"}>
+          <div className="mx-auto max-w-5xl space-y-6">
+            <DesignStudio />
+          </div>
+          <NextButton view="design" onGo={handleViewChange} />
+        </div>
+      )}
+
+      {visited.has("twin") && (
+        <div hidden={activeView !== "twin"}>
+          <div className="mx-auto max-w-5xl space-y-6">
+            <MissionControl />
+            <Globe />
+            <DigitalTwin />
+            <Telemetry />
+          </div>
+          <NextButton view="twin" onGo={handleViewChange} />
+        </div>
+      )}
+
+      {visited.has("cleard") && (
+        <div hidden={activeView !== "cleard"}>
+          <div className="mx-auto max-w-5xl space-y-6">
+            <ClearDDashboard />
+            <ArchitecturesView />
+            <SensitivityPanel />
+            <FanetGraph />
+          </div>
+          <NextButton view="cleard" onGo={handleViewChange} />
+        </div>
+      )}
+
+      {visited.has("tradespace") && (
+        <div hidden={activeView !== "tradespace"}>
+          <div className="mx-auto max-w-5xl space-y-6">
+            <TradeSpace />
+          </div>
+          <NextButton view="tradespace" onGo={handleViewChange} />
+        </div>
+      )}
+
+      {visited.has("simulation") && (
+        <div hidden={activeView !== "simulation"}>
+          <Placeholder
+            title="5 · Simulation"
+            description="Runs the selected architecture against the mission over a full orbit: power delivered over time, thermal margins, eclipse intervals, cumulative energy. Backend endpoint not yet wired."
+          />
+          <NextButton view="simulation" onGo={handleViewChange} />
+        </div>
+      )}
+
+      {visited.has("report") && (
+        <div hidden={activeView !== "report"}>
+          <Placeholder
+            title="6 · Report"
+            description="The DARPA-grade export: PDF, structured JSON with per-number provenance, chart exports, manifest, reproduce.sh. Backend generator not yet built."
+          />
+        </div>
+      )}
+
+      {visited.has("xai") && (
+        <div hidden={activeView !== "xai"}>
+          <div className="mx-auto max-w-5xl space-y-6">
+            <XAITrace />
+          </div>
+        </div>
+      )}
+
+      {visited.has("about") && (
+        <div hidden={activeView !== "about"}><AboutView /></div>
+      )}
+
+      {visited.has("legal") && (
+        <div hidden={activeView !== "legal"}><LegalView /></div>
+      )}
+
+      {visited.has("status") && (
+        <div hidden={activeView !== "status"}><StatusView /></div>
+      )}
+    </AppShell>
+  )
+}
+
 function App() {
   const [activeView, setActiveView] = useState("design")
   const [visited, setVisited] = useState<Set<string>>(() => new Set(["design"]))
@@ -152,96 +271,11 @@ function App() {
   return (
     <TourProvider onRequestView={handleViewChange}>
       <MissionProvider>
-        <AppShell
-          navItems={NAV}
+        <AppInner
           activeView={activeView}
-          onViewChange={handleViewChange}
-        >
-          <div className="mb-8">
-            <MissionConfigBar />
-          </div>
-
-          {visited.has("design") && (
-            <div hidden={activeView !== "design"}>
-              <div className="mx-auto max-w-5xl space-y-6">
-                <DesignStudio />
-              </div>
-              <NextButton view="design" onGo={handleViewChange} />
-            </div>
-          )}
-
-          {visited.has("twin") && (
-            <div hidden={activeView !== "twin"}>
-              <div className="mx-auto max-w-5xl space-y-6">
-                <MissionControl />
-                <Globe />
-                <DigitalTwin />
-                <Telemetry />
-              </div>
-              <NextButton view="twin" onGo={handleViewChange} />
-            </div>
-          )}
-
-          {visited.has("cleard") && (
-            <div hidden={activeView !== "cleard"}>
-              <div className="mx-auto max-w-5xl space-y-6">
-                <ClearDDashboard />
-                <ArchitecturesView />
-                <SensitivityPanel />
-                <FanetGraph />
-              </div>
-              <NextButton view="cleard" onGo={handleViewChange} />
-            </div>
-          )}
-
-          {visited.has("tradespace") && (
-            <div hidden={activeView !== "tradespace"}>
-              <div className="mx-auto max-w-5xl space-y-6">
-                <TradeSpace />
-              </div>
-              <NextButton view="tradespace" onGo={handleViewChange} />
-            </div>
-          )}
-
-          {visited.has("simulation") && (
-            <div hidden={activeView !== "simulation"}>
-              <Placeholder
-                title="5 · Simulation"
-                description="Runs the selected architecture against the mission over a full orbit: power delivered over time, thermal margins, eclipse intervals, cumulative energy. Backend endpoint not yet wired."
-              />
-              <NextButton view="simulation" onGo={handleViewChange} />
-            </div>
-          )}
-
-          {visited.has("report") && (
-            <div hidden={activeView !== "report"}>
-              <Placeholder
-                title="6 · Report"
-                description="The DARPA-grade export: PDF, structured JSON with per-number provenance, chart exports, manifest, reproduce.sh. Backend generator not yet built."
-              />
-            </div>
-          )}
-
-          {visited.has("xai") && (
-            <div hidden={activeView !== "xai"}>
-              <div className="mx-auto max-w-5xl space-y-6">
-                <XAITrace />
-              </div>
-            </div>
-          )}
-
-          {visited.has("about") && (
-            <div hidden={activeView !== "about"}><AboutView /></div>
-          )}
-
-          {visited.has("legal") && (
-            <div hidden={activeView !== "legal"}><LegalView /></div>
-          )}
-
-          {visited.has("status") && (
-            <div hidden={activeView !== "status"}><StatusView /></div>
-          )}
-        </AppShell>
+          visited={visited}
+          handleViewChange={handleViewChange}
+        />
       </MissionProvider>
     </TourProvider>
   )

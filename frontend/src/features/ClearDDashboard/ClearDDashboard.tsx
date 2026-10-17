@@ -12,6 +12,7 @@
 
 import { useRef, useState } from "react"
 import { TaggedOutput } from "../../components/EpistemicBadge/EpistemicBadge"
+import { PrerequisiteBanner } from "../../components/PrerequisiteBanner/PrerequisiteBanner"
 import { useMission, type MissionConfig } from "../MissionControl/missionContext"
 import { exportArtifact } from "../../lib/download"
 import {
@@ -52,7 +53,7 @@ type PanelState =
   | { status: "error"; message: string; status_code?: number }
 
 export function ClearDDashboard() {
-  const { config, setLastDiscoveryRun } = useMission()
+  const { config, setLastDiscoveryRun, markStepComplete, completedSteps } = useMission()
   const [state, setState] = useState<PanelState>({ status: "idle" })
   const abortRef = useRef<AbortController | null>(null)
 
@@ -68,6 +69,7 @@ export function ClearDDashboard() {
       setState({ status: "ok", result, elapsedMs: Date.now() - started })
       // Publish to the shared slot so other panels can read it.
       setLastDiscoveryRun(result)
+      markStepComplete(3)
     } catch (err) {
       if (controller.signal.aborted) return
       if (err instanceof ClearDApiError) {
@@ -100,6 +102,13 @@ export function ClearDDashboard() {
         are marked conflict-prone, and the next generation&apos;s mutation
         is biased away from them.
       </p>
+
+      {!completedSteps.has(1) && (
+        <PrerequisiteBanner
+          missing="Step 1 (Design)"
+          fallback="Design Studio is not yet connected to the mission. Discovery runs against the default hardware, not a design you created."
+        />
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <button

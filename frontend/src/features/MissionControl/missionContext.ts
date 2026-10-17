@@ -111,6 +111,8 @@ export type SharedDiscoveryRun = {
   readonly at: number
 }
 
+export type CompletedSteps = ReadonlySet<number>
+
 export type MissionContextValue = {
   config: MissionConfig
   state: MissionLoad
@@ -122,6 +124,11 @@ export type MissionContextValue = {
   lastDiscoveryRun: SharedDiscoveryRun | null
   setLastDiscoveryRun: (data: unknown) => void
   clearLastDiscoveryRun: () => void
+  /** Set of workflow step numbers (1-6) that have been completed.
+   *  Step 1 = Design, 2 = Mission, 3 = Discovery, 4 = Selection,
+   *  5 = Simulation, 6 = Report. Steps 5 and 6 are placeholders. */
+  completedSteps: CompletedSteps
+  markStepComplete: (step: number) => void
 }
 
 export const MissionCtx = createContext<MissionContextValue | null>(null)

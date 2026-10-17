@@ -38,6 +38,9 @@ export type AppShellProps = {
   children: ReactNode
   sidebarExtra?: ReactNode
   inspector?: ReactNode
+  /** Set of view ids whose workflow step has been completed. When set,
+   *  the sidebar shows a green tick next to those entries. */
+  completedViewIds?: ReadonlySet<string>
 }
 
 function InvariantBadge({ label, title }: { label: string; title: string }) {
@@ -99,6 +102,7 @@ export function AppShell({
   children,
   sidebarExtra,
   inspector,
+  completedViewIds,
 }: AppShellProps) {
   // applyTheme is called once at boot by main.tsx. Re-applying here on
   // every render is unnecessary; the ThemeToggle handles its own
@@ -142,7 +146,18 @@ export function AppShell({
                 aria-current={active ? "page" : undefined}
                 className="apple-sidebar-item"
               >
-                <span>{item.label}</span>
+                <span className="flex items-center gap-1.5">
+                  {completedViewIds?.has(item.id) && (
+                    <span
+                      aria-hidden="true"
+                      className="font-mono text-[10px] text-[var(--status-green)]"
+                      data-testid={`step-complete-${item.id}`}
+                    >
+                      ✓
+                    </span>
+                  )}
+                  <span>{item.label}</span>
+                </span>
                 {item.tag ? (
                   <span className="font-mono text-[10px] text-[var(--ink-tertiary)]">
                     {item.tag}
