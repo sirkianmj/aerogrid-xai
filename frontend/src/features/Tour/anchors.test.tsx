@@ -57,7 +57,7 @@ beforeEach(() => {
 describe("tour anchors", () => {
   it("every step anchor exists across all views", async () => {
     const user = userEvent.setup()
-    render(<App />)
+    render(<App initialCompletedSteps={[1, 2, 3, 4, 5]} />)
     const found = new Set<string>()
 
     const collect = () => {
@@ -97,7 +97,7 @@ describe("tour anchors", () => {
       "aerogrid.tour",
       JSON.stringify({ firstRunDone: true, neverShow: true }),
     )
-    render(<App />)
+    render(<App initialCompletedSteps={[1, 2, 3, 4, 5]} />)
     expect(
       document.querySelector('[data-testid="tour-first-run-offer"]'),
     ).toBeNull()

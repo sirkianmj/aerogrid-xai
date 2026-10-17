@@ -160,29 +160,29 @@ afterEach(() => {
 
 describe("App shell", () => {
   it("renders the application title in the title bar", () => {
-    render(<App />)
+    render(<App initialCompletedSteps={[1, 2, 3, 4, 5]} />)
     expect(screen.getByText("AeroGrid-XAI")).toBeInTheDocument()
   })
 
   it("renders the ten navigation items", () => {
-    render(<App />)
+    render(<App initialCompletedSteps={[1, 2, 3, 4, 5]} />)
     const nav = screen.getByRole("navigation", { name: /workspace views/i })
     expect(within(nav).getAllByRole("button").length).toBe(10)
   })
 
   it("renders the Tier-2 firewall invariant badge", () => {
-    render(<App />)
+    render(<App initialCompletedSteps={[1, 2, 3, 4, 5]} />)
     expect(screen.getByText(/tier-2 firewall verified/i)).toBeInTheDocument()
   })
 
   it("defaults to the Design Studio view (step 1 of the workflow)", () => {
-    render(<App />)
+    render(<App initialCompletedSteps={[1, 2, 3, 4, 5]} />)
     expect(screen.getByTestId("panel-design")).toBeInTheDocument()
   })
 
   it("switches to the Discovery view and mounts the correct panels", async () => {
     const user = userEvent.setup()
-    render(<App />)
+    render(<App initialCompletedSteps={[1, 2, 3, 4, 5]} />)
     const sidebar = screen.getByRole("complementary", { name: /primary/i })
     await user.click(
       within(sidebar).getByRole("button", { name: /3 · Discovery/i }),
@@ -195,7 +195,7 @@ describe("App shell", () => {
 
   it("switches to the XAI view and mounts the trace panel", async () => {
     const user = userEvent.setup()
-    render(<App />)
+    render(<App initialCompletedSteps={[1, 2, 3, 4, 5]} />)
     const sidebar = screen.getByRole("complementary", { name: /primary/i })
     await user.click(
       within(sidebar).getByRole("button", { name: /trust & xai/i }),
@@ -207,7 +207,7 @@ describe("App shell", () => {
 
   it("switches to the Trade Space view", async () => {
     const user = userEvent.setup()
-    render(<App />)
+    render(<App initialCompletedSteps={[1, 2, 3, 4, 5]} />)
     const sidebar = screen.getByRole("complementary", { name: /primary/i })
     await user.click(within(sidebar).getByRole("button", { name: /4 · Selection/i }))
     await waitFor(() =>
@@ -220,7 +220,7 @@ describe("App shell", () => {
     // desktop binary that does not run PostgreSQL or Redis. The
     // AdminPanel component and its tests remain in the tree; only
     // the nav entry and the conditional render were removed.
-    render(<App />)
+    render(<App initialCompletedSteps={[1, 2, 3, 4, 5]} />)
     const sidebar = screen.getByRole("complementary", { name: /primary/i })
     expect(
       within(sidebar).queryByRole("button", { name: /saas & admin/i }),
@@ -229,7 +229,7 @@ describe("App shell", () => {
 
   it("switches to the About view and shows all seven Section 21 badges", async () => {
     const user = userEvent.setup()
-    const { container } = render(<App />)
+    const { container } = render(<App initialCompletedSteps={[1, 2, 3, 4, 5]} />)
     const sidebar = screen.getByRole("complementary", { name: /primary/i })
     await user.click(
       within(sidebar).getByRole("button", { name: /about/i }),
@@ -247,13 +247,13 @@ describe("App shell", () => {
     // The session bar (login / signup / paste-a-JWT) was removed when
     // the app was repackaged as a desktop binary that does not run
     // remain in the tree; only the mount was removed.
-    render(<App />)
+    render(<App initialCompletedSteps={[1, 2, 3, 4, 5]} />)
     expect(screen.queryByText(/^session$/i)).not.toBeInTheDocument()
   })
 
   it("renders the Legal view when the Terms & Privacy nav item is clicked", async () => {
     const user = userEvent.setup()
-    render(<App />)
+    render(<App initialCompletedSteps={[1, 2, 3, 4, 5]} />)
     const nav = screen.getByRole("navigation", { name: /workspace views/i })
     const legal = within(nav).getByRole("button", { name: /legal/i })
     await user.click(legal)

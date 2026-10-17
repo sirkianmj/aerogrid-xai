@@ -115,7 +115,16 @@ export function ClearDDashboard() {
           data-tour-id="cleard-run"
           type="button"
           onClick={run}
-          disabled={state.status === "loading"}
+          disabled={
+            state.status === "loading" ||
+            !completedSteps.has(1) ||
+            !completedSteps.has(2)
+          }
+          title={
+            !completedSteps.has(1) || !completedSteps.has(2)
+              ? "Complete steps 1 (Design) and 2 (Mission) first."
+              : undefined
+          }
           className="rounded border px-3 py-1.5 text-sm disabled:opacity-50"
         >
           {state.status === "loading" ? "Running…" : "Run CLEAR-D"}

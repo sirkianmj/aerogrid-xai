@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react"
 import { AppShell, type AppShellNavItem } from "./components/AppShell/AppShell"
+import { StepGate } from "./components/StepGate/StepGate"
 import { EpistemicBadge } from "./components/EpistemicBadge/EpistemicBadge"
 import { ALL_TAGS, EPISTEMIC_TAGS } from "./components/EpistemicBadge/epistemic"
 import { ArchitecturesView } from "./features/Architectures/ArchitecturesView"
@@ -50,19 +51,32 @@ function nextStepFor(view: string): string | null {
   return WORKFLOW_STEPS[step]?.id ?? null
 }
 
-function NextButton({ view, onGo }: { view: string; onGo: (id: string) => void }) {
+function NextButton({
+  view,
+  onGo,
+  completes,
+}: {
+  view: string
+  onGo: (id: string) => void
+  completes: number
+}) {
+  const { completedSteps } = useMission()
   const next = nextStepFor(view)
   if (!next) return null
   const target = WORKFLOW_STEPS.find((s) => s.id === next)
+  const isDone = completedSteps.has(completes)
   return (
     <div className="mx-auto mt-10 max-w-5xl border-t border-[var(--border-hairline)] pt-6">
       <button
         type="button"
         onClick={() => onGo(next)}
-        className="apple-btn apple-btn-primary"
+        disabled={!isDone}
+        className="apple-btn apple-btn-primary disabled:cursor-not-allowed disabled:opacity-40"
         data-testid={`next-step-${next}`}
+        title={isDone ? undefined : "Complete this step first"}
       >
-        Next: {target?.label.replace(/^\d+ · /, "")} →
+        {isDone ? "Next: " : "Complete this step to continue: "}
+        {target?.label.replace(/^\d+ · /, "")} →
       </button>
     </div>
   )
@@ -175,59 +189,69 @@ function AppInner({ activeView, visited, handleViewChange }: AppInnerProps) {
           <div className="mx-auto max-w-5xl space-y-6">
             <DesignStudio />
           </div>
-          <NextButton view="design" onGo={handleViewChange} />
+          <NextButton view="design" onGo={handleViewChange} completes={1} />
         </div>
       )}
 
       {visited.has("twin") && (
         <div hidden={activeView !== "twin"}>
-          <div className="mx-auto max-w-5xl space-y-6">
-            <MissionControl />
-            <Globe />
-            <DigitalTwin />
-            <Telemetry />
-          </div>
-          <NextButton view="twin" onGo={handleViewChange} />
+          <StepGate requires={1}>
+            <div className="mx-auto max-w-5xl space-y-6">
+              <MissionControl />
+              <Globe />
+              <DigitalTwin />
+              <Telemetry />
+            </div>
+            <NextButton view="twin" onGo={handleViewChange} completes={2} />
+          </StepGate>
         </div>
       )}
 
       {visited.has("cleard") && (
         <div hidden={activeView !== "cleard"}>
-          <div className="mx-auto max-w-5xl space-y-6">
-            <ClearDDashboard />
-            <ArchitecturesView />
-            <SensitivityPanel />
-            <FanetGraph />
-          </div>
-          <NextButton view="cleard" onGo={handleViewChange} />
+          <StepGate requires={2}>
+            <div className="mx-auto max-w-5xl space-y-6">
+              <ClearDDashboard />
+              <ArchitecturesView />
+              <SensitivityPanel />
+              <FanetGraph />
+            </div>
+            <NextButton view="cleard" onGo={handleViewChange} completes={3} />
+          </StepGate>
         </div>
       )}
 
       {visited.has("tradespace") && (
         <div hidden={activeView !== "tradespace"}>
-          <div className="mx-auto max-w-5xl space-y-6">
-            <TradeSpace />
-          </div>
-          <NextButton view="tradespace" onGo={handleViewChange} />
+          <StepGate requires={3}>
+            <div className="mx-auto max-w-5xl space-y-6">
+              <TradeSpace />
+            </div>
+            <NextButton view="tradespace" onGo={handleViewChange} completes={4} />
+          </StepGate>
         </div>
       )}
 
       {visited.has("simulation") && (
         <div hidden={activeView !== "simulation"}>
-          <Placeholder
-            title="5 · Simulation"
-            description="Runs the selected architecture against the mission over a full orbit: power delivered over time, thermal margins, eclipse intervals, cumulative energy. Backend endpoint not yet wired."
-          />
-          <NextButton view="simulation" onGo={handleViewChange} />
+          <StepGate requires={4}>
+            <Placeholder
+              title="5 · Simulation"
+              description="Runs the selected architecture against the mission over a full orbit: power delivered over time, thermal margins, eclipse intervals, cumulative energy. Backend endpoint not yet wired."
+            />
+            <NextButton view="simulation" onGo={handleViewChange} completes={5} />
+          </StepGate>
         </div>
       )}
 
       {visited.has("report") && (
         <div hidden={activeView !== "report"}>
-          <Placeholder
-            title="6 · Report"
-            description="The DARPA-grade export: PDF, structured JSON with per-number provenance, chart exports, manifest, reproduce.sh. Backend generator not yet built."
-          />
+          <StepGate requires={5}>
+            <Placeholder
+              title="6 · Report"
+              description="The DARPA-grade export: PDF, structured JSON with per-number provenance, chart exports, manifest, reproduce.sh. Backend generator not yet built."
+            />
+          </StepGate>
         </div>
       )}
 
@@ -254,7 +278,11 @@ function AppInner({ activeView, visited, handleViewChange }: AppInnerProps) {
   )
 }
 
-function App() {
+function App({
+  initialCompletedSteps,
+}: {
+  initialCompletedSteps?: readonly number[]
+} = {}) {
   const [activeView, setActiveView] = useState("design")
   const [visited, setVisited] = useState<Set<string>>(() => new Set(["design"]))
 
@@ -270,7 +298,7 @@ function App() {
 
   return (
     <TourProvider onRequestView={handleViewChange}>
-      <MissionProvider>
+      <MissionProvider initialCompletedSteps={initialCompletedSteps}>
         <AppInner
           activeView={activeView}
           visited={visited}
