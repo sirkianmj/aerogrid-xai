@@ -43,6 +43,7 @@ function fmtPower(w: number): string {
 }
 
 export function DesignStudio() {
+  const { config, markStepComplete } = useMission()
   const [presets, setPresets] = useState<PresetsResponse | null>(null)
   const [presetsError, setPresetsError] = useState<string | null>(null)
 
@@ -56,6 +57,17 @@ export function DesignStudio() {
       })
     return () => controller.abort()
   }, [])
+
+  // Step 1 is complete only when BOTH a satellite and a UAV fleet have
+  // been adopted into the mission config. One adoption is not a design.
+  useEffect(() => {
+    const satelliteAdopted = config.satellite_elements !== null
+    const fleetAdopted =
+      config.uav_hardware_list != null && config.uav_hardware_list.length > 0
+    if (satelliteAdopted && fleetAdopted) {
+      markStepComplete(1)
+    }
+  }, [config.satellite_elements, config.uav_hardware_list, markStepComplete])
 
   return (
     <section
@@ -100,7 +112,7 @@ type SatFields = {
 }
 
 function SatelliteDesigner({ presets }: { presets: SatellitePreset[] }) {
-  const { config, applyConfig, markStepComplete } = useMission()
+  const { config, applyConfig } = useMission()
   const [fields, setFields] = useState<SatFields>(() => ({
     a_km: 6771.0,
     e: 0,
@@ -160,7 +172,6 @@ function SatelliteDesigner({ presets }: { presets: SatellitePreset[] }) {
   }
 
   function useThisSatellite() {
-    markStepComplete(1)
     applyConfig({
       satellite_elements: {
         epoch_utc: fields.epoch_utc,
@@ -253,9 +264,10 @@ function SatelliteDesigner({ presets }: { presets: SatellitePreset[] }) {
                   step="any"
                   aria-label={label}
                   value={fields[key]}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFields((f) => ({ ...f, [key]: Number(e.target.value) || 0 }))
-                  }
+                    setReport(null)
+                  }}
                   className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-xs"
                 />
               </label>
@@ -274,7 +286,14 @@ function SatelliteDesigner({ presets }: { presets: SatellitePreset[] }) {
             <button
               type="button"
               onClick={useThisSatellite}
-              className="rounded border border-[var(--border-hairline)] px-3 py-1 text-xs uppercase tracking-wider hover:bg-[var(--bg-subtle)]"
+              disabled={report === null}
+              title={
+                report === null
+                  ? "Evaluate the design first. A design cannot be adopted before it has been run through the mission physics."
+                  : undefined
+              }
+              className="rounded border border-[var(--border-hairline)] px-3 py-1 text-xs uppercase tracking-wider hover:bg-[var(--bg-subtle)] disabled:cursor-not-allowed disabled:opacity-40"
+              data-testid="use-satellite"
             >
               Use this satellite
             </button>
@@ -331,13 +350,20 @@ function defaultDrone(): DroneDraft {
 }
 
 function DroneDesigner({ presets }: { presets: DronePreset[] }) {
-  const { config, applyConfig, markStepComplete } = useMission()
+  const { config, applyConfig } = useMission()
   const [rows, setRows] = useState<DroneDraft[]>(() => [defaultDrone()])
   const [reports, setReports] = useState<Record<string, FeasibilityReport>>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   function updateRow(id: string, patch: Partial<DroneDraft>) {
     setRows((rs) => rs.map((r) => (r._id === id ? { ...r, ...patch } : r)))
+    // Editing invalidates the evaluation for that row.
+    setReports((reps) => {
+      if (!(id in reps)) return reps
+      const copy = { ...reps }
+      delete copy[id]
+      return copy
+    })
   }
 
   function addRow() {
@@ -389,8 +415,22 @@ function DroneDesigner({ presets }: { presets: DronePreset[] }) {
     }
   }
 
+  const [evaluatingAll, setEvaluatingAll] = useState(false)
+  async function evaluateAllFleet() {
+    setEvaluatingAll(true)
+    try {
+      // Evaluate every row sequentially. The backend call is small
+      // enough that a Promise.all would hammer the mission physics
+      // endpoint; sequential is slower but safer.
+      for (const row of rows) {
+        await evaluateRow(row)
+      }
+    } finally {
+      setEvaluatingAll(false)
+    }
+  }
+
   function useThisFleet() {
-    markStepComplete(1)
     applyConfig({
       uav_hardware_list: rows.map((r) => ({
         receiver_aperture_m2: r.receiver_aperture_m2,
@@ -613,8 +653,23 @@ function DroneDesigner({ presets }: { presets: DronePreset[] }) {
         </button>
         <button
           type="button"
+          onClick={evaluateAllFleet}
+          disabled={evaluatingAll || rows.length === 0}
+          className="rounded border border-[var(--border-hairline)] px-3 py-1 text-xs uppercase tracking-wider hover:bg-[var(--bg-subtle)] disabled:cursor-not-allowed disabled:opacity-40"
+          data-testid="evaluate-fleet"
+        >
+          {evaluatingAll ? "Evaluating..." : "Evaluate fleet"}
+        </button>
+        <button
+          type="button"
           onClick={useThisFleet}
-          className="rounded border border-[var(--border-hairline)] px-3 py-1 text-xs uppercase tracking-wider hover:bg-[var(--bg-subtle)]"
+          disabled={rows.length === 0 || rows.some((r) => !(r._id in reports))}
+          title={
+            rows.length === 0 || rows.some((r) => !(r._id in reports))
+              ? "Every drone row must be evaluated before the fleet can be adopted."
+              : undefined
+          }
+          className="rounded border border-[var(--border-hairline)] px-3 py-1 text-xs uppercase tracking-wider hover:bg-[var(--bg-subtle)] disabled:cursor-not-allowed disabled:opacity-40"
           data-testid="use-fleet"
         >
           Use this fleet
