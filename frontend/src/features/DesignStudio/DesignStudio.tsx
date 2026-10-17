@@ -32,7 +32,7 @@ import {
   type SatellitePreset,
 } from "./designApi"
 import { OrbitDiagram } from "./svg/OrbitDiagram"
-import { SatelliteProfileSVG } from "./svg/SatelliteProfileSVG"
+import { SatelliteProfile } from "./SatelliteProfile"
 import { DroneTopView } from "./svg/DroneTopView"
 
 function fmtPower(w: number): string {
@@ -197,10 +197,10 @@ function SatelliteDesigner({ presets }: { presets: SatellitePreset[] }) {
           from P_tx. The orbit diagram and the numeric inputs sit
           below in a two-column sub-grid. */}
       <div className="mb-4">
-        <SatelliteProfileSVG
+        <SatelliteProfile
           transmitter_power_w={fields.transmitter_power_w}
           transmitter_aperture_m={fields.transmitter_aperture_m}
-          onChange={(patch) => setFields((f) => ({ ...f, ...patch }))}
+          onChange={(patch: Partial<typeof fields>) => setFields((f) => ({ ...f, ...patch }))}
         />
       </div>
 
@@ -209,7 +209,7 @@ function SatelliteDesigner({ presets }: { presets: SatellitePreset[] }) {
           <OrbitDiagram
             a_km={fields.a_km}
             e={fields.e}
-            onChange={(patch) => setFields((f) => ({ ...f, ...patch }))}
+            onChange={(patch: Partial<typeof fields>) => setFields((f) => ({ ...f, ...patch }))}
           />
           <p className="text-[0.65rem] text-[var(--ink-tertiary)]">
             Drag the periapsis or apoapsis marker to change the orbit;

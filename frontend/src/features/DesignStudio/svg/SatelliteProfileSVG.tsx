@@ -814,6 +814,12 @@ export function SatelliteProfileSVG({
   }
 
   // --- Main render ----------------------------------------------------
+  // Unused vars from the removed text box
+  void panelRealAreaM2
+  void totalArraySpanM
+  void feedPx
+  void feedPy
+
   return (
     <svg
       ref={svgRef}
@@ -861,114 +867,15 @@ export function SatelliteProfileSVG({
           `bus ${BUS_W_M.toFixed(2)} m`,
         )}
 
-        {/* Aperture indicator below the dish */}
-        <text
-          x={feedPx + 30}
-          y={feedPy + 10}
-          textAnchor="start"
-          fontFamily="ui-monospace, monospace"
-          fontSize={8}
-          fill="var(--ink-tertiary)"
-        >
-          drag to widen aperture
-        </text>
 
         {/* Callouts */}
-        {/* Design chain info box. Every row is a real number from the
-            solar array design chain, not a displayed constant. */}
-        <g>
-          <rect
-            x={60}
-            y={520}
-            width={520}
-            height={210}
-            fill="var(--bg-surface)"
-            stroke="var(--ink-secondary)"
-            strokeWidth={SW_THIN}
-          />
-          <text
-            x={72}
-            y={540}
-            fontFamily="ui-monospace, monospace"
-            fontSize={10}
-            fontWeight={600}
-            fill="var(--ink-primary)"
-          >
-            SOLAR ARRAY DESIGN CHAIN
-          </text>
-          <line
-            x1={60}
-            y1={550}
-            x2={580}
-            y2={550}
-            stroke="var(--ink-tertiary)"
-            strokeWidth={SW_HAIR}
-          />
-          {(() => {
-            const rowY0 = 570
-            const rowStep = 15
-            const rows: Array<[string, string]> = [
-              ["I_AM0", `${I_AM0_W_PER_M2.toFixed(0)} W/m²`],
-              ["η_cell · packing · PSE", `${ETA_CELL.toFixed(2)} · ${PACKING_FACTOR.toFixed(2)} · ${PSE_EFFICIENCY.toFixed(2)}`],
-              ["effective", `${EFFECTIVE_SPECIFIC_POWER_W_PER_M2.toFixed(1)} W/m²`],
-              ["array area", `${totalArrayAreaM2.toFixed(1)} m² (2 wings)`],
-              ["panel", `${panelLenMReal.toFixed(2)} × ${PANEL_CHORD_M.toFixed(2)} m · ${panelRealAreaM2.toFixed(2)} m²`],
-              ["cells/panel", `${cellsAcross} × ${cellsDown} = ${cellsPerPanel.toLocaleString()}`],
-              ["span · total cells", `${totalArraySpanM.toFixed(1)} m · ${cellsTotal.toLocaleString()}`],
-            ]
-            return rows.map(([k, v], i) => (
-              <g key={k}>
-                <text
-                  x={72}
-                  y={rowY0 + i * rowStep}
-                  fontFamily="ui-monospace, monospace"
-                  fontSize={9}
-                  fill="var(--ink-tertiary)"
-                >
-                  {k}
-                </text>
-                <text
-                  x={560}
-                  y={rowY0 + i * rowStep}
-                  textAnchor="end"
-                  fontFamily="ui-monospace, monospace"
-                  fontSize={9}
-                  fill="var(--ink-primary)"
-                >
-                  {v}
-                </text>
-              </g>
-            ))
-          })()}
-          <text
-            x={72}
-            y={655}
-            fontFamily="ui-monospace, monospace"
-            fontSize={8}
-            fill="var(--ink-tertiary)"
-          >
-            {`${CELL_SIZE_M * 1000}mm cell · ${CELL_GAP_M * 1000}mm gap · ${(CELL_PITCH_M * 1000).toFixed(0)}mm pitch`}
-          </text>
-        </g>
-
-        {/* Footnote safely below the box */}
-        <text
-          x={60}
-          y={680}
-          fontFamily="ui-monospace, monospace"
-          fontSize={8}
-          fill="var(--ink-tertiary)"
-        >
-          dimensions derived from physical parameters; see body for equations
-        </text>
-
         {callouts.map((c, i) => (
           <Callout
             key={i}
             x={c.ax}
             y={c.ay}
-            labelX={c.lx}
-            labelY={c.ly}
+            labelX={c.side === "left" ? c.ax - 15 : c.ax + 15}
+            labelY={c.ay - 5}
             label={c.label}
             sublabel={c.sublabel}
             arrow={c.side === "left" ? "left" : "right"}
