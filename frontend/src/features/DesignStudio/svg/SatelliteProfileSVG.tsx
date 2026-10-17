@@ -43,7 +43,6 @@
 import { useRef, type ReactElement } from "react"
 import { useDragSvg } from "./useDragSvg"
 import { ScaleBar } from "./ScaleBar"
-import { DrawingFrame } from "./DrawingFrame"
 import { Callout } from "./Callout"
 
 // --- Solar array design chain (documented) ----------------------------
@@ -99,7 +98,7 @@ const FRAME_W = 1000
 const FRAME_H = 700
 const ORIGIN_X = FRAME_W / 2
 const ORIGIN_Y = FRAME_H / 2 + 30
-const CONTENT_PAD_X = 180
+const CONTENT_PAD_X = 80
 const CONTENT_W = FRAME_W - 2 * CONTENT_PAD_X
 
 export type SatelliteProfileSVGProps = {
@@ -830,17 +829,7 @@ export function SatelliteProfileSVG({
       aria-label="Satellite side profile, engineering drawing"
       data-testid="satellite-profile"
     >
-      <DrawingFrame
-        x={0}
-        y={0}
-        width={FRAME_W}
-        height={FRAME_H}
-        title="SATELLITE — SIDE PROFILE"
-        drawingNumber="AG-DRW-SAT-001"
-        scaleLabel={`SCALE 1:${Math.round(1000 / scale)}`}
-        revision="A"
-        note="units = metres · parametric"
-      >
+      <g>
         {/* Drawing content, positioned in the frame's pixel space */}
         {renderSolarArray(-1)}
         {renderSolarArray(1)}
@@ -943,7 +932,7 @@ export function SatelliteProfileSVG({
             ⋮ dotted: internal bay outline
           </text>
         </g>
-      </DrawingFrame>
+      </g>
     </svg>
   )
 }
