@@ -411,8 +411,8 @@ export function SatelliteProfileSVG({
     const boxH = 6
     return (
       <g>
-        <line x1={lx1} y1={ly} x2={lx2} y2={ly} stroke="var(--ink-primary)" strokeWidth={SW_MED} />
-        <line x1={rx1} y1={ly} x2={rx2} y2={ly} stroke="var(--ink-primary)" strokeWidth={SW_MED} />
+        <line x1={lx1} y1={ly} x2={lx2} y2={ly} stroke="var(--ink-primary)" strokeWidth={SW_MED * 2.5} />
+        <line x1={rx1} y1={ly} x2={rx2} y2={ly} stroke="var(--ink-primary)" strokeWidth={SW_MED * 2.5} />
         {/* SADA markers */}
         <rect
           x={lx1 + 2}
@@ -645,13 +645,6 @@ export function SatelliteProfileSVG({
         <line x1={x1} y1={y} x2={x2} y2={y} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
         <line x1={x1} y1={y - tick} x2={x1} y2={y + tick} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
         <line x1={x2} y1={y - tick} x2={x2} y2={y + tick} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
-        <rect
-          x={(x1 + x2) / 2 - (label.length * 2.8)}
-          y={y - tick - 10}
-          width={label.length * 5.6}
-          height={10}
-          fill="var(--bg-canvas)"
-        />
         <text
           x={(x1 + x2) / 2}
           y={y - tick - 3}
@@ -659,6 +652,9 @@ export function SatelliteProfileSVG({
           fontFamily="ui-monospace, monospace"
           fontSize={fontSize}
           fill="var(--ink-tertiary)"
+          stroke="var(--bg-canvas)"
+          strokeWidth={4}
+          paintOrder="stroke"
         >
           {label}
         </text>
@@ -690,7 +686,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 120,
+      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
       label: "SOLAR ARRAY",
       sublabel: `${N_PANELS_PER_SIDE} panels / wing · ${totalArrayAreaM2.toFixed(1)} m² · ${cellsTotal.toLocaleString()} cells`,
       side: "left",
@@ -703,7 +699,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 200,
+      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
       label: "SADA",
       sublabel: "drive assembly",
       side: "left",
@@ -716,7 +712,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 280,
+      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
       label: "BUS",
       sublabel: `${BUS_W_M.toFixed(1)} × ${BUS_H_M.toFixed(1)} m`,
       side: "left",
@@ -729,7 +725,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 360,
+      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
       label: "RADIATOR",
       sublabel: "active thermal",
       side: "left",
@@ -742,7 +738,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 440,
+      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
       label: "FEED",
       sublabel:
         transmitter_aperture_m >= 0.01
@@ -758,7 +754,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 440,
+      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
       label: "TRANSMIT DISH",
       sublabel: `Ø ${dishDiamM.toFixed(2)} m · λ 1064 nm`,
       side: "right",
@@ -771,7 +767,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 360,
+      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
       label: "STAR TRACKER ×2",
       sublabel: "15° sun exclusion",
       side: "right",
@@ -784,7 +780,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 280,
+      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
       label: "THRUSTER ×2",
       sublabel: "monopropellant, 1 N",
       side: "right",
@@ -797,7 +793,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 200,
+      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
       label: "TT&C ANTENNA",
       sublabel: "S-band, 2 W",
       side: "right",
@@ -810,7 +806,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 120,
+      ly: Math.max(80, Math.min(FRAME_H - 80, ay)),
       label: "AVIONICS BAY",
       sublabel: "rad-hard, internally redundant",
       side: "right",
@@ -867,8 +863,8 @@ export function SatelliteProfileSVG({
 
         {/* Aperture indicator below the dish */}
         <text
-          x={feedPx + 20}
-          y={feedPy - 5}
+          x={feedPx + 30}
+          y={feedPy + 10}
           textAnchor="start"
           fontFamily="ui-monospace, monospace"
           fontSize={8}
