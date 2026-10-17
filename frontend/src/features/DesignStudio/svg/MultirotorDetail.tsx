@@ -443,8 +443,8 @@ export function MultirotorDetail({
 
         {/* Arm-end drag handle on the front-right motor */}
         <circle
-          cx={planT(armLen * 0.9, armLen * 0.9)[0]}
-          cy={planT(armLen * 0.9, armLen * 0.9)[1]}
+          cx={planT(motors[3].x, motors[3].y)[0]}
+          cy={planT(motors[3].x, motors[3].y)[1]}
           r={5}
           fill="var(--status-green)"
           stroke="var(--ink-primary)"
@@ -950,62 +950,58 @@ export function MultirotorDetail({
   }> = []
 
   {
-    const hubCrown = planT(hubR * 0.2, 0)
-    const armTip = planT(motors[0].x, motors[0].y)
-    const propEdge = planT(motors[0].x + propR, motors[0].y)
-    const antenna = planT(hubR * 0.9, -hubR * 1.5)
-    const gimbal = planT(gimbalR * 0.7, 0)
+    // Use the left-side motors for left callouts and right-side motors for right callouts
 
     callouts.push(
       {
-        ax: hubCrown[0],
-        ay: hubCrown[1],
-        lx: 160,
+        ax: planT(0, -hubR * 0.2)[0],
+        ay: planT(0, -hubR * 0.2)[1],
+        lx: 100,
         ly: 80,
         label: "RECEIVER APERTURE",
         sublabel: `A ${receiver_aperture_m2.toFixed(3)} m² · Ø ${(2 * apertureR).toFixed(3)} m`,
         side: "left",
       },
       {
-        ax: armTip[0],
-        ay: armTip[1],
-        lx: 160,
+        ax: planT(-armLen * 0.8, -armLen * 0.8)[0],
+        ay: planT(-armLen * 0.8, -armLen * 0.8)[1],
+        lx: 100,
         ly: 120,
         label: "MOTOR HOUSING",
         sublabel: `Ø ${motorDia.toFixed(3)} m · 12 fins`,
         side: "left",
       },
       {
-        ax: propEdge[0],
-        ay: propEdge[1],
-        lx: 160,
+        ax: planT(-armLen * 0.8, armLen * 0.8)[0],
+        ay: planT(-armLen * 0.8, armLen * 0.8)[1],
+        lx: 100,
         ly: 160,
         label: "PROPELLER",
         sublabel: `2-blade · r ${propR.toFixed(3)} m`,
         side: "left",
       },
       {
-        ax: hubCrown[0],
-        ay: hubCrown[1],
-        lx: 660,
+        ax: planT(0, -hubR * 0.2)[0],
+        ay: planT(0, -hubR * 0.2)[1],
+        lx: 720,
         ly: 80,
         label: "HUB",
         sublabel: `Ø ${hubDia.toFixed(3)} m`,
         side: "right",
       },
       {
-        ax: antenna[0],
-        ay: antenna[1],
-        lx: 660,
+        ax: planT(armLen * 0.8, -armLen * 0.8)[0],
+        ay: planT(armLen * 0.8, -armLen * 0.8)[1],
+        lx: 720,
         ly: 120,
         label: "ANTENNA ×2",
         sublabel: `whip · ${antennaLen.toFixed(3)} m`,
         side: "right",
       },
       {
-        ax: gimbal[0],
-        ay: gimbal[1],
-        lx: 660,
+        ax: planT(armLen * 0.8, armLen * 0.8)[0],
+        ay: planT(armLen * 0.8, armLen * 0.8)[1],
+        lx: 720,
         ly: 160,
         label: "GIMBAL CAMERA",
         sublabel: `Ø ${(gimbalR * 2).toFixed(3)} m`,
