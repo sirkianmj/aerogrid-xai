@@ -639,17 +639,28 @@ export function SatelliteProfileSVG({
     const [x1, y] = toPx(x1M, yM)
     const [x2] = toPx(x2M, yM)
     const tick = 4
+    const fontSize = 8
+    // Approximate text width: monospace font is ~0.6 * fontSize per char.
+    const textWidth = label.length * fontSize * 0.6
     return (
       <g>
         <line x1={x1} y1={y} x2={x2} y2={y} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
         <line x1={x1} y1={y - tick} x2={x1} y2={y + tick} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
         <line x1={x2} y1={y - tick} x2={x2} y2={y + tick} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
+        {/* Masking rect to hide the dimension line under the text */}
+        <rect
+          x={(x1 + x2) / 2 - textWidth / 2 - 4}
+          y={y - tick - 3 - fontSize + 2}
+          width={textWidth + 8}
+          height={fontSize + 2}
+          fill="var(--bg-canvas)"
+        />
         <text
           x={(x1 + x2) / 2}
           y={y - tick - 3}
           textAnchor="middle"
           fontFamily="ui-monospace, monospace"
-          fontSize={8}
+          fontSize={fontSize}
           fill="var(--ink-tertiary)"
         >
           {label}
@@ -843,7 +854,7 @@ export function SatelliteProfileSVG({
 
         {/* Bottom dimension: array span */}
         {renderDimH(
-          botY_M + 0.1,
+          botY_M + 0.5,
           -halfWidthM,
           halfWidthM,
           `array span ${(2 * halfWidthM).toFixed(2)} m`,
@@ -859,9 +870,9 @@ export function SatelliteProfileSVG({
 
         {/* Aperture indicator below the dish */}
         <text
-          x={feedPx}
-          y={feedPy + 20}
-          textAnchor="middle"
+          x={feedPx + 15}
+          y={feedPy + 5}
+          textAnchor="start"
           fontFamily="ui-monospace, monospace"
           fontSize={8}
           fill="var(--ink-tertiary)"
