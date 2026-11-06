@@ -24,6 +24,7 @@ from app.saas.admin_routes import router as saas_admin_router
 from app.saas.auth_routes import router as auth_router
 from app.saas.billing_routes import router as saas_billing_router
 from app.saas.routes import router as saas_router
+from app.simulation.api import router as simulation_router
 from app.status.api import router as status_router
 from app.telemetry.api import router as telemetry_router
 from app.tradespace.api import router as tradespace_router
@@ -63,6 +64,7 @@ app.include_router(physics_router)
 app.include_router(digital_twin_router)
 app.include_router(discovery_router)
 app.include_router(mission_router)
+app.include_router(simulation_router)
 app.include_router(telemetry_router)
 app.include_router(tradespace_router)
 app.include_router(saas_router)
