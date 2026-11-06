@@ -38,7 +38,6 @@
 import { useRef, type ReactElement } from "react"
 import { useDragSvg } from "./useDragSvg"
 import { ScaleBar } from "./ScaleBar"
-import { Callout } from "./Callout"
 
 // --- Drawing frame and view regions (pixels) --------------------------
 const FRAME_W = 820
@@ -136,7 +135,6 @@ export function MultirotorDetail({
   const SW_MED = 0.85
   const SW_THIN = 0.5
   const SW_HAIR = 0.3
-  const FS_CALLOUT = 9
   const FS_LABEL = 8
 
   // --- Drag handles ---------------------------------------------------
@@ -703,7 +701,7 @@ export function MultirotorDetail({
             Each shows as a bar from the hub centre to the motor. */}
         {[-1, 1].map((side) => {
           const tipX = side * armLen * Math.cos(Math.PI / 4)
-          const tipY = armLen * Math.sin(Math.PI / 4) // forward arm rises slightly in this projection
+          const tipY = hubR * 0.7 // motor mount height in front view
           return (
             <g key={side}>
               <line
@@ -739,11 +737,11 @@ export function MultirotorDetail({
                 )
               })}
               {/* Propeller disk face-on */}
-              <circle
-                cx={frontT(tipX, tipY)[0]}
-                cy={frontT(tipX, tipY)[1]}
-                r={propR * scale}
-                fill="none"
+              <line
+                x1={frontT(tipX - propR, tipY)[0]}
+                y1={frontT(tipX - propR, tipY)[1]}
+                x2={frontT(tipX + propR, tipY)[0]}
+                y2={frontT(tipX + propR, tipY)[1]}
                 stroke="var(--ink-tertiary)"
                 strokeWidth={SW_THIN}
                 strokeDasharray="3 2"
@@ -769,7 +767,7 @@ export function MultirotorDetail({
         {/* Rear arms hinted as faint lines behind the hub */}
         {[-1, 1].map((side) => {
           const tipX = side * armLen * Math.cos(Math.PI / 4)
-          const tipY = -armLen * Math.sin(Math.PI / 4)
+          const tipY = hubR * 0.7 + motorR * 0.2 // rear mount, offset for hidden-line clarity
           return (
             <g key={`rear${side}`} opacity={0.4}>
               <line
@@ -938,80 +936,9 @@ export function MultirotorDetail({
     )
   }
 
-  // --- Callouts --------------------------------------------------------
-  const callouts: Array<{
-    ax: number
-    ay: number
-    lx: number
-    ly: number
-    label: string
-    sublabel: string
-    side: "left" | "right"
-  }> = []
-
-  {
-    // Use the left-side motors for left callouts and right-side motors for right callouts
-
-    callouts.push(
-      {
-        ax: planT(0, 0)[0],
-        ay: planT(0, 0)[1],
-        lx: 100,
-        ly: 80,
-        label: "RECEIVER APERTURE",
-        sublabel: `A ${receiver_aperture_m2.toFixed(3)} m² · Ø ${(2 * apertureR).toFixed(3)} m`,
-        side: "left",
-      },
-      {
-        ax: planT(motors[2].x, motors[2].y)[0],
-        ay: planT(motors[2].x, motors[2].y)[1],
-        lx: 100,
-        ly: 120,
-        label: "MOTOR HOUSING",
-        sublabel: `Ø ${motorDia.toFixed(3)} m · 12 fins`,
-        side: "left",
-      },
-      {
-        ax: planT(motors[1].x, motors[1].y)[0],
-        ay: planT(motors[1].x, motors[1].y)[1],
-        lx: 100,
-        ly: 160,
-        label: "PROPELLER",
-        sublabel: `2-blade · r ${propR.toFixed(3)} m`,
-        side: "left",
-      },
-      {
-        ax: planT(motors[3].x, motors[3].y)[0],
-        ay: planT(motors[3].x, motors[3].y)[1],
-        lx: 720,
-        ly: 80,
-        label: "HUB",
-        sublabel: `Ø ${hubDia.toFixed(3)} m`,
-        side: "right",
-      },
-      {
-        ax: planT(motors[3].x, motors[3].y)[0],
-        ay: planT(motors[3].x, motors[3].y)[1],
-        lx: 720,
-        ly: 120,
-        label: "ANTENNA ×2",
-        sublabel: `whip · ${antennaLen.toFixed(3)} m`,
-        side: "right",
-      },
-      {
-        ax: planT(motors[0].x, motors[0].y)[0],
-        ay: planT(motors[0].x, motors[0].y)[1],
-        lx: 720,
-        ly: 160,
-        label: "GIMBAL CAMERA",
-        sublabel: `Ø ${(gimbalR * 2).toFixed(3)} m`,
-        side: "right",
-      },
-    )
-  }
-
   // --- Main render ----------------------------------------------------
   return (
+    <>
     <svg
       ref={svgRef}
       viewBox={`0 0 ${FRAME_W} ${FRAME_H}`}
@@ -1027,21 +954,6 @@ export function MultirotorDetail({
         {renderFront()}
         {false && renderMotorSection()}
 
-        {callouts.map((c, i) => (
-          <Callout
-            key={i}
-            x={c.ax}
-            y={c.ay}
-            labelX={c.lx}
-            labelY={c.ly}
-            label={c.label}
-            sublabel={c.sublabel}
-            arrow={c.side === "left" ? "left" : "right"}
-            fontSize={FS_CALLOUT}
-            strokeWidth={SW_THIN}
-          />
-        ))}
-
         <ScaleBar
           x={PROFILE.x + 4}
           y={PROFILE.y + PROFILE.h + 22}
@@ -1053,5 +965,25 @@ export function MultirotorDetail({
         
       </g>
     </svg>
+
+    <dl
+      className="mt-4 grid grid-cols-1 gap-x-6 gap-y-1.5 rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3 font-mono text-[10px] sm:grid-cols-2"
+      aria-label="Multirotor callouts"
+    >
+      {[
+        { term: "RECEIVER APERTURE", detail: `A ${receiver_aperture_m2.toFixed(3)} m² · Ø ${(2 * apertureR).toFixed(3)} m` },
+        { term: "MOTOR HOUSING", detail: `Ø ${motorDia.toFixed(3)} m · 12 fins` },
+        { term: "PROPELLER", detail: `2-blade · r ${propR.toFixed(3)} m` },
+        { term: "HUB", detail: `Ø ${hubDia.toFixed(3)} m` },
+        { term: "ANTENNA ×2", detail: `whip · ${antennaLen.toFixed(3)} m` },
+        { term: "GIMBAL CAMERA", detail: `Ø ${(gimbalR * 2).toFixed(3)} m` },
+      ].map(({ term, detail }) => (
+        <div key={term} className="flex items-baseline justify-between gap-4">
+          <dt className="uppercase tracking-wide text-[var(--ink-secondary)]">{term}</dt>
+          <dd className="text-right text-[var(--ink-tertiary)]">{detail}</dd>
+        </div>
+      ))}
+    </dl>
+    </>
   )
 }

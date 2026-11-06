@@ -41,7 +41,6 @@
 import { useRef, type ReactElement } from "react"
 import { useDragSvg } from "./useDragSvg"
 import { ScaleBar } from "./ScaleBar"
-import { Callout } from "./Callout"
 
 // --- Drawing frame and view regions (pixels) --------------------------
 const FRAME_W = 820
@@ -143,7 +142,6 @@ export function FixedWingDetail({
   const SW_MED = 0.85
   const SW_THIN = 0.5
   const SW_HAIR = 0.3
-  const FS_CALLOUT = 9
   const FS_LABEL = 8
 
   // --- Drag handles ---------------------------------------------------
@@ -1194,96 +1192,9 @@ export function FixedWingDetail({
     )
   }
 
-  // --- Callouts -------------------------------------------------------
-  const callouts: Array<{
-    ax: number
-    ay: number
-    lx: number
-    ly: number
-    label: string
-    sublabel: string
-    side: "left" | "right"
-  }> = []
-
-  {
-    const noseX = fusLen / 2
-    const tailX = -fusLen / 2
-    const planNose = planT(noseX - noseR * 0.5, 0)
-    const planTail = planT(tailX + fusLen * 0.14, 0)
-    const planWing = planT(-chordRoot / 2 + fusWidth * 0.5 - sweepOffset * 0.5, -halfSpan * 0.5)
-    const planAil = planT(chordRoot / 2 + fusWidth * 0.5 - sweepOffset * 0.7, -halfSpan * 0.72)
-    const planFlap = planT(chordRoot / 2 + fusWidth * 0.5 - sweepOffset * 0.3, -halfSpan * 0.3)
-    const planTurret = planT(noseX - fusWidth * 0.9, 0)
-
-    callouts.push(
-      {
-        ax: planWing[0],
-        ay: planWing[1],
-        lx: 100,
-        ly: 80,
-        label: "WING",
-        sublabel: `aspect ratio ${(span / chordRoot).toFixed(1)} · taper ${RATIO.taperRatio}`,
-        side: "left",
-      },
-      {
-        ax: planAil[0],
-        ay: planAil[1],
-        lx: 100,
-        ly: 120,
-        label: "AILERON",
-        sublabel: "outboard 55–90 % TE",
-        side: "left",
-      },
-      {
-        ax: planFlap[0],
-        ay: planFlap[1],
-        lx: 100,
-        ly: 160,
-        label: "FLAP",
-        sublabel: "inboard 10–50 % TE",
-        side: "left",
-      },
-      {
-        ax: planNose[0],
-        ay: planNose[1],
-        lx: 720,
-        ly: 80,
-        label: "PROPELLER",
-        sublabel: `3-blade · r ${propR.toFixed(3)} m`,
-        side: "right",
-      },
-      {
-        ax: planTurret[0],
-        ay: planTurret[1],
-        lx: 720,
-        ly: 120,
-        label: "SENSOR TURRET",
-        sublabel: `Ø ${(2 * turretR).toFixed(3)} m`,
-        side: "right",
-      },
-      {
-        ax: planTail[0],
-        ay: planTail[1],
-        lx: 720,
-        ly: 160,
-        label: "H-STAB + ELEVATOR",
-        sublabel: `span ${tailSpan.toFixed(2)} m`,
-        side: "right",
-      },
-      {
-        ax: planNose[0],
-        ay: planNose[1],
-        lx: 720,
-        ly: 200,
-        label: "FUSELAGE",
-        sublabel: `length ${fusLen.toFixed(2)} m · width ${fusWidth.toFixed(3)} m`,
-        side: "right",
-      },
-    )
-  }
-
   // --- Main render ----------------------------------------------------
   return (
+    <>
     <svg
       ref={svgRef}
       viewBox={`0 0 ${FRAME_W} ${FRAME_H}`}
@@ -1299,21 +1210,6 @@ export function FixedWingDetail({
         {renderFront()}
         {false && renderAirfoil()}
 
-        {callouts.map((c, i) => (
-          <Callout
-            key={i}
-            x={c.ax}
-            y={c.ay}
-            labelX={c.lx}
-            labelY={c.ly}
-            label={c.label}
-            sublabel={c.sublabel}
-            arrow={c.side === "left" ? "left" : "right"}
-            fontSize={FS_CALLOUT}
-            strokeWidth={SW_THIN}
-          />
-        ))}
-
         <ScaleBar
           x={PROFILE.x + 4}
           y={PROFILE.y + PROFILE.h + 20}
@@ -1326,5 +1222,26 @@ export function FixedWingDetail({
         
       </g>
     </svg>
+
+    <dl
+      className="mt-4 grid grid-cols-1 gap-x-6 gap-y-1.5 rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3 font-mono text-[10px] sm:grid-cols-2"
+      aria-label="Fixed-wing callouts"
+    >
+      {[
+        { term: "WING", detail: `aspect ratio ${(span / chordRoot).toFixed(1)} · taper ${RATIO.taperRatio}` },
+        { term: "AILERON", detail: "outboard 55–90 % TE" },
+        { term: "FLAP", detail: "inboard 10–50 % TE" },
+        { term: "PROPELLER", detail: `3-blade · r ${propR.toFixed(3)} m` },
+        { term: "SENSOR TURRET", detail: `Ø ${(2 * turretR).toFixed(3)} m` },
+        { term: "H-STAB + ELEVATOR", detail: `span ${tailSpan.toFixed(2)} m` },
+        { term: "FUSELAGE", detail: `length ${fusLen.toFixed(2)} m · width ${fusWidth.toFixed(3)} m` },
+      ].map(({ term, detail }) => (
+        <div key={term} className="flex items-baseline justify-between gap-4">
+          <dt className="uppercase tracking-wide text-[var(--ink-secondary)]">{term}</dt>
+          <dd className="text-right text-[var(--ink-tertiary)]">{detail}</dd>
+        </div>
+      ))}
+    </dl>
+    </>
   )
 }
