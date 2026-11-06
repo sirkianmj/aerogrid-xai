@@ -111,6 +111,22 @@ export type SharedDiscoveryRun = {
   readonly at: number
 }
 
+/** One workflow step's most recent output, held for the report generator.
+ *  Kept loose (unknown) so missionContext has no dependency on any
+ *  feature module, matching the SharedDiscoveryRun discipline. Consumers
+ *  cast `data` to the appropriate step's response type. */
+export type StepOutput = {
+  readonly step: number
+  readonly data: unknown
+  readonly at: number
+}
+
+/** All step outputs, keyed by workflow step number (1-6). `Record` rather
+ *  than `Map` because JSON.stringify serializes it directly (Map does
+ *  not), and the report generator serializes this to send to the
+ *  backend. */
+export type StepOutputs = Readonly<Record<number, StepOutput>>
+
 export type CompletedSteps = ReadonlySet<number>
 
 export type MissionContextValue = {
@@ -129,6 +145,20 @@ export type MissionContextValue = {
    *  5 = Simulation, 6 = Report. Steps 5 and 6 are placeholders. */
   completedSteps: CompletedSteps
   markStepComplete: (step: number) => void
+  /** Results from completed workflow steps, keyed by step number.
+   *  Used by the Step 6 report generator to assemble a report that
+   *  reflects what the user actually saw.
+   *
+   *  Wiring (as of this commit):
+   *  - Steps 3 and 5 write here on success.
+   *  - Steps 1 and 2 do NOT: their data is already durable in `config`
+   *    (uav_hardware_list, satellite_elements) and `state.data`.
+   *  - Step 4 is wired in a follow-up PR alongside the report generator,
+   *    once the TradeSpace success branch is anchored. */
+  stepOutputs: StepOutputs
+  setStepOutput: (step: number, data: unknown) => void
+  clearStepOutput: (step: number) => void
+  clearAllStepOutputs: () => void
 }
 
 export const MissionCtx = createContext<MissionContextValue | null>(null)

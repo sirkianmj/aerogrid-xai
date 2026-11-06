@@ -35,7 +35,7 @@ const PRESETS: { id: SimulationPreset; label: string; description: string }[] = 
 ]
 
 export function SimulationView() {
-  const { config, markStepComplete, completedSteps } = useMission()
+  const { config, markStepComplete, completedSteps, setStepOutput } = useMission()
   const [preset, setPreset] = useState<SimulationPreset>("1hour")
   const [state, setState] = useState<PanelState>({ status: "idle" })
   const abortRef = useRef<AbortController | null>(null)
@@ -71,6 +71,7 @@ export function SimulationView() {
       const elapsedMs = Math.round(performance.now() - t0)
       setState({ status: "ok", result, elapsedMs })
       if (!completedSteps.has(5)) markStepComplete(5)
+      setStepOutput(5, result)
     } catch (e) {
       if (ctrl.signal.aborted) return
       const message =

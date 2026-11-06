@@ -53,7 +53,7 @@ type PanelState =
   | { status: "error"; message: string; status_code?: number }
 
 export function ClearDDashboard() {
-  const { config, setLastDiscoveryRun, markStepComplete, completedSteps } = useMission()
+  const { config, setLastDiscoveryRun, markStepComplete, completedSteps, setStepOutput } = useMission()
   const [state, setState] = useState<PanelState>({ status: "idle" })
   const abortRef = useRef<AbortController | null>(null)
 
@@ -70,6 +70,7 @@ export function ClearDDashboard() {
       // Publish to the shared slot so other panels can read it.
       setLastDiscoveryRun(result)
       markStepComplete(3)
+      setStepOutput(3, result)
     } catch (err) {
       if (controller.signal.aborted) return
       if (err instanceof ClearDApiError) {

@@ -28,6 +28,7 @@ import {
   type MissionConfig,
   type MissionLoad,
   type SharedDiscoveryRun,
+  type StepOutput,
 } from "./missionContext"
 
 function describeError(err: unknown): { message: string; status_code?: number } {
@@ -141,6 +142,25 @@ export function MissionProvider({
       return next
     })
   }, [])
+
+  const [stepOutputs, setStepOutputs] = useState<Record<number, StepOutput>>({})
+  const setStepOutput = useCallback((step: number, data: unknown) => {
+    setStepOutputs((prev) => ({
+      ...prev,
+      [step]: { step, data, at: Date.now() },
+    }))
+  }, [])
+  const clearStepOutput = useCallback((step: number) => {
+    setStepOutputs((prev) => {
+      if (!(step in prev)) return prev
+      const next = { ...prev }
+      delete next[step]
+      return next
+    })
+  }, [])
+  const clearAllStepOutputs = useCallback(() => {
+    setStepOutputs({})
+  }, [])
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
@@ -192,6 +212,10 @@ export function MissionProvider({
         clearLastDiscoveryRun,
         completedSteps,
         markStepComplete,
+        stepOutputs,
+        setStepOutput,
+        clearStepOutput,
+        clearAllStepOutputs,
       }}
     >
       {children}
