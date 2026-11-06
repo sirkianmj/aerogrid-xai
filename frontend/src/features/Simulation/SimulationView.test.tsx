@@ -20,6 +20,7 @@ vi.mock("../MissionControl/missionContext", () => ({
       cloud_factor: 0,
     },
     markStepComplete: vi.fn(),
+    setStepOutput: vi.fn(),
     completedSteps: new Set<number>(),
   }),
 }))
