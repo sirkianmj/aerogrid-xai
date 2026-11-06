@@ -6,6 +6,7 @@ import { ALL_TAGS, EPISTEMIC_TAGS } from "./components/EpistemicBadge/epistemic"
 import { ArchitecturesView } from "./features/Architectures/ArchitecturesView"
 import { SensitivityPanel } from "./features/Sensitivity/SensitivityPanel"
 import { DesignStudio } from "./features/DesignStudio/DesignStudio"
+import { SimulationView } from "./features/Simulation/SimulationView"
 import { StatusView } from "./features/Status/StatusView"
 import { ClearDDashboard } from "./features/ClearDDashboard/ClearDDashboard"
 import { DigitalTwin } from "./features/DigitalTwin/DigitalTwin"
@@ -235,10 +236,7 @@ function AppInner({ activeView, visited, handleViewChange }: AppInnerProps) {
       {visited.has("simulation") && (
         <div hidden={activeView !== "simulation"}>
           <StepGate requires={4}>
-            <Placeholder
-              title="5 · Simulation"
-              description="Runs the selected architecture against the mission over a full orbit: power delivered over time, thermal margins, eclipse intervals, cumulative energy. Backend endpoint not yet wired."
-            />
+            <SimulationView />
             <NextButton view="simulation" onGo={handleViewChange} completes={5} />
           </StepGate>
         </div>
