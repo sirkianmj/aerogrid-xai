@@ -20,6 +20,7 @@ from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.mission.api import router as mission_router
 from app.physics.api import router as physics_router
+from app.report.api import router as report_router
 from app.saas.admin_routes import router as saas_admin_router
 from app.saas.auth_routes import router as auth_router
 from app.saas.billing_routes import router as saas_billing_router
@@ -65,6 +66,7 @@ app.include_router(digital_twin_router)
 app.include_router(discovery_router)
 app.include_router(mission_router)
 app.include_router(simulation_router)
+app.include_router(report_router)
 app.include_router(telemetry_router)
 app.include_router(tradespace_router)
 app.include_router(saas_router)
