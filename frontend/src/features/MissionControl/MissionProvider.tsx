@@ -161,6 +161,12 @@ export function MissionProvider({
   const clearAllStepOutputs = useCallback(() => {
     setStepOutputs({})
   }, [])
+  const resetMission = useCallback(() => {
+    setConfig(DEFAULT_CONFIG)
+    setCompletedSteps(new Set())
+    setStepOutputs({})
+    setLastDiscoveryRunState(null)
+  }, [])
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
@@ -216,6 +222,7 @@ export function MissionProvider({
         setStepOutput,
         clearStepOutput,
         clearAllStepOutputs,
+        resetMission,
       }}
     >
       {children}
