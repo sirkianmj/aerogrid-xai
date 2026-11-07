@@ -244,19 +244,33 @@ def _cover_page(inp: ReportInput, styles: dict[str, ParagraphStyle]) -> list[Any
 
 def _toc_page(inp: ReportInput, styles: dict[str, ParagraphStyle]) -> list[Any]:
     els: list[Any] = [Paragraph("Table of contents", styles["h1"])]
-    rows = [["Section", "Step", "Status"]]
-    sections = [
-        ("Mission configuration", "\u2014", "always present"),
-        ("Step 1 \u2014 Design", "1", "from config"),
-        ("Step 2 \u2014 Mission", "2", "from state" if inp.mission_state else "not executed"),
-        ("Step 3 \u2014 Discovery", "3", "executed" if 3 in inp.step_outputs else "not executed"),
-        ("Step 4 \u2014 Selection", "4", "executed" if 4 in inp.step_outputs else "not executed"),
-        ("Step 5 \u2014 Simulation", "5", "executed" if 5 in inp.step_outputs else "not executed"),
-        ("Section 21 epistemic summary", "\u2014", "always present"),
-        ("Reproducibility appendix", "\u2014", "always present"),
+
+    def _c(text: str, style: ParagraphStyle) -> Paragraph:
+        # Wrap every cell in Paragraph. ReportLab's raw-string cells skip
+        # the PLATYPUS flow machinery: they do not wrap, they do not
+        # respect codepoint mappings cleanly for extraction tools, and
+        # some viewers render them as garbage. Paragraph is the correct
+        # primitive for table cells.
+        return Paragraph(text, style)
+
+    header = [
+        _c("Section", styles["body"]),
+        _c("Step", styles["body"]),
+        _c("Status", styles["body"]),
     ]
-    for s, step, status in sections:
-        rows.append([s, step, status])
+    rows: list[list[Any]] = [header]
+    sections = [
+        ("Mission configuration", "-", "always present"),
+        ("Step 1 - Design", "1", "from config"),
+        ("Step 2 - Mission", "2", "from state" if inp.mission_state else "not executed"),
+        ("Step 3 - Discovery", "3", "executed" if 3 in inp.step_outputs else "not executed"),
+        ("Step 4 - Selection", "4", "executed" if 4 in inp.step_outputs else "not executed"),
+        ("Step 5 - Simulation", "5", "executed" if 5 in inp.step_outputs else "not executed"),
+        ("Section 21 epistemic summary", "-", "always present"),
+        ("Reproducibility appendix", "-", "always present"),
+    ]
+    for sec, step, status in sections:
+        rows.append([_c(sec, styles["body"]), _c(step, styles["mono"]), _c(status, styles["mono"])])
     t = Table(rows, colWidths=[3.5 * inch, 0.8 * inch, 2.4 * inch])
     t.setStyle(
         TableStyle(
