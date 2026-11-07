@@ -242,6 +242,52 @@ def _wait_ready(port: int, timeout_s: float = 30.0) -> bool:
     return False
 
 
+class _AppApi:
+    """JS-exposed API for the pywebview frontend.
+
+    pywebview exposes public methods on the object passed to js_api as
+    window.pywebview.api.<method>() on the JavaScript side. Methods run
+    on a background thread, so blocking UI calls (native dialogs) are
+    safe here.
+
+    Only save_pdf is exposed. Everything else (all backend endpoints)
+    goes through the normal fetch path against the in-process uvicorn
+    server. This API exists solely because a Blob download from a
+    WKWebView does not surface a save dialog on macOS; without it, the
+    PDF lands silently in the container's cache and is invisible to the
+    user.
+    """
+
+    def __init__(self) -> None:
+        self.window: object = None
+
+    def save_pdf(self, base64_data: str, default_filename: str) -> str:
+        """Open a native save dialog, write the decoded PDF, return the path.
+
+        Returns an empty string if the user cancelled. Raises on I/O
+        error (base64 decode, write) — the JS caller catches and falls
+        back to a browser-style download.
+        """
+        import base64
+        import webview as _webview
+
+        if self.window is None:
+            raise RuntimeError("window not attached to AppApi")
+
+        result = self.window.create_file_dialog(  # type: ignore[attr-defined]
+            _webview.SAVE_DIALOG,
+            save_filename=default_filename,
+            file_types=("PDF (*.pdf)",),
+        )
+        if not result:
+            return ""
+
+        path = result if isinstance(result, str) else result[0]
+        with open(path, "wb") as f:
+            f.write(base64.b64decode(base64_data))
+        return path
+
+
 def main() -> None:
     import webview
 
@@ -250,6 +296,7 @@ def main() -> None:
 
     # Show the splash page immediately; navigate to the real URL once
     # the backend is ready.
+    api = _AppApi()
     window = webview.create_window(
         "AeroGrid-XAI",
         html=_SPLASH_HTML,
@@ -257,7 +304,9 @@ def main() -> None:
         height=900,
         min_size=(800, 600),
         text_select=True,
+        js_api=api,
     )
+    api.window = window
 
     t = threading.Thread(target=_serve, args=(port,), daemon=True)
     t.start()
