@@ -61,13 +61,21 @@ export function DesignStudio() {
   // Step 1 is complete only when BOTH a satellite and a UAV fleet have
   // been adopted into the mission config. One adoption is not a design.
   useEffect(() => {
-    const satelliteAdopted = config.satellite_elements !== null
+    // A design is "adopted" when the user has made an explicit satellite
+    // AND an explicit fleet choice. Packaged satellite selection counts;
+    // the shipped default does not, since that is what the app boots with.
+    // Templates always set satellite_elements, but a user who picked
+    // "geo" or "vanguard_r3" from the packaged picker should also get
+    // credit for having made a design decision.
+    const satelliteAdopted =
+      config.satellite_elements !== null ||
+      config.satellite_key !== "iss" // DEFAULT_CONFIG.satellite_key
     const fleetAdopted =
       config.uav_hardware_list != null && config.uav_hardware_list.length > 0
     if (satelliteAdopted && fleetAdopted) {
       markStepComplete(1)
     }
-  }, [config.satellite_elements, config.uav_hardware_list, markStepComplete])
+  }, [config.satellite_elements, config.satellite_key, config.uav_hardware_list, markStepComplete])
 
   return (
     <section
@@ -128,6 +136,25 @@ function SatelliteDesigner({ presets }: { presets: SatellitePreset[] }) {
   const [report, setReport] = useState<FeasibilityReport | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // Sync satellite form fields from config when the config carries a
+  // custom orbit. Template selection calls applyConfig with satellite_elements;
+  // this pushes those values into the designer form so the user sees what
+  // the template designed, not a blank custom-orbit slate.
+  useEffect(() => {
+    if (!config.satellite_elements) return
+    const el = config.satellite_elements
+    setFields((f) => ({
+      ...f,
+      a_km: el.a_km,
+      e: el.e,
+      i_deg: el.i_deg,
+      raan_deg: el.raan_deg,
+      argp_deg: el.argp_deg,
+      m0_deg: el.m0_deg,
+      epoch_utc: el.epoch_utc,
+    }))
+  }, [config.satellite_elements])
 
   function applyPreset(p: SatellitePreset) {
     setFields({
@@ -356,6 +383,28 @@ function DroneDesigner({ presets }: { presets: DronePreset[] }) {
   const [rows, setRows] = useState<DroneDraft[]>(() => [defaultDrone()])
   const [reports, setReports] = useState<Record<string, FeasibilityReport>>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  // Sync drone rows from config when the config carries a fleet. Template
+  // selection calls applyConfig with uav_hardware_list; this pushes those
+  // values into the designer rows so the user sees the template's fleet,
+  // not a single default drone.
+  useEffect(() => {
+    if (!config.uav_hardware_list || config.uav_hardware_list.length === 0) return
+    const synced: DroneDraft[] = config.uav_hardware_list.map((hw, i) => ({
+      _id: `template-${i}-${Date.now().toString(36)}`,
+      receiver_aperture_m2: hw.receiver_aperture_m2,
+      receiver_type: hw.receiver_type,
+      battery_efficiency: hw.battery_efficiency,
+      mass_kg: hw.mass_kg,
+      wingspan_m: hw.wingspan_m,
+      battery_wh: hw.battery_wh,
+      thermal_limit_c: hw.thermal_limit_c,
+      airframe: hw.airframe,
+    }))
+    setRows(synced)
+    setSelectedId(synced[0]?._id ?? null)
+    setReports({})
+  }, [config.uav_hardware_list])
 
   function updateRow(id: string, patch: Partial<DroneDraft>) {
     setRows((rs) => rs.map((r) => (r._id === id ? { ...r, ...patch } : r)))
