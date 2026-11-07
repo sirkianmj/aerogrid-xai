@@ -148,6 +148,69 @@ _frontend = ROOT / "frontend_dist"
 if _frontend.is_dir():
     app.mount("/", StaticFiles(directory=str(_frontend), html=True), name="frontend")
 
+# Splash HTML shown before the FastAPI server is ready. No JavaScript:
+# pywebview's WKWebView would otherwise inherit whatever CSP the built
+# frontend sets. Pure HTML + CSS only.
+_SPLASH_HTML = """<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AeroGrid-XAI</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #f2f2f7; }
+    body {
+      display: flex; align-items: center; justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      color: #1d1d1f; -webkit-font-smoothing: antialiased;
+    }
+    .card { text-align: center; padding: 2rem; }
+    h1 { margin: 0 0 0.35rem; font-size: 1.75rem; font-weight: 600; letter-spacing: -0.02em; }
+    .tagline { margin: 0 0 2rem; color: #6e6e73; font-size: 0.875rem; }
+    .spinner {
+      width: 24px; height: 24px; margin: 0 auto 1rem;
+      border: 2px solid #e5e5ea; border-top-color: #007aff;
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .status { color: #86868b; font-size: 0.75rem; font-family: "SF Mono", monospace; }
+    @media (prefers-color-scheme: dark) {
+      html, body { background: #000; color: #fff; }
+      .tagline { color: rgba(235,235,245,0.6); }
+      .spinner { border-color: rgba(255,255,255,0.15); border-top-color: #0a84ff; }
+      .status { color: rgba(235,235,245,0.3); }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>AeroGrid-XAI</h1>
+    <p class="tagline">CLEAR-D Mission Instrument</p>
+    <div class="spinner"></div>
+    <p class="status">Initializing engine...</p>
+  </div>
+</body>
+</html>
+"""
+
+_ERROR_HTML = """<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>AeroGrid-XAI</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #f2f2f7;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+    color: #1d1d1f; display: flex; align-items: center; justify-content: center; }
+  .card { text-align: center; padding: 2rem; max-width: 500px; }
+  h1 { margin: 0 0 0.5rem; font-size: 1.5rem; font-weight: 600; }
+  p { margin: 0; color: #6e6e73; font-size: 0.875rem; }
+</style></head>
+<body><div class="card">
+  <h1>Server failed to start</h1>
+  <p>AeroGrid-XAI could not initialise its backend within 30 seconds.
+     Close this window and try again.</p>
+</div></body>
+</html>
+"""
+
 
 def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -185,22 +248,29 @@ def main() -> None:
     env_port = int(os.environ.get("AEROGRID_PORT", "0"))
     port = env_port if env_port > 0 else _free_port()
 
-    t = threading.Thread(target=_serve, args=(port,), daemon=True)
-    t.start()
-
-    if not _wait_ready(port):
-        print("AeroGrid-XAI: server failed to start", file=sys.stderr)
-        sys.exit(1)
-
-    url = f"http://localhost:{port}/"
-    webview.create_window(
+    # Show the splash page immediately; navigate to the real URL once
+    # the backend is ready.
+    window = webview.create_window(
         "AeroGrid-XAI",
-        url,
+        html=_SPLASH_HTML,
         width=1440,
         height=900,
         min_size=(800, 600),
         text_select=True,
     )
+
+    t = threading.Thread(target=_serve, args=(port,), daemon=True)
+    t.start()
+
+    def _navigate_when_ready() -> None:
+        if _wait_ready(port):
+            window.load_url(f"http://localhost:{port}/")
+        else:
+            print("AeroGrid-XAI: server failed to start", file=sys.stderr)
+            window.load_html(_ERROR_HTML)
+
+    threading.Thread(target=_navigate_when_ready, daemon=True).start()
+
     webview.start()
 
 

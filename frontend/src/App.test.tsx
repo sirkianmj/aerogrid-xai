@@ -161,13 +161,13 @@ afterEach(() => {
 describe("App shell", () => {
   it("renders the application title in the title bar", () => {
     render(<App initialCompletedSteps={[1, 2, 3, 4, 5]} />)
-    expect(screen.getByText("AeroGrid-XAI")).toBeInTheDocument()
+    expect(screen.getAllByText("AeroGrid-XAI").length).toBeGreaterThanOrEqual(1)
   })
 
   it("renders the ten navigation items", () => {
     render(<App initialCompletedSteps={[1, 2, 3, 4, 5]} />)
     const nav = screen.getByRole("navigation", { name: /workspace views/i })
-    expect(within(nav).getAllByRole("button").length).toBe(10)
+    expect(within(nav).getAllByRole("button").length).toBe(11)
   })
 
   it("renders the Tier-2 firewall invariant badge", () => {
@@ -175,9 +175,21 @@ describe("App shell", () => {
     expect(screen.getByText(/tier-2 firewall verified/i)).toBeInTheDocument()
   })
 
-  it("defaults to the Design Studio view (step 1 of the workflow)", () => {
+  it("defaults to the Launcher view", () => {
     render(<App initialCompletedSteps={[1, 2, 3, 4, 5]} />)
-    expect(screen.getByTestId("panel-design")).toBeInTheDocument()
+    expect(screen.getByTestId("launcher-new-project")).toBeInTheDocument()
+  })
+
+  it("Design Studio view is reachable from the sidebar", async () => {
+    const user = userEvent.setup()
+    render(<App initialCompletedSteps={[1, 2, 3, 4, 5]} />)
+    const sidebar = screen.getByRole("complementary", { name: /primary/i })
+    await user.click(
+      within(sidebar).getByRole("button", { name: /1 . Design/i }),
+    )
+    await waitFor(() =>
+      expect(screen.getByTestId("panel-design")).toBeInTheDocument(),
+    )
   })
 
   it("switches to the Discovery view and mounts the correct panels", async () => {

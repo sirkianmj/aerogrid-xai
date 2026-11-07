@@ -12,6 +12,7 @@ import { StatusView } from "./features/Status/StatusView"
 import { ClearDDashboard } from "./features/ClearDDashboard/ClearDDashboard"
 import { DigitalTwin } from "./features/DigitalTwin/DigitalTwin"
 import { FanetGraph } from "./features/Fanet/FanetGraph"
+import { Launcher } from "./features/Launcher/Launcher"
 import { Globe } from "./features/Globe/Globe"
 import { MissionConfigBar } from "./features/MissionControl/MissionConfigBar"
 import { MissionControl } from "./features/MissionControl/MissionControl"
@@ -41,7 +42,9 @@ const META_ITEMS: AppShellNavItem[] = [
   { id: "status", label: "Status", tag: "S11·5" },
 ]
 
-const NAV: AppShellNavItem[] = [...WORKFLOW_STEPS, ...META_ITEMS]
+const HOME_NAV: AppShellNavItem[] = [{ id: "launcher", label: "Home", tag: "\u2302" }]
+
+const NAV: AppShellNavItem[] = [...HOME_NAV, ...WORKFLOW_STEPS, ...META_ITEMS]
 
 const STEP_OF: Record<string, number> = {
   design: 1, twin: 2, cleard: 3, tradespace: 4, simulation: 5, report: 6,
@@ -169,6 +172,12 @@ function AppInner({ activeView, visited, handleViewChange }: AppInnerProps) {
         <MissionConfigBar />
       </div>
 
+      {visited.has("launcher") && (
+        <div hidden={activeView !== "launcher"}>
+          <Launcher onNavigateToWorkflow={handleViewChange} />
+        </div>
+      )}
+
       {visited.has("design") && (
         <div hidden={activeView !== "design"}>
           <div className="mx-auto max-w-5xl space-y-6">
@@ -262,8 +271,8 @@ function App({
 }: {
   initialCompletedSteps?: readonly number[]
 } = {}) {
-  const [activeView, setActiveView] = useState("design")
-  const [visited, setVisited] = useState<Set<string>>(() => new Set(["design"]))
+  const [activeView, setActiveView] = useState("launcher")
+  const [visited, setVisited] = useState<Set<string>>(() => new Set(["launcher"]))
 
   const handleViewChange = useCallback((id: string) => {
     setActiveView(id)

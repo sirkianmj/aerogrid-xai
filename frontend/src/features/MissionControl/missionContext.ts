@@ -159,6 +159,11 @@ export type MissionContextValue = {
   setStepOutput: (step: number, data: unknown) => void
   clearStepOutput: (step: number) => void
   clearAllStepOutputs: () => void
+  /** Reset config, completedSteps, stepOutputs, and lastDiscoveryRun
+   *  in one call. Used by the Launcher when switching templates: without
+   *  this, a user who ran three steps under Quickstart then clicked
+   *  Fixed-Wing would carry over the previous session's state. */
+  resetMission: () => void
 }
 
 export const MissionCtx = createContext<MissionContextValue | null>(null)
