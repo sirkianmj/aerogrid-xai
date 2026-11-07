@@ -54,6 +54,9 @@ for fw in pyobjc_frameworks:
     pyobjc_binaries += b
     pyobjc_hidden += h
 
+# ReportLab: ships TTF fonts and AFM metrics that PyInstaller misses.
+reportlab_datas, reportlab_binaries, reportlab_hidden = collect_all("reportlab")
+
 # TLE fixtures. Kept at the same relative path the source uses, so
 # Path(__file__).parent / "data" / "tle" resolves the same in both modes.
 tle_datas = [
@@ -69,8 +72,8 @@ a = Analysis(
     pathex=[str(BACKEND)],
     binaries=z3_binaries + z3_dylibs + webview_binaries + pyobjc_binaries,
     datas=z3_datas + skyfield_datas + tle_datas + frontend_datas
-        + webview_datas + pyobjc_datas,
-    hiddenimports=z3_hidden + webview_hidden + pyobjc_hidden + [
+        + webview_datas + pyobjc_datas + reportlab_datas,
+    hiddenimports=z3_hidden + webview_hidden + pyobjc_hidden + reportlab_hidden + [
         "webview.platforms.cocoa",
         "bottle",
         "proxy_tools",
