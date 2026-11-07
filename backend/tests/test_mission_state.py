@@ -384,3 +384,40 @@ def test_atmosphere_interval_absent_when_link_is_offline() -> None:
         assert s.atmosphere.transmittance_low is None
         assert s.atmosphere.transmittance_high is None
         assert s.atmosphere.nominal_coverage is None
+
+
+def test_user_elements_scanned_for_visible_pass() -> None:
+    """A user-supplied LEO orbit lands on a visible pass when t_utc is None.
+
+    Regression guard: before this fix, m0=0 (at periapsis) put the satellite
+    on the far side of the Earth at 2024-01-01T00:00:00Z for a=6778 km,
+    i=51.6 deg over Pennsylvania. Reported elevation was -18.71 deg and
+    delivered power was zero. The scan now finds the peak of the first
+    visible pass, matching packaged-satellite behavior.
+    """
+    from datetime import UTC, datetime
+
+    from app.mission.state import (
+        MissionConfig,
+        SatelliteElements,
+        compute_mission_state,
+    )
+
+    cfg = MissionConfig(
+        satellite_elements=SatelliteElements(
+            epoch_utc=datetime(2024, 1, 1, tzinfo=UTC),
+            a_km=6778.0,
+            e=0.0005,
+            i_deg=51.6,
+            raan_deg=0.0,
+            argp_deg=0.0,
+            m0_deg=0.0,
+        ),
+    )
+    state = compute_mission_state(cfg)
+    assert state.transmission.elevation_deg > 0.0, (
+        f"expected visible pass, got elevation {state.transmission.elevation_deg}"
+    )
+    assert state.atmosphere.transmittance > 0.0, (
+        "atmospheric transmittance must be positive for a visible pass"
+    )
