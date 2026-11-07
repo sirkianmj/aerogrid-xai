@@ -419,15 +419,23 @@ def _step5_section(inp: ReportInput, styles: dict[str, ParagraphStyle]) -> list[
     els.append(_kv_table(summary, styles))
     els.append(Spacer(1, 6))
     samples = data.get("samples") or []
-    if isinstance(samples, list) and samples:
+    if isinstance(samples, list) and len(samples) >= 2:
         try:
-            drawing = _power_chart(samples)
-            if drawing is not None:
-                els.append(drawing)
+            for chart in _charts_grid(samples):
+                els.append(chart)
+                els.append(Spacer(1, 6))
         except Exception:
             els.append(
-                Paragraph("(chart could not be rendered from the sample data)", styles["missing"])
+                Paragraph("(charts could not be rendered from the sample data)", styles["missing"])
             )
+    else:
+        els.append(
+            Paragraph(
+                "Fewer than two samples were captured; chart series cannot be "
+                "rendered. Run Step 5 with a longer preset to populate the charts.",
+                styles["missing"],
+            )
+        )
     els.append(Spacer(1, 12))
     return els
 
@@ -562,7 +570,349 @@ def generate_report_pdf(inp: ReportInput) -> bytes:
     story.extend(_step3_section(inp, styles))
     story.extend(_step4_section(inp, styles))
     story.extend(_step5_section(inp, styles))
+    story.extend(_final_summary_section(inp, styles))
     story.extend(_epistemic_summary_section(styles))
     story.extend(_reproducibility_section(inp, styles))
     doc.build(story)
     return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# Additional chart helpers and final-summary section.
+# Appended by PR #180. Kept separate from the original generator so the
+# original code path stays untouched when a caller only wants the baseline.
+# ---------------------------------------------------------------------------
+
+
+def _downsample(xs: list[float], ys: list[float], n: int = 20) -> tuple[list[float], list[float]]:
+    """Reduce a series to at most n points for chart readability.
+
+    ReportLab's HorizontalLineChart renders category labels one per point;
+    a 100-sample simulation would produce unreadable axis text. Downsample
+    is uniform in index space (not value space) — good enough for a
+    thumbnail-style figure where the user's own ECharts view in the app
+    carries the full-resolution data.
+    """
+    if len(xs) <= n:
+        return xs, ys
+    step = len(xs) / float(n)
+    out_x: list[float] = []
+    out_y: list[float] = []
+    for i in range(n):
+        idx = min(int(i * step), len(xs) - 1)
+        out_x.append(xs[idx])
+        out_y.append(ys[idx])
+    return out_x, out_y
+
+
+def _line_chart(
+    xs: list[float],
+    ys: list[float],
+    *,
+    title: str,
+    y_label: str,
+    x_label: str = "elapsed (s)",
+    color: str = "#007aff",
+    width_in: float = 6.5,
+    height_in: float = 2.6,
+) -> Drawing | None:
+    """Build a single line chart Drawing, or None if the series is degenerate."""
+    if len(xs) < 2 or len(ys) < 2:
+        return None
+    xs_d, ys_d = _downsample(xs, ys)
+    d = Drawing(width_in * inch, height_in * inch)
+    chart = HorizontalLineChart()
+    chart.x = 50
+    chart.y = 40
+    chart.height = int(height_in * inch) - 60
+    chart.width = int(width_in * inch) - 70
+    chart.data = [ys_d]
+    chart.categoryAxis.categoryNames = [f"{x:.0f}" for x in xs_d]
+    chart.categoryAxis.labels.fontSize = 6
+    chart.valueAxis.valueMin = 0
+    y_max = max(ys_d) if ys_d else 1.0
+    chart.valueAxis.valueMax = max(y_max * 1.1, 1.0)
+    chart.valueAxis.labels.fontSize = 6
+    chart.lines[0].strokeColor = colors.HexColor(color)
+    chart.lines[0].strokeWidth = 1.5
+    d.add(chart)
+    d.add(
+        String(
+            width_in * inch / 2,
+            22,
+            f"{title}  ·  y: {y_label}",
+            fontSize=9,
+            textAnchor="middle",
+        )
+    )
+    d.add(
+        String(
+            width_in * inch / 2,
+            8,
+            x_label,
+            fontSize=7,
+            textAnchor="middle",
+            fillColor=colors.HexColor("#86868b"),
+        )
+    )
+    return d
+
+
+def _extract_series(
+    samples: list[Any], field_path: tuple[str, ...]
+) -> tuple[list[float], list[float]]:
+    """Extract (xs, ys) from a list of sample dicts. Missing values become 0."""
+    xs: list[float] = []
+    ys: list[float] = []
+    for s in samples:
+        if not isinstance(s, dict):
+            continue
+        try:
+            xs.append(float(s.get("elapsed_s", 0.0)))
+        except (TypeError, ValueError):
+            continue
+        v: Any = s
+        for key in field_path:
+            if isinstance(v, dict):
+                v = v.get(key)
+            else:
+                v = None
+                break
+        try:
+            ys.append(float(v) if v is not None else 0.0)
+        except (TypeError, ValueError):
+            ys.append(0.0)
+    return xs, ys
+
+
+def _charts_grid(samples: list[Any]) -> list[Any]:
+    """Render 4 charts in a 2x2 grid for the Step 5 section."""
+    if len(samples) < 2:
+        return []
+
+    received_xs, received_ys = _extract_series(samples, ("received_power_w",))
+    energy_xs, energy_ys = _extract_series(samples, ("cumulative_energy_j",))
+    tau_xs, tau_ys = _extract_series(samples, ("atmospheric_transmittance",))
+    elev_xs, elev_ys = _extract_series(samples, ("satellite_elevation_deg",))
+
+    charts = [
+        _line_chart(
+            received_xs,
+            received_ys,
+            title="Received power (W)",
+            y_label="received (W)",
+            color="#34c759",
+        ),
+        _line_chart(
+            energy_xs,
+            energy_ys,
+            title="Cumulative energy (J)",
+            y_label="energy (J)",
+            color="#ff9500",
+        ),
+        _line_chart(
+            tau_xs,
+            tau_ys,
+            title="Atmospheric transmittance",
+            y_label="tau",
+            color="#5856d6",
+        ),
+        _line_chart(
+            elev_xs,
+            elev_ys,
+            title="Satellite elevation (deg)",
+            y_label="elev (deg)",
+            color="#af52de",
+        ),
+    ]
+    return [c for c in charts if c is not None]
+
+
+def _peak_and_totals(samples: list[Any]) -> dict[str, float]:
+    """Extract the numbers the summary paragraph needs, tolerant to shape."""
+    peak_delivered = 0.0
+    peak_received = 0.0
+    total_energy = 0.0
+    tau_min = float("inf")
+    tau_max = float("-inf")
+    elev_min = float("inf")
+    elev_max = float("-inf")
+    count = 0
+    for s in samples:
+        if not isinstance(s, dict):
+            continue
+        try:
+            peak_delivered = max(peak_delivered, float(s.get("delivered_power_w", 0.0)))
+            peak_received = max(peak_received, float(s.get("received_power_w", 0.0)))
+            total_energy = max(total_energy, float(s.get("cumulative_energy_j", 0.0)))
+            tau = float(s.get("atmospheric_transmittance", 0.0))
+            elev = float(s.get("satellite_elevation_deg", 0.0))
+            tau_min = min(tau_min, tau)
+            tau_max = max(tau_max, tau)
+            elev_min = min(elev_min, elev)
+            elev_max = max(elev_max, elev)
+            count += 1
+        except (TypeError, ValueError):
+            continue
+    if count == 0:
+        return {
+            "peak_delivered": 0.0,
+            "peak_received": 0.0,
+            "total_energy": 0.0,
+            "tau_min": 0.0,
+            "tau_max": 0.0,
+            "elev_min": 0.0,
+            "elev_max": 0.0,
+        }
+    return {
+        "peak_delivered": peak_delivered,
+        "peak_received": peak_received,
+        "total_energy": total_energy,
+        "tau_min": 0.0 if tau_min == float("inf") else tau_min,
+        "tau_max": 0.0 if tau_max == float("-inf") else tau_max,
+        "elev_min": 0.0 if elev_min == float("inf") else elev_min,
+        "elev_max": 0.0 if elev_max == float("-inf") else elev_max,
+    }
+
+
+def _final_summary_section(inp: ReportInput, styles: dict[str, ParagraphStyle]) -> list[Any]:
+    """Human-readable summary of the run's own output. Not a claim about
+    physical reality — see the Section 21 note embedded in the paragraph."""
+    els: list[Any] = [PageBreak()]
+    els.extend(
+        _section_header("Final Results Summary", "simulation_result", 5 in inp.step_outputs, styles)
+    )
+
+    if 5 not in inp.step_outputs:
+        els.append(
+            Paragraph(
+                "Step 5 (Simulation) was not executed in this session. No "
+                "summary can be derived from the run's own output. To "
+                "produce a summary, run Step 5 first, then generate the "
+                "report again.",
+                styles["missing"],
+            )
+        )
+        return els
+
+    data = inp.step_outputs[5].get("data")
+    if not isinstance(data, dict):
+        els.append(
+            Paragraph(
+                "Step 5 output has an unexpected shape; summary cannot be derived.",
+                styles["missing"],
+            )
+        )
+        return els
+
+    samples = data.get("samples") or []
+    if not isinstance(samples, list) or len(samples) < 2:
+        els.append(
+            Paragraph(
+                "Step 5 produced fewer than two samples; summary cannot be derived.",
+                styles["missing"],
+            )
+        )
+        return els
+
+    peak = _peak_and_totals(samples)
+    preset = str(data.get("preset", "unknown"))
+    duration_s = data.get("duration_s", 0)
+    n_samples = data.get("n_samples", len(samples))
+    n_uavs = len(inp.step_outputs[5].get("data", {}).get("samples", [{}])[0].get("uavs", [])) or "?"
+
+    # --- Key numbers table ---
+    rows = [["Metric", "Value", "Unit"]]
+    rows.append(["Samples", f"{n_samples}", "count"])
+    rows.append(["Duration", f"{float(duration_s):.0f}", "s"])
+    rows.append(["Preset", preset, "—"])
+    rows.append(["Peak received (sum over UAVs)", f"{peak['peak_received']:.3f}", "W"])
+    rows.append(["Peak delivered (sum over UAVs)", f"{peak['peak_delivered']:.3f}", "W"])
+    rows.append(["Total delivered energy", f"{peak['total_energy'] / 1000:.3f}", "kJ"])
+    rows.append(
+        [
+            "Atmospheric transmittance range",
+            f"{peak['tau_min']:.4f} \u2014 {peak['tau_max']:.4f}",
+            "—",
+        ]
+    )
+    rows.append(
+        [
+            "Satellite elevation range",
+            f"{peak['elev_min']:.1f} \u2014 {peak['elev_max']:.1f}",
+            "deg",
+        ]
+    )
+    t = Table(rows, colWidths=[3.0 * inch, 1.8 * inch, 1.0 * inch])
+    t.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f2f2f7")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (1, 0), (2, -1), "RIGHT"),
+                ("LINEBELOW", (0, 1), (-1, -1), 0.25, colors.HexColor("#e5e5ea")),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+    els.append(t)
+    els.append(Spacer(1, 12))
+
+    # --- Interpretation paragraph, derived ONLY from the numbers above ---
+    atm_desc = "clear-sky"
+    if peak["tau_min"] < 0.3:
+        atm_desc = "heavily degraded"
+    elif peak["tau_min"] < 0.6:
+        atm_desc = "moderately degraded"
+    elif peak["tau_min"] < 0.85:
+        atm_desc = "slightly degraded"
+
+    delivered_str = (
+        f"{peak['peak_delivered']:.2f} W"
+        if peak["peak_delivered"] < 1e3
+        else f"{peak['peak_delivered'] / 1e3:.2f} kW"
+    )
+    energy_str = (
+        f"{peak['total_energy']:.0f} J"
+        if peak["total_energy"] < 1e4
+        else f"{peak['total_energy'] / 1e3:.2f} kJ"
+    )
+
+    interpretation = (
+        f"During this run, the simulated mission delivered a peak of "
+        f"<b>{delivered_str}</b> to <b>{n_uavs}</b> UAV(s) across "
+        f"<b>{float(duration_s):.0f} s</b> of simulated time, integrating "
+        f"<b>{energy_str}</b>. Atmospheric transmittance ranged from "
+        f"<b>{peak['tau_min']:.3f}</b> to <b>{peak['tau_max']:.3f}</b>, "
+        f"characterising the pass as <b>{atm_desc}</b> under the configured "
+        f"environment. Satellite elevation ranged from "
+        f"<b>{peak['elev_min']:.1f}\u00b0</b> to <b>{peak['elev_max']:.1f}\u00b0</b>, "
+        f"which sets the geometric path length through the atmosphere at "
+        f"each sample."
+    )
+    els.append(Paragraph(interpretation, styles["body"]))
+    els.append(Spacer(1, 6))
+
+    note = (
+        "<i>This paragraph is derived strictly from the numbers in the "
+        "table above and the run's own sample data. It is a "
+        "<b>simulation_result</b> per Section 21, not a claim about "
+        "physical reality. It makes no recommendation about how to "
+        "improve the mission \u2014 such a claim would require a validated "
+        "physical model for each alternative configuration, which this "
+        "report does not carry.</i>"
+    )
+    els.append(Paragraph(note, styles["missing"]))
+    els.append(Spacer(1, 12))
+
+    # --- Composed multi-chart page ---
+    els.append(Paragraph("Chart series across the simulation window", styles["h2"]))
+    els.append(Spacer(1, 4))
+    for chart in _charts_grid(samples):
+        els.append(chart)
+        els.append(Spacer(1, 6))
+
+    return els

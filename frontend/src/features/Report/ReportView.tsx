@@ -22,6 +22,51 @@ import {
   type ReportRequest,
 } from "./reportApi"
 
+type PywebviewApi = {
+  save_pdf?: (base64Data: string, defaultFilename: string) => Promise<string>
+}
+
+function getPywebviewApi(): PywebviewApi | null {
+  // pywebview injects window.pywebview when the frontend is loaded in the
+  // desktop shell. In a plain browser (dev mode, or opening the built
+  // dist in Chrome), the object does not exist and we fall back to a
+  // regular browser download.
+  const w = window as unknown as {
+    pywebview?: { api?: PywebviewApi }
+  }
+  return w.pywebview?.api ?? null
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const result = reader.result as string
+      // data URL: "data:application/pdf;base64,XXXX" -> take after comma
+      const comma = result.indexOf(",")
+      resolve(comma >= 0 ? result.slice(comma + 1) : "")
+    }
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(blob)
+  })
+}
+
+async function savePdf(blob: Blob, filename: string): Promise<string> {
+  // Desktop path: pywebview native save dialog.
+  const api = getPywebviewApi()
+  if (api?.save_pdf) {
+    try {
+      const base64 = await blobToBase64(blob)
+      return await api.save_pdf(base64, filename)
+    } catch {
+      // Fall through to browser download if pywebview fails for any reason.
+    }
+  }
+  // Browser path: standard anchor download.
+  downloadBlob(blob, filename)
+  return filename
+}
+
 type PanelState =
   | { status: "idle" }
   | { status: "loading" }
@@ -61,8 +106,14 @@ export function ReportView() {
       if (ctrl.signal.aborted) return
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)
       const filename = `aerogrid-report-${timestamp}.pdf`
-      downloadBlob(blob, filename)
-      setPanel({ status: "ok", filename })
+      const savedPath = await savePdf(blob, filename)
+      if (savedPath === "") {
+        // User cancelled the save dialog. Do NOT mark step 6 complete —
+        // they have not produced a report yet.
+        setPanel({ status: "idle" })
+        return
+      }
+      setPanel({ status: "ok", filename: savedPath === filename ? filename : savedPath })
       if (!completedSteps.has(6)) markStepComplete(6)
     } catch (e) {
       if (ctrl.signal.aborted) return
