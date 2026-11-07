@@ -58,3 +58,29 @@ export function downloadBlob(blob: Blob, filename: string): void {
   document.body.removeChild(anchor)
   URL.revokeObjectURL(url)
 }
+
+/**
+ * Poll for the pywebview bridge to be injected. pywebview injects
+ * window.pywebview asynchronously after page load, and the exact delay
+ * depends on macOS WKWebView timing (typically 200-800 ms). When the
+ * window was opened with splash HTML and then load_url() navigated, the
+ * injection may lag. This helper polls for up to timeoutMs so the first
+ * Generate click reliably uses the native save dialog rather than
+ * falling through to a browser download.
+ */
+export type PywebviewApi = {
+  save_pdf?: (base64Data: string, defaultFilename: string) => Promise<string>
+}
+
+export async function waitForPywebview(
+  timeoutMs: number = 2000,
+): Promise<PywebviewApi | null> {
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    const w = window as unknown as { pywebview?: { api?: PywebviewApi } }
+    const api = w.pywebview?.api
+    if (api?.save_pdf) return api
+    await new Promise((r) => setTimeout(r, 100))
+  }
+  return null
+}

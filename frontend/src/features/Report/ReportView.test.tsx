@@ -17,7 +17,15 @@ vi.mock("../MissionControl/missionContext", () => ({
 
 vi.mock("./reportApi", async () => {
   const actual = await vi.importActual<typeof import("./reportApi")>("./reportApi")
-  return { ...actual, generateReport: vi.fn() }
+  return {
+    ...actual,
+    generateReport: vi.fn(),
+    // In tests there is no pywebview bridge; the polling helper would
+    // otherwise wait out its full timeout before falling through to the
+    // browser download path, which exceeds testing-library's default
+    // waitFor window.
+    waitForPywebview: vi.fn().mockResolvedValue(null),
+  }
 })
 
 beforeEach(() => {

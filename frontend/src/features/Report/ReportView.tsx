@@ -19,23 +19,9 @@ import {
   downloadBlob,
   generateReport,
   ReportApiError,
+  waitForPywebview,
   type ReportRequest,
 } from "./reportApi"
-
-type PywebviewApi = {
-  save_pdf?: (base64Data: string, defaultFilename: string) => Promise<string>
-}
-
-function getPywebviewApi(): PywebviewApi | null {
-  // pywebview injects window.pywebview when the frontend is loaded in the
-  // desktop shell. In a plain browser (dev mode, or opening the built
-  // dist in Chrome), the object does not exist and we fall back to a
-  // regular browser download.
-  const w = window as unknown as {
-    pywebview?: { api?: PywebviewApi }
-  }
-  return w.pywebview?.api ?? null
-}
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -52,8 +38,10 @@ function blobToBase64(blob: Blob): Promise<string> {
 }
 
 async function savePdf(blob: Blob, filename: string): Promise<string> {
-  // Desktop path: pywebview native save dialog.
-  const api = getPywebviewApi()
+  // Desktop path: poll for pywebview bridge (up to 2 s), then native save
+  // dialog. The 2 s budget covers the worst-case injection lag after a
+  // load_url() navigation from the pywebview splash page.
+  const api = await waitForPywebview(2000)
   if (api?.save_pdf) {
     try {
       const base64 = await blobToBase64(blob)

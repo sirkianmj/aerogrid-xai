@@ -36,7 +36,7 @@ const PRESETS: { id: SimulationPreset; label: string; description: string }[] = 
 
 export function SimulationView() {
   const { config, markStepComplete, completedSteps, setStepOutput } = useMission()
-  const [preset, setPreset] = useState<SimulationPreset>("1hour")
+  const [preset, setPreset] = useState<SimulationPreset>("10min")
   const [state, setState] = useState<PanelState>({ status: "idle" })
   const abortRef = useRef<AbortController | null>(null)
 

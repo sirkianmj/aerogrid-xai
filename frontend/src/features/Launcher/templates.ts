@@ -145,7 +145,7 @@ export const TEMPLATES: TemplateConfig[] = [
       cloud_factor: 0.0,
       transmitter_power_w: 10000.0,
       wavelength_nm: 1064.0,
-      transmitter_aperture_m: 0.02,
+      transmitter_aperture_m: 0.5,
     },
   },
   {
