@@ -1,13 +1,33 @@
 /**
- * Starter templates for the Launcher.
+ * Crown-jewel starter templates.
  *
- * A template is a starting point, not a pre-run demo: picking one
- * resets the mission to DEFAULT_CONFIG, applies the template's
- * configPatch, and navigates to Step 1. The user then walks the
- * six-step workflow themselves.
+ * Each template is a fully-specified mission: satellite orbit, per-UAV
+ * hardware, atmosphere, transmitter. Picking one resets the mission,
+ * applies the patch, and navigates to Step 1. Every step's Run button
+ * then produces real results through the same backend paths the user
+ * would exercise manually — no fabricated outputs.
  *
- * Templates are anonymous by construction: they describe physical
- * conditions and hardware classes, not named real-world systems.
+ * The three templates exercise three distinct regimes. They are the
+ * reference cases any new user should run first to see the full
+ * instrument in action:
+ *
+ *   1. Reference LEO     — the canonical CLEAR-D case the paper describes.
+ *                          ISS-class orbit, multirotor fleet, clear sky.
+ *   2. SSO Fixed-Wing    — a sun-synchronous polar orbit at 1500 km,
+ *                          fixed-wing endurance aircraft. Exercises the
+ *                          fixed-wing drawing path, the polar orbit class,
+ *                          and the long-slant-range link budget.
+ *   3. Contested Sky     — ISS-class orbit with 4 km visibility, 75% cloud,
+ *                          and UAVs at 2000 m altitude to climb above the
+ *                          worst weather. Demonstrates the atmosphere as
+ *                          the limiting factor: transmittance collapses
+ *                          and epistemic intervals widen.
+ *
+ * Every template uses satellite_elements (custom Keplerian) so both the
+ * satellite designer form AND the mission state reflect the same orbit.
+ *
+ * Values are documented and defensible. They are anonymous by construction:
+ * no real place, satellite catalogue name, country, or programme is named.
  */
 
 import type { MissionConfig, UavHardware } from "../MissionControl/missionContext"
@@ -20,10 +40,30 @@ export type TemplateConfig = {
   configPatch: Partial<MissionConfig>
 }
 
-/** Three fixed-wing UAVs with larger receiver apertures, higher-capacity
- *  batteries, and higher mass. Exercises the fixed-wing drawing path
- *  and the endurance model. */
-const FIXED_WING_HARDWARE: UavHardware[] = [
+// ---- Template 1: Reference LEO -----------------------------------------
+// 408 km circular, i=51.6 degrees (ISS-class orbit). Four identical
+// multirotors sized to capture a meaningful fraction of a 10 kW beam at
+// the pass geometry. Clear-sky baseline: the canonical case.
+
+const LEO_MULTIROTOR: UavHardware = {
+  receiver_aperture_m2: 0.5,
+  receiver_type: "laser_photovoltaic",
+  battery_efficiency: 0.9,
+  mass_kg: 2.5,
+  wingspan_m: 2.5,
+  battery_wh: 100,
+  thermal_limit_c: 80,
+  airframe: "multirotor",
+}
+
+// ---- Template 2: SSO Fixed-Wing ----------------------------------------
+// 1500 km sun-synchronous, i=98 degrees. Three fixed-wing endurance
+// aircraft with larger receiver apertures (1.2 m^2) to compensate for the
+// longer slant range. High-capacity batteries (220 Wh) support longer
+// missions. The higher orbit means larger transmitter aperture (0.5 m)
+// to keep the beam tight enough to be captured.
+
+const SSO_FIXED_WING: UavHardware[] = [
   {
     receiver_aperture_m2: 1.2,
     receiver_type: "laser_photovoltaic",
@@ -35,69 +75,138 @@ const FIXED_WING_HARDWARE: UavHardware[] = [
     airframe: "fixed_wing",
   },
   {
-    receiver_aperture_m2: 1.0,
+    receiver_aperture_m2: 1.2,
     receiver_type: "laser_photovoltaic",
     battery_efficiency: 0.92,
-    mass_kg: 7.2,
-    wingspan_m: 2.6,
-    battery_wh: 180,
+    mass_kg: 8.5,
+    wingspan_m: 3.0,
+    battery_wh: 220,
     thermal_limit_c: 85,
     airframe: "fixed_wing",
   },
   {
-    receiver_aperture_m2: 0.9,
+    receiver_aperture_m2: 1.2,
     receiver_type: "laser_photovoltaic",
     battery_efficiency: 0.92,
-    mass_kg: 6.8,
-    wingspan_m: 2.4,
-    battery_wh: 160,
+    mass_kg: 8.5,
+    wingspan_m: 3.0,
+    battery_wh: 220,
     thermal_limit_c: 85,
     airframe: "fixed_wing",
   },
 ]
 
+// ---- Template 3: Contested Sky -----------------------------------------
+// 507 km circular, i=51.6 degrees. Four multirotors with larger receiver
+// apertures (1.0 m^2) to partially compensate for the atmospheric loss.
+// UAVs at 2000 m altitude — above the densest part of the boundary layer,
+// where a chunk of the cloud and aerosol loading is. Transmitter boosted
+// to 15 kW to push more photons through.
+
+const CONTESTED_MULTIROTOR: UavHardware = {
+  receiver_aperture_m2: 1.0,
+  receiver_type: "laser_photovoltaic",
+  battery_efficiency: 0.9,
+  mass_kg: 3.0,
+  wingspan_m: 2.5,
+  battery_wh: 120,
+  thermal_limit_c: 85,
+  airframe: "multirotor",
+}
+
 export const TEMPLATES: TemplateConfig[] = [
   {
     id: "quickstart",
-    name: "Quickstart",
+    name: "Reference LEO (ISS-class)",
     description:
-      "Four quadrotors, clear sky, ISS pass. The simplest end-to-end walkthrough: every step completes with default conditions, designed to run in under a minute.",
-    badge: "MULTIROTOR · CLEAR SKY",
+      "The canonical CLEAR-D case. A 408 km circular orbit at i=51.6 degrees charges four multirotors through a clear-sky pass. Every step of the workflow produces non-degenerate output. Run this first to see the full instrument.",
+    badge: "LEO · MULTIROTOR · CLEAR SKY",
     configPatch: {
+      satellite_elements: {
+        epoch_utc: "2024-01-01T00:00:00Z",
+        a_km: 6778.0,
+        e: 0.0005,
+        i_deg: 51.6,
+        raan_deg: 0.0,
+        argp_deg: 0.0,
+        m0_deg: 0.0,
+      },
       n_uavs: 4,
+      uav_hardware_list: [
+        LEO_MULTIROTOR,
+        LEO_MULTIROTOR,
+        LEO_MULTIROTOR,
+        LEO_MULTIROTOR,
+      ],
+      uav_alt_m: 1000.0,
+      uav_receiver_aperture_m2: 0.5,
+      uav_receiver_type: "laser_photovoltaic",
       visibility_km: 10.0,
       cloud_factor: 0.0,
-      uav_receiver_type: "laser_photovoltaic",
       transmitter_power_w: 10000.0,
+      wavelength_nm: 1064.0,
+      transmitter_aperture_m: 0.02,
     },
   },
   {
     id: "fixed-wing-endurance",
-    name: "Fixed-Wing Endurance",
+    name: "SSO Fixed-Wing Endurance",
     description:
-      "Three fixed-wing UAVs with larger receiver apertures and high-capacity batteries. Exercises the fixed-wing drawing path and the wing-loading feasibility rule.",
-    badge: "FIXED WING · ENDURANCE",
+      "Sun-synchronous polar orbit at 1500 km, i=98 degrees. Three fixed-wing endurance aircraft with 1.2 m^2 receiver apertures and 220 Wh batteries. Exercises the fixed-wing drawing path, the polar orbit class, and the long-slant-range link budget.",
+    badge: "SSO 1500 KM · FIXED WING · ENDURANCE",
     configPatch: {
+      satellite_elements: {
+        epoch_utc: "2024-01-01T00:00:00Z",
+        a_km: 7871.0,
+        e: 0.001,
+        i_deg: 98.0,
+        raan_deg: 0.0,
+        argp_deg: 0.0,
+        m0_deg: 0.0,
+      },
       n_uavs: 3,
+      uav_hardware_list: SSO_FIXED_WING,
+      uav_alt_m: 1500.0,
+      uav_receiver_aperture_m2: 1.2,
+      uav_receiver_type: "laser_photovoltaic",
       visibility_km: 15.0,
       cloud_factor: 0.1,
-      uav_receiver_type: "laser_photovoltaic",
-      uav_hardware_list: FIXED_WING_HARDWARE,
+      transmitter_power_w: 50000.0,
+      wavelength_nm: 1064.0,
+      transmitter_aperture_m: 0.5,
     },
   },
   {
     id: "degraded-atmosphere",
-    name: "Degraded Atmosphere (ISR)",
+    name: "Contested Sky (Degraded ISR)",
     description:
-      "Low visibility and heavy cloud, with higher-altitude UAVs and a boosted transmitter to compensate. Exercises the atmospheric attenuation path and the epistemic transmittance intervals.",
-    badge: "DEGRADED · ISR",
+      "ISS-class orbit through 4 km visibility and 75% cloud cover, with UAVs at 2000 m altitude to climb above the worst of the boundary layer. Transmitter boosted to 15 kW. Demonstrates the atmosphere as the limiting factor: transmittance collapses, epistemic intervals widen, Pareto front shifts.",
+    badge: "LEO · MULTIROTOR · DEGRADED",
     configPatch: {
+      satellite_elements: {
+        epoch_utc: "2024-01-01T00:00:00Z",
+        a_km: 6878.0,
+        e: 0.001,
+        i_deg: 51.6,
+        raan_deg: 0.0,
+        argp_deg: 0.0,
+        m0_deg: 0.0,
+      },
       n_uavs: 4,
+      uav_hardware_list: [
+        CONTESTED_MULTIROTOR,
+        CONTESTED_MULTIROTOR,
+        CONTESTED_MULTIROTOR,
+        CONTESTED_MULTIROTOR,
+      ],
+      uav_alt_m: 2000.0,
+      uav_receiver_aperture_m2: 1.0,
+      uav_receiver_type: "laser_photovoltaic",
       visibility_km: 4.0,
       cloud_factor: 0.75,
-      uav_alt_m: 2000.0,
       transmitter_power_w: 15000.0,
-      uav_receiver_type: "laser_photovoltaic",
+      wavelength_nm: 1064.0,
+      transmitter_aperture_m: 0.05,
     },
   },
 ]
