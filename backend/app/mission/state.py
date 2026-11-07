@@ -714,14 +714,17 @@ def compute_mission_state(
     # SGP4 drifts and the satellite state is marked invalid rather than
     # producing a nonsensical altitude.
     if t_utc is None:
-        if cfg.satellite_elements is not None:
-            # The caller supplied elements valid at a specific epoch.
-            # Do not advance; use their epoch as the mission time.
-            t = cfg.satellite_elements.epoch_utc
-            if t.tzinfo is None:
-                t = t.replace(tzinfo=UTC)
-        else:
-            t = _next_visible_time(sat, cfg)
+        # Always scan for the next visible pass when the caller did not
+        # specify an instant. Applies uniformly to packaged satellites
+        # and to user-supplied Keplerian elements: at m0=0 for a
+        # near-circular LEO orbit the satellite is at an arbitrary
+        # position on the orbit and may be on the far side of the Earth,
+        # producing a mission state with negative elevation and zero
+        # delivered power. That is honest but unhelpful for a user who
+        # has just designed the satellite. The scan finds the peak of
+        # the first 24 h-visible pass; if no pass exists it falls back
+        # to the satellite's own epoch (same as before this change).
+        t = _next_visible_time(sat, cfg)
     else:
         t = t_utc
         if t.tzinfo is None:
