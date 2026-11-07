@@ -20,6 +20,7 @@ import {
   TradeSpaceApiError,
   type TradeSpaceResponse,
 } from "./tradeSpaceApi"
+import { useMission } from "../MissionControl/missionContext"
 
 const DEMO_REQUEST = {
   population_size: 20,
@@ -38,6 +39,7 @@ type PanelState =
   | { status: "error"; message: string; status_code?: number }
 
 export function TradeSpace() {
+  const { markStepComplete, setStepOutput } = useMission()
   const [state, setState] = useState<PanelState>({ status: "idle" })
   const abortRef = useRef<AbortController | null>(null)
 
@@ -60,6 +62,8 @@ export function TradeSpace() {
         result,
         elapsedMs: Date.now() - started,
       })
+      markStepComplete(4)
+      setStepOutput(4, result)
     } catch (err) {
       if (controller.signal.aborted) return
       if (err instanceof TradeSpaceApiError) {

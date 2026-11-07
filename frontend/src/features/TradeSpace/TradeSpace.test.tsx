@@ -1,6 +1,13 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
+
+vi.mock("../MissionControl/missionContext", () => ({
+  useMission: () => ({
+    markStepComplete: vi.fn(),
+    setStepOutput: vi.fn(),
+  }),
+}))
 import { TradeSpace } from "./TradeSpace"
 import type { TradeSpaceResponse } from "./tradeSpaceApi"
 

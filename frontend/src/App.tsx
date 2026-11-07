@@ -6,6 +6,7 @@ import { ALL_TAGS, EPISTEMIC_TAGS } from "./components/EpistemicBadge/epistemic"
 import { ArchitecturesView } from "./features/Architectures/ArchitecturesView"
 import { SensitivityPanel } from "./features/Sensitivity/SensitivityPanel"
 import { DesignStudio } from "./features/DesignStudio/DesignStudio"
+import { ReportView } from "./features/Report/ReportView"
 import { SimulationView } from "./features/Simulation/SimulationView"
 import { StatusView } from "./features/Status/StatusView"
 import { ClearDDashboard } from "./features/ClearDDashboard/ClearDDashboard"
@@ -79,23 +80,6 @@ function NextButton({
         {isDone ? "Next: " : "Complete this step to continue: "}
         {target?.label.replace(/^\d+ · /, "")} →
       </button>
-    </div>
-  )
-}
-
-function Placeholder({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="mx-auto max-w-3xl">
-      <div className="apple-card p-8">
-        <h2 className="text-title-2 mb-3">{title}</h2>
-        <p className="text-footnote text-[var(--ink-secondary)]">{description}</p>
-        <p className="mt-6 text-caption-1 text-[var(--ink-tertiary)]">
-          This step is part of the linear workflow. It will be wired
-          to the backend in a follow-up. The panels above are fully
-          functional; this one is a placeholder that records the
-          workflow slot.
-        </p>
-      </div>
     </div>
   )
 }
@@ -245,10 +229,7 @@ function AppInner({ activeView, visited, handleViewChange }: AppInnerProps) {
       {visited.has("report") && (
         <div hidden={activeView !== "report"}>
           <StepGate requires={5}>
-            <Placeholder
-              title="6 · Report"
-              description="The DARPA-grade export: PDF, structured JSON with per-number provenance, chart exports, manifest, reproduce.sh. Backend generator not yet built."
-            />
+            <ReportView />
           </StepGate>
         </div>
       )}
