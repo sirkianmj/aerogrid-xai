@@ -48,6 +48,8 @@ export type SimulationRequest = {
   wavelength_nm: number
   visibility_km: number
   cloud_factor: number
+  transmitter_type: "satellite" | "ground"
+  transmitter_min_elevation_deg: number
 }
 
 export class SimulationApiError extends Error {

@@ -65,6 +65,8 @@ export function SimulationView() {
           wavelength_nm: config.wavelength_nm,
           visibility_km: config.visibility_km,
           cloud_factor: config.cloud_factor,
+          transmitter_type: config.transmitter_type,
+          transmitter_min_elevation_deg: config.transmitter_min_elevation_deg,
         },
         ctrl.signal,
       )
