@@ -210,3 +210,141 @@ def test_simulation_run_with_relay() -> None:
     body = r.json()
     assert body["n_samples"] >= 2
     assert len(body["samples"]) > 0
+
+
+def test_thermal_runaway_flag_true_for_overpowered_ground() -> None:
+    """Ground mode with satellite-scale aperture triggers thermal runaway."""
+    cfg = MissionConfig(
+        n_uavs=2,
+        transmitter_type="ground",
+        ground_lat_deg=40.798,
+        ground_lon_deg=-77.86,
+        ground_alt_m=350.0,
+        transmitter_power_w=10000.0,
+        transmitter_aperture_m=0.02,
+        uav_alt_m=1000.0,
+        uav_hardware=UavHardware(
+            receiver_aperture_m2=0.5,
+            receiver_type="laser_photovoltaic",
+        ),
+        visibility_km=10.0,
+        cloud_factor=0.0,
+        transmitter_min_elevation_deg=5.0,
+    )
+    state = compute_mission_state(cfg)
+    assert any(u.thermal_runaway for u in state.uavs), (
+        "overpowered config should trigger thermal runaway"
+    )
+    for u in state.uavs:
+        if u.thermal_runaway:
+            assert u.delivered_power_w == 0.0
+
+
+def test_thermal_runaway_flag_false_for_reasonable_ground() -> None:
+    """Ground mode with reasonable aperture does NOT run away."""
+    cfg = MissionConfig(
+        n_uavs=2,
+        transmitter_type="ground",
+        ground_lat_deg=40.798,
+        ground_lon_deg=-77.86,
+        ground_alt_m=350.0,
+        transmitter_power_w=2000.0,
+        transmitter_aperture_m=0.15,
+        uav_alt_m=1000.0,
+        uav_hardware=UavHardware(
+            receiver_aperture_m2=0.5,
+            receiver_type="laser_photovoltaic",
+        ),
+        visibility_km=15.0,
+        cloud_factor=0.05,
+        transmitter_min_elevation_deg=5.0,
+    )
+    state = compute_mission_state(cfg)
+    assert not any(u.thermal_runaway for u in state.uavs)
+
+
+def test_simulation_response_has_new_uav_fields() -> None:
+    """UavSnapshot includes relay_hop_index and thermal_runaway."""
+    client = TestClient(app)
+    r = client.post(
+        "/simulation/run",
+        json={
+            "preset": "10min",
+            "transmitter_type": "ground",
+            "n_uavs": 2,
+            "transmitter_power_w": 2000.0,
+            "transmitter_aperture_m": 0.15,
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    for sample in body["samples"]:
+        for u in sample["uavs"]:
+            assert "relay_hop_index" in u
+            assert "thermal_runaway" in u
+            assert isinstance(u["thermal_runaway"], bool)
+
+
+def test_report_generation_with_runaway_data() -> None:
+    """Report generates without error when sample data has runaway UAVs."""
+    from app.report.generator import ReportInput, generate_report_pdf
+
+    payload = ReportInput(
+        mission_config={"seed": 1},
+        step_outputs={
+            5: {
+                "step": 5,
+                "data": {
+                    "preset": "10min",
+                    "duration_s": 600,
+                    "n_samples": 2,
+                    "warnings": [],
+                    "samples": [
+                        {
+                            "elapsed_s": 0,
+                            "delivered_power_w": 0,
+                            "received_power_w": 6000,
+                            "cumulative_energy_j": 0,
+                            "atmospheric_transmittance": 0.8,
+                            "satellite_elevation_deg": 30,
+                            "uavs": [
+                                {
+                                    "uav_id": 0,
+                                    "received_power_w": 6000,
+                                    "delivered_power_w": 0,
+                                    "receiver_efficiency": 0.0,
+                                    "thermal_headroom_c": 0,
+                                    "relay_hop_index": -1,
+                                    "thermal_runaway": True,
+                                },
+                            ],
+                        },
+                        {
+                            "elapsed_s": 60,
+                            "delivered_power_w": 0,
+                            "received_power_w": 6000,
+                            "cumulative_energy_j": 0,
+                            "atmospheric_transmittance": 0.8,
+                            "satellite_elevation_deg": 30,
+                            "uavs": [
+                                {
+                                    "uav_id": 0,
+                                    "received_power_w": 6000,
+                                    "delivered_power_w": 0,
+                                    "receiver_efficiency": 0.0,
+                                    "thermal_headroom_c": 0,
+                                    "relay_hop_index": -1,
+                                    "thermal_runaway": True,
+                                },
+                            ],
+                        },
+                    ],
+                },
+                "at": 0,
+            },
+        },
+        mission_state=None,
+        generated_at="2026-01-01T00:00:00Z",
+    )
+    pdf = generate_report_pdf(payload)
+    assert pdf.startswith(b"%PDF-")

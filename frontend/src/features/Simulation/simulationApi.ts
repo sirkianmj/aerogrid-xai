@@ -11,6 +11,12 @@ export type UavSnapshot = {
   delivered_power_w: number
   receiver_efficiency: number
   thermal_headroom_c: number
+  /** Relay hop index: -1 for direct mode or non-chain UAVs; 0..N-1 for
+   *  chain members (0 = first hop charged by source). */
+  relay_hop_index: number
+  /** True when the receiver was illuminated but exceeded the thermal
+   *  runaway threshold. delivered_power_w is 0 as a physical consequence. */
+  thermal_runaway: boolean
 }
 
 export type SimulationSample = {

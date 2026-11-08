@@ -30,6 +30,8 @@ class UavSnapshot:
     delivered_power_w: float
     receiver_efficiency: float
     thermal_headroom_c: float
+    relay_hop_index: int = -1
+    thermal_runaway: bool = False
 
 
 @dataclass(frozen=True)
@@ -150,6 +152,8 @@ def run_simulation(
                         delivered_power_w=u.delivered_power_w,
                         receiver_efficiency=u.receiver_efficiency,
                         thermal_headroom_c=u.thermal_headroom_c,
+                        relay_hop_index=getattr(u, "relay_hop_index", -1),
+                        thermal_runaway=getattr(u, "thermal_runaway", False),
                     )
                     for u in state.uavs
                 ),

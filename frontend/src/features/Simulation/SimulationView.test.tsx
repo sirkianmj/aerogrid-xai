@@ -60,9 +60,9 @@ function sampleResult(): SimulationResponse {
       satellite_elevation_deg: 30,
       link_status: "laser",
       uavs: [
-        { uav_id: 0, received_power_w: 50, delivered_power_w: 25, receiver_efficiency: 0.5, thermal_headroom_c: 40 },
-        { uav_id: 1, received_power_w: 30, delivered_power_w: 15, receiver_efficiency: 0.5, thermal_headroom_c: 35 },
-        { uav_id: 2, received_power_w: 20, delivered_power_w: 10, receiver_efficiency: 0.5, thermal_headroom_c: 30 },
+        { uav_id: 0, received_power_w: 50, delivered_power_w: 25, receiver_efficiency: 0.5, thermal_headroom_c: 40, relay_hop_index: -1, thermal_runaway: false },
+        { uav_id: 1, received_power_w: 30, delivered_power_w: 15, receiver_efficiency: 0.5, thermal_headroom_c: 35, relay_hop_index: -1, thermal_runaway: false },
+        { uav_id: 2, received_power_w: 20, delivered_power_w: 10, receiver_efficiency: 0.5, thermal_headroom_c: 30, relay_hop_index: -1, thermal_runaway: false },
       ],
       epistemic_tag: "simulation_result",
     })),

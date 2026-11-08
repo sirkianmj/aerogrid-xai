@@ -306,6 +306,12 @@ class UavState(BaseModel):
     # and for the terminal UAV; non-zero for intermediate relays.
     relay_forwarded_power_w: float = 0.0
     relay_hop_index: int = -1
+    # True when the receiver received non-zero incident power but the
+    # thermal solver found no physically meaningful steady state
+    # (heat generation exceeds all cooling). delivered_power_w is 0 as a
+    # physical consequence. Distinguishes thermal runaway from a link
+    # that simply delivered nothing (occluded, out of range, etc.).
+    thermal_runaway: bool = False
 
 
 class MissionNode(BaseModel):
@@ -571,6 +577,7 @@ def _compute_uav_link_from_ground(
             "link_slant_range_m": slant_range_m,
             "link_elevation_deg": elevation_deg,
             "receiver_efficiency": 0.0,
+            "thermal_runaway": 0.0,
         }
 
     receiver_radius_m = math.sqrt(hardware.receiver_aperture_m2 / math.pi)
@@ -598,6 +605,7 @@ def _compute_uav_link_from_ground(
 
     incident_at_aperture_w = cfg.transmitter_power_w * eta_tx * eta_spill * eta_atm
 
+    thermal_runaway_flag = False
     if hardware.receiver_type == "laser_photovoltaic":
         thermal = _ThermalModel()
         steady = thermal.steady_state(
@@ -607,6 +615,7 @@ def _compute_uav_link_from_ground(
         )
         if steady is None:
             receiver_efficiency = 0.0
+            thermal_runaway_flag = incident_at_aperture_w > 0.0
         else:
             t_plc_k, t_te_k = steady
             receiver_efficiency = _eta_total(
@@ -630,6 +639,7 @@ def _compute_uav_link_from_ground(
         "link_slant_range_m": float(slant_range_m),
         "link_elevation_deg": float(elevation_deg),
         "receiver_efficiency": float(receiver_efficiency),
+        "thermal_runaway": 1.0 if thermal_runaway_flag else 0.0,
     }
 
 
@@ -709,6 +719,7 @@ def _uav_to_uav_link(
 
     incident = forwarded_power_w * eta_tx * eta_spill * eta_atm
 
+    thermal_runaway_flag = False
     if hardware.receiver_type == "laser_photovoltaic":
         thermal = _ThermalModel()
         steady = thermal.steady_state(
@@ -718,6 +729,7 @@ def _uav_to_uav_link(
         )
         if steady is None:
             receiver_efficiency = 0.0
+            thermal_runaway_flag = incident > 0.0
         else:
             t_plc_k, t_te_k = steady
             receiver_efficiency = _eta_total(
@@ -741,6 +753,7 @@ def _uav_to_uav_link(
         "link_slant_range_m": float(slant_m),
         "link_elevation_deg": float(elevation_deg),
         "receiver_efficiency": float(receiver_efficiency),
+        "thermal_runaway": 1.0 if thermal_runaway_flag else 0.0,
     }
 
 
@@ -784,6 +797,7 @@ def _compute_uav_link(
             "link_slant_range_m": slant_range_m,
             "link_elevation_deg": elevation_deg,
             "receiver_efficiency": 0.0,
+            "thermal_runaway": 0.0,
         }
 
     receiver_radius_m = math.sqrt(hardware.receiver_aperture_m2 / math.pi)
@@ -822,6 +836,7 @@ def _compute_uav_link(
     # chosen receiver type. The thermal model expects the incident power
     # at the *cell* (100 cm^2 in ThermalParams), which for a concentrator
     # optical design equals the power collected by the larger aperture.
+    thermal_runaway_flag = False
     if hardware.receiver_type == "laser_photovoltaic":
         thermal = _ThermalModel()
         steady = thermal.steady_state(
@@ -831,6 +846,7 @@ def _compute_uav_link(
         )
         if steady is None:
             receiver_efficiency = 0.0
+            thermal_runaway_flag = incident_at_aperture_w > 0.0
         else:
             t_plc_k, t_te_k = steady
             receiver_efficiency = _eta_total(
@@ -856,6 +872,7 @@ def _compute_uav_link(
         "link_slant_range_m": float(slant_range_m),
         "link_elevation_deg": float(elevation_deg),
         "receiver_efficiency": float(receiver_efficiency),
+        "thermal_runaway": 1.0 if thermal_runaway_flag else 0.0,
     }
 
 
@@ -1459,6 +1476,7 @@ def compute_mission_state(
                     "link_slant_range_m": 0.0,
                     "link_elevation_deg": 0.0,
                     "receiver_efficiency": 0.0,
+                    "thermal_runaway": 0.0,
                 }
         else:
             # Direct mode: existing behavior.
@@ -1525,6 +1543,7 @@ def compute_mission_state(
                 airframe=uav_hardware.airframe,
                 relay_forwarded_power_w=link.get("relay_forwarded_power_w", 0.0),
                 relay_hop_index=int(link.get("relay_hop_index", -1)),
+                thermal_runaway=bool(link.get("thermal_runaway", 0.0)),
             )
         )
 

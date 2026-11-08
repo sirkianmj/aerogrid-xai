@@ -51,6 +51,8 @@ class UavSnapshotOut(BaseModel):
     delivered_power_w: float
     receiver_efficiency: float
     thermal_headroom_c: float
+    relay_hop_index: int = -1
+    thermal_runaway: bool = False
 
 
 class SimulationSample(BaseModel):
@@ -135,6 +137,8 @@ async def run(request: SimulationRequest) -> SimulationResponse:
                         delivered_power_w=u.delivered_power_w,
                         receiver_efficiency=u.receiver_efficiency,
                         thermal_headroom_c=u.thermal_headroom_c,
+                        relay_hop_index=getattr(u, "relay_hop_index", -1),
+                        thermal_runaway=getattr(u, "thermal_runaway", False),
                     )
                     for u in s.uavs
                 ],

@@ -123,3 +123,47 @@ export function aggregateOption(
     ],
   }
 }
+
+
+/**
+ * Per-hop delivered power. Only meaningful when the simulation used a
+ * multi-hop relay topology (at least one UAV has relay_hop_index >= 0).
+ * X = hop index, Y = average delivered power across samples for that hop.
+ * Returns null when no relay data is present, so the caller can skip the
+ * chart entirely in direct mode.
+ */
+export function perHopPowerOption(
+  samples: SimulationSample[],
+): EChartsOption | null {
+  const hopSum: Record<number, number> = {}
+  const hopCount: Record<number, number> = {}
+  for (const s of samples) {
+    for (const u of s.uavs) {
+      const h = u.relay_hop_index
+      if (h < 0) continue
+      hopSum[h] = (hopSum[h] ?? 0) + u.delivered_power_w
+      hopCount[h] = (hopCount[h] ?? 0) + 1
+    }
+  }
+  const hops = Object.keys(hopSum).map(Number).sort((a, b) => a - b)
+  if (hops.length === 0) return null
+
+  const p = palette()
+  const ys = hops.map((h) => hopSum[h] / Math.max(1, hopCount[h]))
+  return {
+    ...base(p),
+    xAxis: axisCommon("hop", p),
+    yAxis: axisCommon("avg delivered (W)", p),
+    series: [
+      {
+        name: "Delivered per hop",
+        type: "line" as const,
+        smooth: false,
+        showSymbol: true,
+        lineStyle: { width: 2, color: "#af52de" },
+        itemStyle: { color: "#af52de" },
+        data: ys,
+      },
+    ],
+  }
+}

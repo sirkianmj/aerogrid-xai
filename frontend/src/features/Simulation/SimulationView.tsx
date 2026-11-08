@@ -20,7 +20,7 @@ import {
   type SimulationPreset,
   type SimulationResponse,
 } from "./simulationApi"
-import { aggregateOption, perUavPowerOption } from "./chartOptions"
+import { aggregateOption, perHopPowerOption, perUavPowerOption } from "./chartOptions"
 
 type PanelState =
   | { status: "idle" }
@@ -183,6 +183,7 @@ export function SimulationView() {
             </div>
           )}
 
+          <ThermalRunawayBanner result={state.result} />
           <SummaryPanel result={state.result} />
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -233,8 +234,50 @@ export function SimulationView() {
               />
             </ChartCard>
           </div>
+
+          {(() => {
+            const perHop = perHopPowerOption(state.result.samples)
+            if (!perHop) return null
+            return (
+              <ChartCard title="Delivered power by relay hop">
+                <ReactECharts
+                  option={perHop}
+                  style={{ height: 240 }}
+                  notMerge
+                />
+              </ChartCard>
+            )
+          })()}
         </>
       )}
+    </div>
+  )
+}
+
+function ThermalRunawayBanner({ result }: { result: SimulationResponse }) {
+  const runawayIds = new Set<number>()
+  for (const s of result.samples) {
+    for (const u of s.uavs) {
+      if (u.thermal_runaway) runawayIds.add(u.uav_id)
+    }
+  }
+  if (runawayIds.size === 0) return null
+  return (
+    <div
+      className="rounded-lg border border-[#ff9500]/40 bg-[#ff9500]/5 p-3 text-sm text-[#ff9500]"
+      data-testid="thermal-runaway-banner"
+    >
+      <div className="mb-1 font-semibold">
+        Thermal runaway on {runawayIds.size} UAV(s)
+      </div>
+      <div className="text-[var(--ink-secondary)]">
+        These UAVs received non-zero incident power but exceeded the
+        receiver&rsquo;s thermal runaway threshold. Delivered power is 0 W
+        as a physical consequence of heat generation exceeding all
+        cooling mechanisms &mdash; not a bug. Reduce transmitter power or
+        increase the receiver aperture to stay below the runaway
+        boundary.
+      </div>
     </div>
   )
 }
@@ -243,12 +286,21 @@ function SummaryPanel({ result }: { result: SimulationResponse }) {
   const last = result.samples[result.samples.length - 1]
   const totalEnergy = last?.cumulative_energy_j ?? 0
   const peakPower = Math.max(...result.samples.map((s) => s.delivered_power_w), 0)
+  const runawayIds = new Set<number>()
+  for (const s of result.samples) {
+    for (const u of s.uavs) {
+      if (u.thermal_runaway) runawayIds.add(u.uav_id)
+    }
+  }
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
       <Stat label="Samples" value={String(result.n_samples)} />
       <Stat label="Duration" value={`${Math.round(result.duration_s)} s`} />
       <Stat label="Peak delivered" value={`${peakPower.toFixed(1)} W`} />
       <Stat label="Total energy" value={`${(totalEnergy / 1000).toFixed(2)} kJ`} />
+      {runawayIds.size > 0 && (
+        <Stat label="Runaway UAVs" value={String(runawayIds.size)} />
+      )}
     </div>
   )
 }
