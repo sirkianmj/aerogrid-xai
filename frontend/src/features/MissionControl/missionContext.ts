@@ -62,6 +62,12 @@ export type MissionConfig = {
   /** Minimum elevation angle (degrees) for a ground-to-air link to close.
    *  Below this, the link is offline. Default 5 deg per ITU-R P.528. */
   transmitter_min_elevation_deg: number
+  /** Multi-hop relay chain. Ordered UAV IDs from source to terminal.
+   *  null (default) = direct mode (each UAV charged by source). */
+  relay_topology: number[] | null
+  /** Fraction of a relay hop's delivered power that it forwards to the
+   *  next hop. Range (0, 1]. The rest charges that hop's own battery. */
+  relay_fraction: number
   /** When set, the mission uses this topology instead of generating
    *  one. Loaded from the architecture explorer. */
   selected_architecture?: SelectedArchitecture | null
@@ -101,6 +107,8 @@ export const DEFAULT_CONFIG: MissionConfig = {
   uav_receiver_type: "laser_photovoltaic",
   transmitter_type: "satellite",
   transmitter_min_elevation_deg: 5.0,
+  relay_topology: null,
+  relay_fraction: 0.7,
   selected_architecture: null,
   uav_hardware_list: null,
 }

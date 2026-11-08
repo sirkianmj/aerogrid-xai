@@ -361,6 +361,8 @@ def _step2_section(inp: ReportInput, styles: dict[str, ParagraphStyle]) -> list[
         "atmospheric_transmittance": atm.get("transmittance", "unknown"),
         "uav_count": len(state.get("uavs") or []),
     }
+    if trans.get("relay_note"):
+        summary["relay_note"] = trans["relay_note"]
     els.append(_kv_table(summary, styles))
     els.append(Spacer(1, 12))
     return els

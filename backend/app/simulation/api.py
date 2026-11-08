@@ -39,6 +39,10 @@ class SimulationRequest(BaseModel):
     # produces satellite-physics curves even for ground-mode missions.
     transmitter_type: str = "satellite"
     transmitter_min_elevation_deg: float = 5.0
+    # Multi-hop relay chain. Ordered list of UAV IDs from source to
+    # terminal. None = direct mode.
+    relay_topology: list[int] | None = None
+    relay_fraction: float = 0.7
 
 
 class UavSnapshotOut(BaseModel):
@@ -84,6 +88,8 @@ async def run(request: SimulationRequest) -> SimulationResponse:
     cfg = MissionConfig(
         transmitter_type=request.transmitter_type,
         transmitter_min_elevation_deg=request.transmitter_min_elevation_deg,
+        relay_topology=(tuple(request.relay_topology) if request.relay_topology else None),
+        relay_fraction=request.relay_fraction,
         seed=request.seed,
         satellite_key=request.satellite_key,
         n_uavs=request.n_uavs,

@@ -9,6 +9,7 @@
 import { useState } from "react"
 import { DEFAULT_CONFIG, useMission, type MissionConfig } from "./missionContext"
 import { ENVIRONMENT_PRESETS } from "./environmentPresets"
+import { RelayTopologyEditor } from "./RelayTopologyEditor"
 
 type FieldErrors = {
   t_utc?: string
@@ -111,6 +112,8 @@ export function MissionConfigBar() {
     draft.uav_receiver_type !== config.uav_receiver_type ||
     draft.transmitter_type !== config.transmitter_type ||
     draft.transmitter_min_elevation_deg !== config.transmitter_min_elevation_deg ||
+    draft.relay_fraction !== config.relay_fraction ||
+    JSON.stringify(draft.relay_topology) !== JSON.stringify(config.relay_topology) ||
     JSON.stringify(draft.satellite_elements ?? null) !==
       JSON.stringify(config.satellite_elements ?? null)
 
@@ -199,6 +202,13 @@ export function MissionConfigBar() {
           </button>
         </div>
       )}
+
+      <RelayTopologyEditor
+        nUavs={draft.n_uavs}
+        relayTopology={draft.relay_topology}
+        relayFraction={draft.relay_fraction}
+        onChange={(patch) => setDraft((prev) => ({ ...prev, ...patch }))}
+      />
 
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2">
