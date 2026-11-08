@@ -426,11 +426,20 @@ def _step5_section(inp: ReportInput, styles: dict[str, ParagraphStyle]) -> list[
         els.append(Paragraph("Step 5 output has an unexpected shape.", styles["missing"]))
         els.append(Spacer(1, 12))
         return els
+    step5_samples = data.get("samples") or []
+    step5_runaway_uavs: set[int] = set()
+    for s in step5_samples:
+        if not isinstance(s, dict):
+            continue
+        for u in s.get("uavs") or []:
+            if isinstance(u, dict) and u.get("thermal_runaway"):
+                step5_runaway_uavs.add(int(u.get("uav_id", -1)))
     summary = {
         "preset": data.get("preset", "?"),
         "duration_s": data.get("duration_s", "?"),
         "n_samples": data.get("n_samples", "?"),
         "warnings": len(data.get("warnings") or []),
+        "thermal_runaway_uavs": len(step5_runaway_uavs),
     }
     els.append(_kv_table(summary, styles))
     els.append(Spacer(1, 6))
@@ -910,6 +919,33 @@ def _final_summary_section(inp: ReportInput, styles: dict[str, ParagraphStyle]) 
         f"each sample."
     )
     els.append(Paragraph(interpretation, styles["body"]))
+    els.append(Spacer(1, 4))
+
+    # Thermal runaway disclosure. Distinguishes "0 W because nothing was
+    # received" from "0 W because the receiver exceeded its thermal limit."
+    # Without this, an overpowered ground-mode mission looks like a bug.
+    runaway_ids: set[int] = set()
+    for s in samples:
+        if not isinstance(s, dict):
+            continue
+        for u in s.get("uavs") or []:
+            if isinstance(u, dict) and u.get("thermal_runaway"):
+                runaway_ids.add(int(u.get("uav_id", -1)))
+    if runaway_ids:
+        els.append(
+            Paragraph(
+                f"<b>Thermal runaway detected:</b> {len(runaway_ids)} UAV(s) "
+                f"received non-zero incident power but exceeded the "
+                f"receiver's thermal runaway threshold. Delivered power is "
+                f"0 W as a physical consequence of heat generation exceeding "
+                f"all cooling mechanisms, not by design. To stay below the "
+                f"runaway boundary, reduce transmitter power or increase the "
+                f"receiver aperture.",
+                styles["body"],
+            )
+        )
+        els.append(Spacer(1, 4))
+
     els.append(Spacer(1, 6))
 
     note = (

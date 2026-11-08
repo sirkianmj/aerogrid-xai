@@ -210,6 +210,38 @@ export function MissionConfigBar() {
         onChange={(patch) => setDraft((prev) => ({ ...prev, ...patch }))}
       />
 
+      {draft.transmitter_type === "ground" &&
+        (draft.transmitter_power_w > 5000 || draft.transmitter_aperture_m < 0.1) && (
+          <div
+            className="mb-3 rounded border border-[#ff9500]/40 bg-[#ff9500]/5 p-2 text-[0.7rem]"
+            data-testid="ground-mode-warning"
+          >
+            <div className="mb-1 font-medium text-[#ff9500]">
+              Ground mode with satellite-scale transmit parameters
+            </div>
+            <div className="mb-2 text-[var(--ink-secondary)]">
+              Power &gt; 5 kW or aperture &lt; 10 cm typically drives the
+              receiver into thermal runaway (delivered power drops to 0 W
+              by physical constraint). Consider loading the Ground-to-Air
+              ISR template for physically sensible defaults, or apply the
+              suggested values below.
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                setDraft((prev) => ({
+                  ...prev,
+                  transmitter_power_w: 2000,
+                  transmitter_aperture_m: 0.15,
+                }))
+              }
+              className="rounded border border-[#ff9500]/60 px-2 py-0.5 text-[0.65rem] uppercase tracking-wider text-[#ff9500] hover:bg-[#ff9500]/10"
+            >
+              Apply ground defaults (2 kW, 0.15 m)
+            </button>
+          </div>
+        )}
+
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2">
           <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
