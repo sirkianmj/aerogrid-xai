@@ -261,31 +261,43 @@ class _AppApi:
     def __init__(self) -> None:
         self.window: object = None
 
-    def save_pdf(self, base64_data: str, default_filename: str) -> str:
-        """Open a native save dialog, write the decoded PDF, return the path.
+    def open_pdf(self, base64_data: str, default_filename: str) -> str:
+        """Write the PDF to ~/Downloads and open it with the OS default handler.
 
-        Returns an empty string if the user cancelled. Raises on I/O
-        error (base64 decode, write) — the JS caller catches and falls
-        back to a browser-style download.
+        No native save dialog is shown: on macOS a pywebview SAVE_DIALOG
+        attaches to the WKWebView as a modal sheet and blocks the main
+        thread until it is dismissed, which can leave the app unusable.
+        This method instead writes to a well-known location and hands off
+        to `open`, which uses the user's default PDF handler (Preview, or
+        a browser tab if that is the default).
+
+        If the target name already exists, a counter suffix is added so
+        previous reports are never overwritten.
+
+        Returns the path where the file was written. The subprocess call
+        is non-blocking (Popen), so the UI thread is not held while the
+        external viewer starts.
         """
         import base64
-        import webview as _webview
+        import subprocess
+        from pathlib import Path as _Path
 
-        if self.window is None:
-            raise RuntimeError("window not attached to AppApi")
+        downloads = _Path.home() / "Downloads"
+        downloads.mkdir(parents=True, exist_ok=True)
 
-        result = self.window.create_file_dialog(  # type: ignore[attr-defined]
-            _webview.SAVE_DIALOG,
-            save_filename=default_filename,
-            file_types=("PDF (*.pdf)",),
-        )
-        if not result:
-            return ""
+        candidate = downloads / default_filename
+        if candidate.exists():
+            stem = _Path(default_filename).stem
+            suffix = _Path(default_filename).suffix
+            counter = 1
+            while candidate.exists():
+                candidate = downloads / f"{stem}-{counter}{suffix}"
+                counter += 1
 
-        path = result if isinstance(result, str) else result[0]
-        with open(path, "wb") as f:
-            f.write(base64.b64decode(base64_data))
-        return path
+        candidate.write_bytes(base64.b64decode(base64_data))
+        # Non-blocking: do not wait for the viewer to exit.
+        subprocess.Popen(["open", str(candidate)])
+        return str(candidate)
 
 
 def main() -> None:

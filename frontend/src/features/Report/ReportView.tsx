@@ -37,15 +37,18 @@ function blobToBase64(blob: Blob): Promise<string> {
   })
 }
 
-async function savePdf(blob: Blob, filename: string): Promise<string> {
-  // Desktop path: poll for pywebview bridge (up to 2 s), then native save
-  // dialog. The 2 s budget covers the worst-case injection lag after a
-  // load_url() navigation from the pywebview splash page.
+async function openPdf(blob: Blob, filename: string): Promise<string> {
+  // Desktop path: poll for pywebview bridge (up to 2 s), then open the
+  // PDF in the OS default handler (Preview, or a browser if set as
+  // default). No native save dialog: a pywebview SAVE_DIALOG blocks the
+  // WKWebView main thread until dismissed, which can leave the app
+  // unresponsive. The Python side writes to ~/Downloads and calls
+  // `open` non-blockingly.
   const api = await waitForPywebview(2000)
-  if (api?.save_pdf) {
+  if (api?.open_pdf) {
     try {
       const base64 = await blobToBase64(blob)
-      return await api.save_pdf(base64, filename)
+      return await api.open_pdf(base64, filename)
     } catch {
       // Fall through to browser download if pywebview fails for any reason.
     }
@@ -94,7 +97,7 @@ export function ReportView() {
       if (ctrl.signal.aborted) return
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)
       const filename = `aerogrid-report-${timestamp}.pdf`
-      const savedPath = await savePdf(blob, filename)
+      const savedPath = await openPdf(blob, filename)
       if (savedPath === "") {
         // User cancelled the save dialog. Do NOT mark step 6 complete —
         // they have not produced a report yet.
@@ -183,7 +186,7 @@ export function ReportView() {
           </button>
           {panel.status === "ok" && (
             <span className="text-xs text-[var(--ink-tertiary)]">
-              Downloaded {panel.filename}
+              Opened: {panel.filename}
             </span>
           )}
         </div>

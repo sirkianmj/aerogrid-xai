@@ -90,7 +90,7 @@ describe("ReportView", () => {
     const user = userEvent.setup()
     render(<ReportView />)
     await user.click(screen.getByRole("button", { name: /generate pdf report/i }))
-    await waitFor(() => expect(screen.getByText(/Downloaded aerogrid-report-/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/Opened:.*aerogrid-report-/)).toBeInTheDocument())
   })
 
   it("shows error message on failure", async () => {

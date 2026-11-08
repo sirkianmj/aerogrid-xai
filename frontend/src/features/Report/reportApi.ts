@@ -69,7 +69,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
  * falling through to a browser download.
  */
 export type PywebviewApi = {
-  save_pdf?: (base64Data: string, defaultFilename: string) => Promise<string>
+  open_pdf?: (base64Data: string, defaultFilename: string) => Promise<string>
 }
 
 export async function waitForPywebview(
@@ -79,7 +79,7 @@ export async function waitForPywebview(
   while (Date.now() - start < timeoutMs) {
     const w = window as unknown as { pywebview?: { api?: PywebviewApi } }
     const api = w.pywebview?.api
-    if (api?.save_pdf) return api
+    if (api?.open_pdf) return api
     await new Promise((r) => setTimeout(r, 100))
   }
   return null
