@@ -18,6 +18,8 @@ vi.mock("../MissionControl/missionContext", () => ({
       wavelength_nm: 1064,
       visibility_km: 10,
       cloud_factor: 0,
+      transmitter_type: "satellite" as const,
+      transmitter_min_elevation_deg: 5.0,
     },
     markStepComplete: vi.fn(),
     setStepOutput: vi.fn(),
@@ -122,5 +124,10 @@ describe("SimulationView", () => {
     expect(req.preset).toBe("10min")
     expect(req.seed).toBe(1)
     expect(req.n_uavs).toBe(3)
+    // Fields that must be forwarded from config to the backend. Without
+    // transmitter_type, /simulation/run defaults to "satellite" and the
+    // ground-mode mission produces satellite-shaped curves.
+    expect(req.transmitter_type).toBeDefined()
+    expect(req.transmitter_min_elevation_deg).toBeDefined()
   })
 })
