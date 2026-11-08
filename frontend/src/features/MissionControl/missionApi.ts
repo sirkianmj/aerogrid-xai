@@ -190,6 +190,9 @@ export type MissionStateRequest = {
   t_utc?: string | null
   selected_architecture?: SelectedArchitecture | null
   uav_hardware_list?: UavHardware[] | null
+
+  transmitter_type?: "satellite" | "ground"
+  transmitter_min_elevation_deg?: number
 }
 
 export type UavHardware = {
