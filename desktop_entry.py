@@ -48,7 +48,16 @@ from app.main import app  # noqa: E402
 
 _DESKTOP_CSP = (
     "default-src 'self'; "
-    "script-src 'self'; "
+    # pywebview's bridge script uses new Function() to build
+    # window.pywebview.api. Without 'unsafe-eval' the API object is
+    # empty ({}), so methods like open_pdf are undefined and the
+    # frontend falls back to a Blob download that WKWebView renders
+    # inline, hijacking the app window. This app serves only its own
+    # bundled assets (script-src 'self' still enforced), has no
+    # user-generated content, and loads no third-party scripts, so
+    # the marginal risk of unsafe-eval here is the pywebview bridge
+    # itself.
+    "script-src 'self' 'unsafe-eval'; "
     "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data: blob:; "
     "font-src 'self' data:; "
