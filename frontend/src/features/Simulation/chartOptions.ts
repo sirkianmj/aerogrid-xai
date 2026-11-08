@@ -88,7 +88,7 @@ export function perUavPowerOption(
     showSymbol: false,
     lineStyle: { width: 1.5, color: uavColor(i) },
     itemStyle: { color: uavColor(i) },
-    data: samples.map((s) => s.uavs[i]?.[field] ?? 0),
+    data: samples.map((s) => [s.elapsed_s, s.uavs[i]?.[field] ?? 0]),
   }))
   return {
     ...base(p),
@@ -118,7 +118,7 @@ export function aggregateOption(
         lineStyle: { width: 2, color: "#007aff" },
         itemStyle: { color: "#007aff" },
         areaStyle: areaFill ? { color: "rgba(0,122,255,0.15)" } : undefined,
-        data: samples.map((s) => s[field]),
+        data: samples.map((s) => [s.elapsed_s, s[field]]),
       },
     ],
   }
@@ -162,7 +162,7 @@ export function perHopPowerOption(
         showSymbol: true,
         lineStyle: { width: 2, color: "#af52de" },
         itemStyle: { color: "#af52de" },
-        data: ys,
+        data: hops.map((h, i) => [h, ys[i]]),
       },
     ],
   }
