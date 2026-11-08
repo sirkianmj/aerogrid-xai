@@ -219,6 +219,12 @@ export const TEMPLATES: TemplateConfig[] = [
       transmitter_type: "ground",
       transmitter_min_elevation_deg: 5.0,
       n_uavs: 4,
+      uav_hardware_list: [
+        LEO_MULTIROTOR,
+        LEO_MULTIROTOR,
+        LEO_MULTIROTOR,
+        LEO_MULTIROTOR,
+      ],
       uav_alt_m: 1500.0,
       uav_receiver_aperture_m2: 0.5,
       uav_receiver_type: "laser_photovoltaic",

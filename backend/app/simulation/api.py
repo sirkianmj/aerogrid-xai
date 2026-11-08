@@ -32,6 +32,13 @@ class SimulationRequest(BaseModel):
     wavelength_nm: float = Field(1064.0, gt=0.0, le=10000.0)
     visibility_km: float = Field(10.0, gt=0.0, le=100.0)
     cloud_factor: float = Field(0.0, ge=0.0, le=1.0)
+    # Transmitter source. Default 'satellite' preserves pre-existing
+    # behavior. 'ground' uses a co-located ground transmitter at the
+    # ground station position. Without this field, /simulation/run
+    # always builds MissionConfig with the "satellite" default and
+    # produces satellite-physics curves even for ground-mode missions.
+    transmitter_type: str = "satellite"
+    transmitter_min_elevation_deg: float = 5.0
 
 
 class UavSnapshotOut(BaseModel):
@@ -75,6 +82,8 @@ async def run(request: SimulationRequest) -> SimulationResponse:
     not a physical measurement, not a formal verification verdict.
     """
     cfg = MissionConfig(
+        transmitter_type=request.transmitter_type,
+        transmitter_min_elevation_deg=request.transmitter_min_elevation_deg,
         seed=request.seed,
         satellite_key=request.satellite_key,
         n_uavs=request.n_uavs,

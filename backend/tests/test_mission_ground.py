@@ -187,3 +187,47 @@ def test_get_mission_state_satellite_default() -> None:
     assert r.status_code == 200
     body = r.json()
     assert body["transmission"]["modality"] in {"laser", "offline"}
+
+
+def test_post_mission_state_ground_transmitter() -> None:
+    """POST /mission/state with transmitter_type=ground uses ground physics.
+
+    Regression guard: the frontend switches to POST once a selected
+    architecture is loaded (so the architecture object fits in the body).
+    Without transmitter_type in MissionStateRequest, Pydantic silently
+    drops the field and the POST handler builds MissionConfig with the
+    'satellite' default. Result: ground config header, satellite physics
+    in the report. This test exercises the POST path.
+    """
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    client = TestClient(app)
+    r = client.post(
+        "/mission/state",
+        json={
+            "transmitter_type": "ground",
+            "ground_lat_deg": 40.798,
+            "ground_lon_deg": -77.86,
+            "n_uavs": 2,
+            "transmitter_power_w": 1000.0,
+            "transmitter_aperture_m": 0.1,
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["transmission"]["modality"] in {"laser_ground", "offline"}
+
+
+def test_post_mission_state_satellite_default() -> None:
+    """POST /mission/state with no transmitter_type stays satellite."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    client = TestClient(app)
+    r = client.post("/mission/state", json={"seed": 1, "n_uavs": 2})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["transmission"]["modality"] in {"laser", "offline"}

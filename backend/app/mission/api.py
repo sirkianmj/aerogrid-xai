@@ -224,6 +224,8 @@ class MissionStateRequest(BaseModel):
     wavelength_nm: float = 1064.0
     visibility_km: float = 10.0
     cloud_factor: float = 0.0
+    transmitter_type: str = "satellite"
+    transmitter_min_elevation_deg: float = 5.0
     transmitter_aperture_m: float = 0.02
     uav_alt_m: float = 1_000.0
     uav_receiver_aperture_m2: float = 0.5
@@ -339,6 +341,8 @@ async def post_mission_state(req: MissionStateRequest) -> MissionState:
     selected = _selected_from_body(req.selected_architecture)
 
     cfg = MissionConfig(
+        transmitter_type=req.transmitter_type,
+        transmitter_min_elevation_deg=req.transmitter_min_elevation_deg,
         seed=req.seed,
         satellite_key=req.satellite_key or "iss",
         satellite_elements=elements,
