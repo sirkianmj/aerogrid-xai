@@ -193,6 +193,9 @@ export type MissionStateRequest = {
 
   transmitter_type?: "satellite" | "ground"
   transmitter_min_elevation_deg?: number
+
+  relay_topology?: number[] | null
+  relay_fraction?: number
 }
 
 export type UavHardware = {

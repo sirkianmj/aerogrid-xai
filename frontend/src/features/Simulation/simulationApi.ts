@@ -50,6 +50,8 @@ export type SimulationRequest = {
   cloud_factor: number
   transmitter_type: "satellite" | "ground"
   transmitter_min_elevation_deg: number
+  relay_topology: number[] | null
+  relay_fraction: number
 }
 
 export class SimulationApiError extends Error {

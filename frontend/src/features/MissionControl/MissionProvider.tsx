@@ -72,6 +72,10 @@ function queryString(c: MissionConfig): string {
   p.set("uav_receiver_type", c.uav_receiver_type)
   p.set("transmitter_type", c.transmitter_type)
   p.set("transmitter_min_elevation_deg", String(c.transmitter_min_elevation_deg))
+  if (c.relay_topology && c.relay_topology.length > 0) {
+    p.set("relay_topology", c.relay_topology.join(","))
+  }
+  p.set("relay_fraction", String(c.relay_fraction))
   if (c.t_utc) p.set("t_utc", c.t_utc)
   return p.toString()
 }
@@ -92,6 +96,8 @@ function requestBody(c: MissionConfig): MissionStateRequest {
     uav_receiver_type: c.uav_receiver_type,
     transmitter_type: c.transmitter_type,
     transmitter_min_elevation_deg: c.transmitter_min_elevation_deg,
+    relay_topology: c.relay_topology ?? null,
+    relay_fraction: c.relay_fraction,
     t_utc: c.t_utc,
     selected_architecture: c.selected_architecture ?? null,
     uav_hardware_list: c.uav_hardware_list ?? null,

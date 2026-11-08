@@ -67,6 +67,8 @@ export function SimulationView() {
           cloud_factor: config.cloud_factor,
           transmitter_type: config.transmitter_type,
           transmitter_min_elevation_deg: config.transmitter_min_elevation_deg,
+          relay_topology: config.relay_topology,
+          relay_fraction: config.relay_fraction,
         },
         ctrl.signal,
       )

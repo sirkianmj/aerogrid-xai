@@ -200,6 +200,19 @@ class MissionConfig:
     # DESCANSO guidance: below 5 degrees, refraction and path loss
     # become unreliable for mission-level modeling.
     transmitter_min_elevation_deg: float = 5.0
+    # Multi-hop relay chain. Ordered tuple of UAV IDs from the source to
+    # the terminal receiver: (uav_a, uav_b, uav_c) means source -> uav_a
+    # -> uav_b -> uav_c. When None (default), every UAV is charged
+    # directly by the source (existing behavior). When set, ONLY the
+    # UAVs in the chain receive power; others get zero. All entries must
+    # be distinct and in [0, n_uavs). Validated at compute time.
+    relay_topology: tuple[int, ...] | None = None
+    # Fraction of a relay UAV's delivered power that it forwards to the
+    # next hop. The remaining (1 - relay_fraction) charges that UAV's
+    # own battery. Default 0.7 means relays keep 30% and forward 70%.
+    # The physical constraint out <= in is enforced by the relay link
+    # budget: forwarded = previous_delivered * relay_fraction.
+    relay_fraction: float = 0.7
 
 
 # --- response models -----------------------------------------------------
@@ -235,6 +248,9 @@ class TransmissionState(BaseModel):
     slant_range_m: float
     atmospheric_path_m: float
     elevation_deg: float
+    # Human-readable relay chain description when a multi-hop topology is
+    # active. Empty when the mission uses direct source-to-UAV links.
+    relay_note: str = ""
 
 
 class AtmosphereState(BaseModel):
@@ -284,6 +300,12 @@ class UavState(BaseModel):
     wing_loading_kg_per_m2: float
     lift_feasible: bool
     airframe: str
+    # Relay chain bookkeeping. relay_hop_index is -1 for UAVs not in a
+    # chain, 0 for the first chain member (charged by the source), 1..N
+    # for subsequent hops. relay_forwarded_power_w is 0 for non-relays
+    # and for the terminal UAV; non-zero for intermediate relays.
+    relay_forwarded_power_w: float = 0.0
+    relay_hop_index: int = -1
 
 
 class MissionNode(BaseModel):
@@ -445,6 +467,14 @@ def _ts() -> Time:
     return _orb._TS
 
 
+def _relay_note_str(cfg: MissionConfig) -> str:
+    """Human-readable description of the active relay chain, or empty."""
+    if not cfg.relay_topology:
+        return ""
+    chain_str = " \u2192 ".join(f"UAV-{uid}" for uid in cfg.relay_topology)
+    return f"via source \u2192 {chain_str}"
+
+
 def _ground_to_uav_slant_range_m(
     *,
     transmitter_lat_deg: float,
@@ -598,6 +628,117 @@ def _compute_uav_link_from_ground(
         "delivered_power_w": float(delivered_power_w),
         "received_power_w": float(incident_at_aperture_w),
         "link_slant_range_m": float(slant_range_m),
+        "link_elevation_deg": float(elevation_deg),
+        "receiver_efficiency": float(receiver_efficiency),
+    }
+
+
+def _uav_to_uav_link(
+    *,
+    from_lat: float,
+    from_lon: float,
+    from_alt_m: float,
+    to_lat: float,
+    to_lon: float,
+    to_alt_m: float,
+    forwarded_power_w: float,
+    cfg: MissionConfig,
+    hardware: UavHardware,
+) -> dict[str, float]:
+    """UAV-to-UAV relay link budget.
+
+    Reuses the ground-to-air geometry (haversine on ITU-R P.528 effective
+    Earth radius, 3D distance per 3GPP TR 36.777). The transmitting UAV's
+    relay transceiver is a small optical module (0.1 m aperture); at the
+    typical 1-5 km separation of a UAV cluster this is within the Gaussian
+    beam's Rayleigh range (zR ~ 7.4 km at 1064 nm), so beam spread is
+    minimal and capture efficiency at a 0.5 m^2 receiver is near unity.
+
+    First-order relay accounting: forwarded_power_w is the optical power
+    emitted by the previous hop's transceiver. That UAV's battery carries
+    this load via relay_fraction (see MissionConfig), so the physical
+    constraint out <= in is preserved — a relay cannot emit more than it
+    delivered in the previous hop times its relay_fraction.
+    """
+    slant_m, elevation_deg = _ground_to_uav_slant_range_m(
+        transmitter_lat_deg=from_lat,
+        transmitter_lon_deg=from_lon,
+        transmitter_alt_m=from_alt_m,
+        uav_lat_deg=to_lat,
+        uav_lon_deg=to_lon,
+        uav_alt_m=to_alt_m,
+    )
+    # UAV-to-UAV relay: no ground-transmitter elevation gate. Both nodes
+    # are at altitude, so elevation is near the horizon and the
+    # transmitter_min_elevation_deg check (which exists to avoid long
+    # tropospheric paths for a ground-based laser) does not apply. Only a
+    # degenerate geometry produces zero power.
+    if slant_m <= 0.0:
+        return {
+            "delivered_power_w": 0.0,
+            "received_power_w": 0.0,
+            "link_slant_range_m": slant_m,
+            "link_elevation_deg": elevation_deg,
+            "receiver_efficiency": 0.0,
+        }
+
+    # Small optical relay transceiver on the transmitting UAV.
+    uav_transmitter_aperture_m = 0.1
+    beam = _BeamParams()
+    eta_tx = beam.transmitter_efficiency
+
+    receiver_radius_m = math.sqrt(hardware.receiver_aperture_m2 / math.pi)
+
+    w_at_receiver = _beam_radius_m(
+        wavelength_nm=cfg.wavelength_nm,
+        waist_radius_m=uav_transmitter_aperture_m,
+        range_m=slant_m,
+    )
+    eta_spill = _combined_beam_efficiency(
+        beam_radius_m=w_at_receiver,
+        receiver_radius_m=receiver_radius_m,
+        offset_m=0.0,
+    )
+
+    eta_atm = _kruse_kim_transmission(
+        wavelength_nm=cfg.wavelength_nm,
+        path_length_m=slant_m,
+        visibility_km=cfg.visibility_km,
+        cloud_factor=cfg.cloud_factor,
+    )
+
+    incident = forwarded_power_w * eta_tx * eta_spill * eta_atm
+
+    if hardware.receiver_type == "laser_photovoltaic":
+        thermal = _ThermalModel()
+        steady = thermal.steady_state(
+            p_incident_w=incident,
+            v_m_per_s=5.0,
+            t_amb_k=298.15,
+        )
+        if steady is None:
+            receiver_efficiency = 0.0
+        else:
+            t_plc_k, t_te_k = steady
+            receiver_efficiency = _eta_total(
+                t_plc_k=t_plc_k,
+                t_te_hot_k=t_te_k,
+                t_te_cold_k=298.15,
+            )
+    else:
+        density = incident / hardware.receiver_aperture_m2
+        receiver_efficiency = _rectenna_efficiency(
+            input_power_density_w_per_m2=density,
+            frequency_ghz=5.8,
+        )
+
+    receiver_efficiency = max(0.0, min(1.0, receiver_efficiency))
+    delivered = incident * receiver_efficiency * hardware.battery_efficiency
+
+    return {
+        "delivered_power_w": float(delivered),
+        "received_power_w": float(incident),
+        "link_slant_range_m": float(slant_m),
         "link_elevation_deg": float(elevation_deg),
         "receiver_efficiency": float(receiver_efficiency),
     }
@@ -864,6 +1005,16 @@ def compute_mission_state(
     range, rather than a crash.
     """
     cfg = cfg or MissionConfig()
+    if cfg.relay_topology is not None:
+        if len(cfg.relay_topology) == 0:
+            raise ValueError("relay_topology must be None or a non-empty tuple")
+        for uid in cfg.relay_topology:
+            if not (0 <= uid < cfg.n_uavs):
+                raise ValueError(f"relay_topology contains UAV ID {uid} outside [0, {cfg.n_uavs})")
+        if len(set(cfg.relay_topology)) != len(cfg.relay_topology):
+            raise ValueError("relay_topology contains duplicate UAV IDs")
+        if not (0.0 < cfg.relay_fraction <= 1.0):
+            raise ValueError(f"relay_fraction must be in (0, 1]; got {cfg.relay_fraction}")
     if cfg.satellite_elements is not None:
         el = cfg.satellite_elements
         sat = Satellite.from_keplerian(
@@ -1012,6 +1163,7 @@ def compute_mission_state(
             slant_range_m=float(_d_3d),
             atmospheric_path_m=float(_d_3d),
             elevation_deg=float(_elev),
+            relay_note=_relay_note_str(cfg),
         )
         if _d_3d > 0:
             tau = _kruse_kim_transmission(
@@ -1062,6 +1214,7 @@ def compute_mission_state(
             slant_range_m=float(slant_range_m),
             atmospheric_path_m=float(atmospheric_path_m),
             elevation_deg=float(math.degrees(elevation_rad)),
+            relay_note=_relay_note_str(cfg),
         )
         surrogate = _calibrate_atmosphere_surrogate(cfg)
         tier2: Tier2Estimate = surrogate.estimate_atmospheric_loss(
@@ -1225,36 +1378,109 @@ def compute_mission_state(
 
     # --- UAV list -----------------------------------------------------
     uavs: list[UavState] = []
+    # Precompute positions (relay links need the previous hop's coordinates).
+    uav_positions: dict[int, tuple[float, float]] = {}
+    for i in range(len(candidates)):
+        angle_p = (2.0 * math.pi * i) / max(1, len(candidates))
+        radius_deg_p = 0.05
+        uav_positions[i] = (
+            cfg.ground_lat_deg + radius_deg_p * math.cos(angle_p),
+            cfg.ground_lon_deg + radius_deg_p * math.sin(angle_p),
+        )
+    chain: tuple[int, ...] | None = cfg.relay_topology
+    chain_pos: dict[int, int] = {uid: pos for pos, uid in enumerate(chain)} if chain else {}
+    link_results: dict[int, dict[str, float]] = {}
     for i, c in enumerate(candidates):
-        # Place UAVs on a small grid around the ground station.
-        angle = (2.0 * math.pi * i) / max(1, len(candidates))
-        radius_deg = 0.05
-        uav_lat = cfg.ground_lat_deg + radius_deg * math.cos(angle)
-        uav_lon = cfg.ground_lon_deg + radius_deg * math.sin(angle)
+        uav_lat, uav_lon = uav_positions[i]
         # Per-UAV hardware when supplied, uniform fallback otherwise.
         if cfg.uav_hardware_list is not None and i < len(cfg.uav_hardware_list):
             uav_hardware = cfg.uav_hardware_list[i]
         else:
             uav_hardware = cfg.uav_hardware
 
-        if cfg.transmitter_type == "ground":
-            link = _compute_uav_link_from_ground(
-                uav_lat_deg=uav_lat,
-                uav_lon_deg=uav_lon,
-                uav_alt_m=cfg.uav_alt_m,
-                cfg=cfg,
-                hardware=uav_hardware,
-            )
+        if chain is not None:
+            if i in chain_pos:
+                pos = chain_pos[i]
+                is_terminal = pos == len(chain) - 1
+                if pos == 0:
+                    # First chain member is charged by the source.
+                    if cfg.transmitter_type == "ground":
+                        link = _compute_uav_link_from_ground(
+                            uav_lat_deg=uav_lat,
+                            uav_lon_deg=uav_lon,
+                            uav_alt_m=cfg.uav_alt_m,
+                            cfg=cfg,
+                            hardware=uav_hardware,
+                        )
+                    else:
+                        link = _compute_uav_link(
+                            sat=sat,
+                            t=t,
+                            uav_lat_deg=uav_lat,
+                            uav_lon_deg=uav_lon,
+                            uav_alt_m=cfg.uav_alt_m,
+                            cfg=cfg,
+                            hardware=uav_hardware,
+                        )
+                else:
+                    # Relay hop: previous chain member forwards to this one.
+                    # The previous hop's forwarded power is the physical input
+                    # for this hop, so out <= delivered * fraction holds at
+                    # every step of a multi-hop chain.
+                    prev_uid = chain[pos - 1]
+                    prev_link = link_results[prev_uid]
+                    prev_forwarded = prev_link.get(
+                        "relay_forwarded_power_w",
+                        prev_link["delivered_power_w"] * cfg.relay_fraction,
+                    )
+                    prev_lat, prev_lon = uav_positions[prev_uid]
+                    link = _uav_to_uav_link(
+                        from_lat=prev_lat,
+                        from_lon=prev_lon,
+                        from_alt_m=cfg.uav_alt_m,
+                        to_lat=uav_lat,
+                        to_lon=uav_lon,
+                        to_alt_m=cfg.uav_alt_m,
+                        forwarded_power_w=prev_forwarded,
+                        cfg=cfg,
+                        hardware=uav_hardware,
+                    )
+                # Set bookkeeping on EVERY chain member, including the first
+                # hop, so hop_index and forwarded power are always defined.
+                link["relay_hop_index"] = float(pos)
+                link["relay_forwarded_power_w"] = (
+                    0.0 if is_terminal else link["delivered_power_w"] * cfg.relay_fraction
+                )
+            else:
+                # Not in the chain: zero power.
+                link = {
+                    "delivered_power_w": 0.0,
+                    "received_power_w": 0.0,
+                    "link_slant_range_m": 0.0,
+                    "link_elevation_deg": 0.0,
+                    "receiver_efficiency": 0.0,
+                }
         else:
-            link = _compute_uav_link(
-                sat=sat,
-                t=t,
-                uav_lat_deg=uav_lat,
-                uav_lon_deg=uav_lon,
-                uav_alt_m=cfg.uav_alt_m,
-                cfg=cfg,
-                hardware=uav_hardware,
-            )
+            # Direct mode: existing behavior.
+            if cfg.transmitter_type == "ground":
+                link = _compute_uav_link_from_ground(
+                    uav_lat_deg=uav_lat,
+                    uav_lon_deg=uav_lon,
+                    uav_alt_m=cfg.uav_alt_m,
+                    cfg=cfg,
+                    hardware=uav_hardware,
+                )
+            else:
+                link = _compute_uav_link(
+                    sat=sat,
+                    t=t,
+                    uav_lat_deg=uav_lat,
+                    uav_lon_deg=uav_lon,
+                    uav_alt_m=cfg.uav_alt_m,
+                    cfg=cfg,
+                    hardware=uav_hardware,
+                )
+        link_results[i] = link
 
         # Wing loading: mass / wing area, with a rectangular-planform
         # assumption (chord = 0.15 * wingspan). A rule-of-thumb
@@ -1269,7 +1495,11 @@ def compute_mission_state(
                 uav_id=i,
                 lat_deg=uav_lat,
                 lon_deg=uav_lon,
-                role=(Terminal.UAV_ENERGY.value if i % 2 == 0 else Terminal.UAV_COMPUTE.value),
+                role=(
+                    "relay"
+                    if chain is not None and i in chain_pos
+                    else (Terminal.UAV_ENERGY.value if i % 2 == 0 else Terminal.UAV_COMPUTE.value)
+                ),
                 battery_pct=c.get("battery_pct", 50.0),
                 mission_priority=c.get("mission_priority", 0.5),
                 network_centrality=c.get("network_centrality", 0.5),
@@ -1293,6 +1523,8 @@ def compute_mission_state(
                 wing_loading_kg_per_m2=float(wing_loading_kg_per_m2),
                 lift_feasible=lift_feasible,
                 airframe=uav_hardware.airframe,
+                relay_forwarded_power_w=link.get("relay_forwarded_power_w", 0.0),
+                relay_hop_index=int(link.get("relay_hop_index", -1)),
             )
         )
 

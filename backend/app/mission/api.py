@@ -89,6 +89,14 @@ async def get_mission_state(
             "Default 5 deg per ITU-R P.528 / JPL DESCANSO guidance."
         ),
     ),
+    relay_topology: str | None = Query(
+        None,
+        description=(
+            "Comma-separated list of UAV IDs (e.g. '0,2,1') forming a "
+            "relay chain from the source to the terminal receiver. Empty "
+            "or omitted = direct mode (each UAV charged directly)."
+        ),
+    ),
 ) -> MissionState:
     """Return one coherent mission state.
 
@@ -141,6 +149,9 @@ async def get_mission_state(
         cfg = MissionConfig(
             transmitter_type=transmitter_type,
             transmitter_min_elevation_deg=transmitter_min_elevation_deg,
+            relay_topology=(
+                tuple(int(x) for x in relay_topology.split(",")) if relay_topology else None
+            ),
             seed=seed,
             satellite_key=satellite_key or "iss",
             satellite_elements=elements,
@@ -226,6 +237,8 @@ class MissionStateRequest(BaseModel):
     cloud_factor: float = 0.0
     transmitter_type: str = "satellite"
     transmitter_min_elevation_deg: float = 5.0
+    relay_topology: list[int] | None = None
+    relay_fraction: float = 0.7
     transmitter_aperture_m: float = 0.02
     uav_alt_m: float = 1_000.0
     uav_receiver_aperture_m2: float = 0.5
@@ -343,6 +356,8 @@ async def post_mission_state(req: MissionStateRequest) -> MissionState:
     cfg = MissionConfig(
         transmitter_type=req.transmitter_type,
         transmitter_min_elevation_deg=req.transmitter_min_elevation_deg,
+        relay_topology=(tuple(req.relay_topology) if req.relay_topology else None),
+        relay_fraction=req.relay_fraction,
         seed=req.seed,
         satellite_key=req.satellite_key or "iss",
         satellite_elements=elements,

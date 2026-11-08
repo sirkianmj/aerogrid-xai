@@ -20,6 +20,8 @@ vi.mock("../MissionControl/missionContext", () => ({
       cloud_factor: 0,
       transmitter_type: "satellite" as const,
       transmitter_min_elevation_deg: 5.0,
+      relay_topology: null,
+      relay_fraction: 0.7,
     },
     markStepComplete: vi.fn(),
     setStepOutput: vi.fn(),
