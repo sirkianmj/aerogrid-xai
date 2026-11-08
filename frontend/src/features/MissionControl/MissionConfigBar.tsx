@@ -109,6 +109,8 @@ export function MissionConfigBar() {
     draft.uav_alt_m !== config.uav_alt_m ||
     draft.uav_receiver_aperture_m2 !== config.uav_receiver_aperture_m2 ||
     draft.uav_receiver_type !== config.uav_receiver_type ||
+    draft.transmitter_type !== config.transmitter_type ||
+    draft.transmitter_min_elevation_deg !== config.transmitter_min_elevation_deg ||
     JSON.stringify(draft.satellite_elements ?? null) !==
       JSON.stringify(config.satellite_elements ?? null)
 
@@ -130,6 +132,52 @@ export function MissionConfigBar() {
         <span className="text-xs text-[var(--ink-tertiary)]">
           drives every panel below that reads mission state
         </span>
+      </div>
+
+      {/* Transmitter type — mutually exclusive modes */}
+      <div className="mb-3 flex flex-wrap items-center gap-3" data-testid="transmitter-type-toggle">
+        <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
+          Transmitter
+        </span>
+        <label className="flex items-center gap-1">
+          <input
+            type="radio"
+            name="transmitter-type"
+            value="satellite"
+            checked={draft.transmitter_type === "satellite"}
+            onChange={() => set("transmitter_type", "satellite")}
+          />
+          <span className="text-xs">Satellite</span>
+        </label>
+        <label className="flex items-center gap-1">
+          <input
+            type="radio"
+            name="transmitter-type"
+            value="ground"
+            checked={draft.transmitter_type === "ground"}
+            onChange={() => set("transmitter_type", "ground")}
+          />
+          <span className="text-xs">Ground</span>
+        </label>
+        {draft.transmitter_type === "ground" && (
+          <label className="ml-3 flex items-center gap-2">
+            <span className="text-[0.65rem] uppercase tracking-wide text-[var(--ink-tertiary)]">
+              Min elevation (deg)
+            </span>
+            <input
+              type="number"
+              aria-label="Minimum elevation angle"
+              value={draft.transmitter_min_elevation_deg}
+              onChange={(e) =>
+                set("transmitter_min_elevation_deg", num(e.target.value, draft.transmitter_min_elevation_deg))
+              }
+              min={0}
+              max={90}
+              step={0.5}
+              className="w-20 rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-xs"
+            />
+          </label>
+        )}
       </div>
 
       {config.selected_architecture && (

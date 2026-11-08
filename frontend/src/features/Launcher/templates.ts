@@ -209,4 +209,24 @@ export const TEMPLATES: TemplateConfig[] = [
       transmitter_aperture_m: 0.05,
     },
   },
+  {
+    id: "ground-to-air-isr",
+    name: "Ground-to-Air ISR",
+    description:
+      "Ground-based laser at the ground station transmitting to four multirotors at 1500 m altitude. No satellite required; the power source is the ground transmitter. Demonstrates the ground-to-air link path and the ITU-R P.528 effective-Earth-radius geometry.",
+    badge: "GROUND LASER · MULTIROTOR · CLEAR SKY",
+    configPatch: {
+      transmitter_type: "ground",
+      transmitter_min_elevation_deg: 5.0,
+      n_uavs: 4,
+      uav_alt_m: 1500.0,
+      uav_receiver_aperture_m2: 0.5,
+      uav_receiver_type: "laser_photovoltaic",
+      visibility_km: 15.0,
+      cloud_factor: 0.05,
+      transmitter_power_w: 2000.0,
+      wavelength_nm: 1064.0,
+      transmitter_aperture_m: 0.15,
+    },
+  },
 ]

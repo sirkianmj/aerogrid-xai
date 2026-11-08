@@ -70,6 +70,25 @@ async def get_mission_state(
             "demonstration TLEs propagate to physically meaningful altitudes."
         ),
     ),
+    transmitter_type: str = Query(
+        "satellite",
+        description=(
+            "Transmitter type. 'satellite' (default) uses the configured "
+            "satellite as the power source. 'ground' uses a co-located "
+            "ground transmitter at ground_lat_deg / ground_lon_deg / "
+            "ground_alt_m."
+        ),
+    ),
+    transmitter_min_elevation_deg: float = Query(
+        5.0,
+        ge=0.0,
+        le=90.0,
+        description=(
+            "Minimum elevation angle (degrees) for a ground-to-air link to "
+            "be considered closed. Below this the link is reported offline. "
+            "Default 5 deg per ITU-R P.528 / JPL DESCANSO guidance."
+        ),
+    ),
 ) -> MissionState:
     """Return one coherent mission state.
 
@@ -120,6 +139,8 @@ async def get_mission_state(
 
     try:
         cfg = MissionConfig(
+            transmitter_type=transmitter_type,
+            transmitter_min_elevation_deg=transmitter_min_elevation_deg,
             seed=seed,
             satellite_key=satellite_key or "iss",
             satellite_elements=elements,

@@ -21,6 +21,7 @@
 import { useEffect, useState } from "react"
 import { TaggedOutput } from "../../components/EpistemicBadge/EpistemicBadge"
 import { useMission, type UavHardware } from "../MissionControl/missionContext"
+import { GroundDesigner } from "./GroundDesigner"
 import {
   DesignApiError,
   evaluateDrone,
@@ -68,6 +69,7 @@ export function DesignStudio() {
     // "geo" or "vanguard_r3" from the packaged picker should also get
     // credit for having made a design decision.
     const satelliteAdopted =
+      config.transmitter_type === "ground" ||
       config.satellite_elements !== null ||
       config.satellite_key !== "iss" // DEFAULT_CONFIG.satellite_key
     const fleetAdopted =
@@ -75,7 +77,7 @@ export function DesignStudio() {
     if (satelliteAdopted && fleetAdopted) {
       markStepComplete(1)
     }
-  }, [config.satellite_elements, config.satellite_key, config.uav_hardware_list, markStepComplete])
+  }, [config.transmitter_type, config.satellite_elements, config.satellite_key, config.uav_hardware_list, markStepComplete])
 
   return (
     <section
@@ -96,7 +98,11 @@ export function DesignStudio() {
         </p>
       )}
 
-      {presets && <SatelliteDesigner presets={presets.satellites} />}
+      {config.transmitter_type === "ground" ? (
+        <GroundDesigner />
+      ) : (
+        presets && <SatelliteDesigner presets={presets.satellites} />
+      )}
       {presets && <DroneDesigner presets={presets.drones} />}
     </section>
   )

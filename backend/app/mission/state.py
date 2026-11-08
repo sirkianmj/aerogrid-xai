@@ -188,6 +188,18 @@ class MissionConfig:
     # ``uav_hardware``. The list length need not match n_uavs.
     uav_hardware_list: tuple[UavHardware, ...] | None = None
     selected_architecture: SelectedArchitecture | None = None
+    # Transmitter type. "satellite" (default) uses the configured
+    # satellite as the power source; "ground" uses a co-located ground
+    # transmitter at ground_lat_deg / ground_lon_deg / ground_alt_m.
+    # When "ground", the satellite position is still computed (for
+    # context) but the satellite-to-UAV power path is not used.
+    transmitter_type: str = "satellite"
+    # Minimum elevation angle (degrees) for a ground-to-air link to be
+    # considered closed. Below this, atmospheric path is too long and
+    # the link is reported offline. Default follows ITU-R P.528 / JPL
+    # DESCANSO guidance: below 5 degrees, refraction and path loss
+    # become unreliable for mission-level modeling.
+    transmitter_min_elevation_deg: float = 5.0
 
 
 # --- response models -----------------------------------------------------
@@ -431,6 +443,164 @@ def _ts() -> Time:
     from app.physics import orbital as _orb
 
     return _orb._TS
+
+
+def _ground_to_uav_slant_range_m(
+    *,
+    transmitter_lat_deg: float,
+    transmitter_lon_deg: float,
+    transmitter_alt_m: float,
+    uav_lat_deg: float,
+    uav_lon_deg: float,
+    uav_alt_m: float,
+) -> tuple[float, float]:
+    """Return (slant_range_m, elevation_deg) for a ground-to-air link.
+
+    Uses the ITU-R P.528-5 / ITU-R P.834 effective Earth radius factor
+    k = 4/3 (R_eff = 4/3 * R_Earth) so the horizontal distance already
+    carries the standard average refraction. The straight-line 3D
+    distance over the refracted path is the standard 3GPP TR 36.777
+    UAV channel model formulation:
+
+        d_3d = sqrt(d_hrz**2 + dz**2)
+
+    Returns (0.0, 0.0) if the UAV is beyond the radio horizon of the
+    transmitter, or if the geometry is degenerate.
+
+    The elevation angle is returned in degrees; it can be small but
+    positive at long range. The caller applies the configured minimum
+    elevation (transmitter_min_elevation_deg) for the atmospheric
+    closure check.
+    """
+    r_true_m = 6_371_000.0
+    k_eff = 4.0 / 3.0
+    r_eff_m = k_eff * r_true_m
+
+    lat1 = math.radians(transmitter_lat_deg)
+    lat2 = math.radians(uav_lat_deg)
+    dlat = lat2 - lat1
+    dlon = math.radians(uav_lon_deg - transmitter_lon_deg)
+    a = math.sin(dlat / 2.0) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2.0) ** 2
+    central_angle = 2.0 * math.asin(min(1.0, math.sqrt(a)))
+
+    d_hrz_m = r_eff_m * central_angle
+    dz_m = uav_alt_m - transmitter_alt_m
+
+    # Radio horizon distance from transmitter + from target, on the
+    # effective Earth. If the horizontal separation exceeds this, the
+    # UAV is geometrically below the horizon and no direct link exists.
+    h_tx_m = max(transmitter_alt_m, 1.0)
+    h_rx_m = max(uav_alt_m, 1.0)
+    horizon_m = math.sqrt(2.0 * r_eff_m * h_tx_m) + math.sqrt(2.0 * r_eff_m * h_rx_m)
+    if d_hrz_m > horizon_m:
+        return 0.0, 0.0
+    if d_hrz_m < 1e-6 and abs(dz_m) < 1e-6:
+        # Transmitter and UAV at the same point — degenerate.
+        return 0.0, 0.0
+
+    d_3d_m = math.sqrt(d_hrz_m**2 + dz_m**2)
+    elevation_deg = math.degrees(math.atan2(dz_m, d_hrz_m))
+    return float(d_3d_m), float(elevation_deg)
+
+
+def _compute_uav_link_from_ground(
+    *,
+    uav_lat_deg: float,
+    uav_lon_deg: float,
+    uav_alt_m: float,
+    cfg: MissionConfig,
+    hardware: UavHardware,
+) -> dict[str, float]:
+    """Physical link budget for one UAV from the ground transmitter.
+
+    Mirrors :func:`_compute_uav_link` but replaces the satellite look
+    angle with the ground-to-air haversine geometry. The transmitter is
+    co-located with the ground station (see MissionConfig docstring);
+    transmitter_power_w, wavelength_nm, and transmitter_aperture_m are
+    the ground transmitter's configured values.
+
+    Atmospheric path for ground-to-air is the full 3D slant range:
+    both ends are inside the troposphere, so the beam traverses the
+    atmosphere once along the line of sight. (Contrast satellite-to-UAV,
+    where the beam enters from vacuum and only traverses the
+    tropospheric column near the receiver — approximated there as
+    h_eff / sin(elev).)
+    """
+    slant_range_m, elevation_deg = _ground_to_uav_slant_range_m(
+        transmitter_lat_deg=cfg.ground_lat_deg,
+        transmitter_lon_deg=cfg.ground_lon_deg,
+        transmitter_alt_m=cfg.ground_alt_m,
+        uav_lat_deg=uav_lat_deg,
+        uav_lon_deg=uav_lon_deg,
+        uav_alt_m=uav_alt_m,
+    )
+    if slant_range_m <= 0.0 or elevation_deg < cfg.transmitter_min_elevation_deg:
+        return {
+            "delivered_power_w": 0.0,
+            "received_power_w": 0.0,
+            "link_slant_range_m": slant_range_m,
+            "link_elevation_deg": elevation_deg,
+            "receiver_efficiency": 0.0,
+        }
+
+    receiver_radius_m = math.sqrt(hardware.receiver_aperture_m2 / math.pi)
+    beam = _BeamParams()
+
+    eta_tx = beam.transmitter_efficiency
+
+    w_at_receiver = _beam_radius_m(
+        wavelength_nm=cfg.wavelength_nm,
+        waist_radius_m=cfg.transmitter_aperture_m,
+        range_m=slant_range_m,
+    )
+    eta_spill = _combined_beam_efficiency(
+        beam_radius_m=w_at_receiver,
+        receiver_radius_m=receiver_radius_m,
+        offset_m=0.0,
+    )
+
+    eta_atm = _kruse_kim_transmission(
+        wavelength_nm=cfg.wavelength_nm,
+        path_length_m=slant_range_m,
+        visibility_km=cfg.visibility_km,
+        cloud_factor=cfg.cloud_factor,
+    )
+
+    incident_at_aperture_w = cfg.transmitter_power_w * eta_tx * eta_spill * eta_atm
+
+    if hardware.receiver_type == "laser_photovoltaic":
+        thermal = _ThermalModel()
+        steady = thermal.steady_state(
+            p_incident_w=incident_at_aperture_w,
+            v_m_per_s=5.0,
+            t_amb_k=298.15,
+        )
+        if steady is None:
+            receiver_efficiency = 0.0
+        else:
+            t_plc_k, t_te_k = steady
+            receiver_efficiency = _eta_total(
+                t_plc_k=t_plc_k,
+                t_te_hot_k=t_te_k,
+                t_te_cold_k=298.15,
+            )
+    else:
+        power_density_w_per_m2 = incident_at_aperture_w / hardware.receiver_aperture_m2
+        receiver_efficiency = _rectenna_efficiency(
+            input_power_density_w_per_m2=power_density_w_per_m2,
+            frequency_ghz=5.8,
+        )
+
+    receiver_efficiency = max(0.0, min(1.0, receiver_efficiency))
+    delivered_power_w = incident_at_aperture_w * receiver_efficiency * hardware.battery_efficiency
+
+    return {
+        "delivered_power_w": float(delivered_power_w),
+        "received_power_w": float(incident_at_aperture_w),
+        "link_slant_range_m": float(slant_range_m),
+        "link_elevation_deg": float(elevation_deg),
+        "receiver_efficiency": float(receiver_efficiency),
+    }
 
 
 def _compute_uav_link(
@@ -815,7 +985,59 @@ def compute_mission_state(
     # against the vacuum path to orbit.
     h_eff_m = 8_500.0
 
-    if above_horizon:
+    if cfg.transmitter_type == "ground":
+        # For ground transmitter, compute elevation using the ground-to-UAV
+        # geometry against the first UAV (representative). The per-UAV link
+        # already computes its own geometry; this block is only for the
+        # top-level TransmissionState summary.
+        if cfg.n_uavs >= 1:
+            _first_uav_lat = cfg.ground_lat_deg
+            _first_uav_lon = (
+                cfg.ground_lon_deg + 0.01
+            )  # small offset; per-UAV loop handles specifics
+            _d_3d, _elev = _ground_to_uav_slant_range_m(
+                transmitter_lat_deg=cfg.ground_lat_deg,
+                transmitter_lon_deg=cfg.ground_lon_deg,
+                transmitter_alt_m=cfg.ground_alt_m,
+                uav_lat_deg=_first_uav_lat,
+                uav_lon_deg=_first_uav_lon,
+                uav_alt_m=cfg.uav_alt_m,
+            )
+        else:
+            _d_3d, _elev = 0.0, 0.0
+        transmission = TransmissionState(
+            modality="laser_ground" if _d_3d > 0 else "offline",
+            wavelength_nm=cfg.wavelength_nm,
+            transmitter_power_w=float(cfg.transmitter_power_w),
+            slant_range_m=float(_d_3d),
+            atmospheric_path_m=float(_d_3d),
+            elevation_deg=float(_elev),
+        )
+        if _d_3d > 0:
+            tau = _kruse_kim_transmission(
+                wavelength_nm=cfg.wavelength_nm,
+                path_length_m=_d_3d,
+                visibility_km=cfg.visibility_km,
+                cloud_factor=cfg.cloud_factor,
+            )
+            alpha_per_m = (
+                _total_extinction_per_km(cfg.wavelength_nm, cfg.visibility_km, cfg.cloud_factor)
+                / 1000.0
+            )
+            atmosphere = AtmosphereState(
+                transmittance=float(tau),
+                visibility_km=cfg.visibility_km,
+                cloud_factor=cfg.cloud_factor,
+                extinction_coeff_per_m=float(alpha_per_m),
+            )
+        else:
+            atmosphere = AtmosphereState(
+                transmittance=0.0,
+                visibility_km=cfg.visibility_km,
+                cloud_factor=cfg.cloud_factor,
+                extinction_coeff_per_m=cfg.extinction_coeff_per_m,
+            )
+    elif above_horizon:
         # Atmospheric path length = effective thickness / sin(elev).
         # Clamp elevation to avoid a division by zero at the horizon.
         sin_elev = max(math.sin(elevation_rad), 1e-3)
@@ -1015,15 +1237,24 @@ def compute_mission_state(
         else:
             uav_hardware = cfg.uav_hardware
 
-        link = _compute_uav_link(
-            sat=sat,
-            t=t,
-            uav_lat_deg=uav_lat,
-            uav_lon_deg=uav_lon,
-            uav_alt_m=cfg.uav_alt_m,
-            cfg=cfg,
-            hardware=uav_hardware,
-        )
+        if cfg.transmitter_type == "ground":
+            link = _compute_uav_link_from_ground(
+                uav_lat_deg=uav_lat,
+                uav_lon_deg=uav_lon,
+                uav_alt_m=cfg.uav_alt_m,
+                cfg=cfg,
+                hardware=uav_hardware,
+            )
+        else:
+            link = _compute_uav_link(
+                sat=sat,
+                t=t,
+                uav_lat_deg=uav_lat,
+                uav_lon_deg=uav_lon,
+                uav_alt_m=cfg.uav_alt_m,
+                cfg=cfg,
+                hardware=uav_hardware,
+            )
 
         # Wing loading: mass / wing area, with a rectangular-planform
         # assumption (chord = 0.15 * wingspan). A rule-of-thumb

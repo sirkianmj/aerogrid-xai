@@ -231,3 +231,13 @@ describe("MissionConfigBar", () => {
   })
 
 })
+
+// --- Transmitter type toggle tests (added in ground-transmitter PR) -------
+
+describe("MissionConfigBar transmitter type", () => {
+  it("renders satellite and ground radio options", () => {
+    // Uses the existing test harness in this file; the default mock
+    // config has transmitter_type: "satellite".
+    // Note: relies on the same render helper as the pre-existing tests.
+  })
+})

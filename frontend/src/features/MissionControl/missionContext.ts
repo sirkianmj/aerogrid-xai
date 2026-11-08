@@ -55,6 +55,13 @@ export type MissionConfig = {
   uav_receiver_aperture_m2: number
   /** UAV receiver conversion model: laser_photovoltaic or rectenna. */
   uav_receiver_type: "laser_photovoltaic" | "rectenna"
+  /** Transmitter type. "satellite" (default) uses the configured satellite
+   *  as the power source; "ground" uses a co-located ground transmitter at
+   *  ground_lat_deg / ground_lon_deg / ground_alt_m. */
+  transmitter_type: "satellite" | "ground"
+  /** Minimum elevation angle (degrees) for a ground-to-air link to close.
+   *  Below this, the link is offline. Default 5 deg per ITU-R P.528. */
+  transmitter_min_elevation_deg: number
   /** When set, the mission uses this topology instead of generating
    *  one. Loaded from the architecture explorer. */
   selected_architecture?: SelectedArchitecture | null
@@ -92,6 +99,8 @@ export const DEFAULT_CONFIG: MissionConfig = {
   uav_alt_m: 1000.0,
   uav_receiver_aperture_m2: 0.5,
   uav_receiver_type: "laser_photovoltaic",
+  transmitter_type: "satellite",
+  transmitter_min_elevation_deg: 5.0,
   selected_architecture: null,
   uav_hardware_list: null,
 }
