@@ -54,6 +54,30 @@ class SatelliteDesignRequest(BaseModel):
     cloud_factor: float = Field(0.0, ge=0.0, le=1.0)
 
 
+class GroundDesignRequest(BaseModel):
+    """Ground-transmitter design evaluation request.
+
+    Mirrors SatelliteDesignRequest without orbit elements — a ground
+    transmitter has a fixed position and does not orbit. Evaluated
+    through the same cascaded link budget as satellite-to-UAV.
+    """
+
+    transmitter_lat_deg: float = Field(40.798, ge=-90.0, le=90.0)
+    transmitter_lon_deg: float = Field(-77.86, ge=-180.0, le=180.0)
+    transmitter_alt_m: float = Field(350.0, ge=-500.0, le=9000.0)
+    transmitter_power_w: float = Field(10_000.0, gt=0.0, le=1e9)
+    wavelength_nm: float = Field(1064.0, gt=0.0, le=10_000.0)
+    transmitter_aperture_m: float = Field(0.5, gt=0.0, le=10.0)
+    # Mission context where the design is evaluated.
+    n_uavs: int = Field(1, ge=1, le=20)
+    uav_alt_m: float = Field(1000.0, ge=10.0, le=20_000.0)
+    uav_receiver_aperture_m2: float = Field(0.5, gt=0.0, le=100.0)
+    uav_receiver_type: str = Field("laser_photovoltaic")
+    visibility_km: float = Field(10.0, gt=0.0, le=100.0)
+    cloud_factor: float = Field(0.0, ge=0.0, le=1.0)
+    transmitter_min_elevation_deg: float = Field(5.0, ge=0.0, le=90.0)
+
+
 class DroneDesignRequest(BaseModel):
     receiver_aperture_m2: float = Field(0.5, gt=0.0, le=100.0)
     receiver_type: str = Field("laser_photovoltaic")
@@ -195,6 +219,50 @@ async def evaluate_satellite(req: SatelliteDesignRequest) -> FeasibilityReport:
         "elevation_deg": state.transmission.elevation_deg,
         "n_uavs": float(len(state.uavs)),
         "sat_verdict": float(0),  # placeholder; the verdict is the string below
+    }
+    return FeasibilityReport(
+        verdict=verdict,
+        delivered_power_w=total,
+        notes=notes,
+        metrics=metrics,
+    )
+
+
+@router.post("/ground", response_model=FeasibilityReport)
+async def evaluate_ground(req: GroundDesignRequest) -> FeasibilityReport:
+    """Evaluate one ground-transmitter design in the mission physics."""
+    cfg = MissionConfig(
+        seed=20261014,
+        transmitter_type="ground",
+        transmitter_min_elevation_deg=req.transmitter_min_elevation_deg,
+        ground_lat_deg=req.transmitter_lat_deg,
+        ground_lon_deg=req.transmitter_lon_deg,
+        ground_alt_m=req.transmitter_alt_m,
+        n_uavs=req.n_uavs,
+        transmitter_power_w=req.transmitter_power_w,
+        wavelength_nm=req.wavelength_nm,
+        transmitter_aperture_m=req.transmitter_aperture_m,
+        uav_alt_m=req.uav_alt_m,
+        uav_hardware=UavHardware(
+            receiver_aperture_m2=req.uav_receiver_aperture_m2,
+            receiver_type=req.uav_receiver_type,
+        ),
+        visibility_km=req.visibility_km,
+        cloud_factor=req.cloud_factor,
+    )
+    state = compute_mission_state(cfg)
+
+    total = sum(u.delivered_power_w for u in state.uavs)
+    lift_feasible = all(u.lift_feasible for u in state.uavs)
+    thermal_ok = True
+    verdict, notes = _verdict_and_notes(total, lift_feasible, thermal_ok)
+
+    metrics = {
+        "transmittance": state.atmosphere.transmittance,
+        "slant_range_km": state.transmission.slant_range_m / 1000.0,
+        "elevation_deg": state.transmission.elevation_deg,
+        "n_uavs": float(len(state.uavs)),
+        "sat_verdict": float(0),
     }
     return FeasibilityReport(
         verdict=verdict,
