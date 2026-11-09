@@ -1,6 +1,6 @@
 # CLEAR-D: Closed-Loop Generative Discovery of Wireless Energy Architectures with Unsat-Core Feedback
 
-**Status:** draft scaffold. Not submittable. Every numeric result is traced to a test or notebook output at commit `c29f1e4` of `https://github.com/sirkianmj/aerogrid-xai`. Items marked `[PLACEHOLDER]` require information the repository does not supply (funding changes, submission-time review).
+**Status:** draft scaffold. Not submittable. Every numeric result is traced to a test or notebook output at commit `20e7537` of `https://github.com/sirkianmj/aerogrid-xai`. Items marked `[PLACEHOLDER]` require information the repository does not supply (funding changes, submission-time review).
 
 **Target venue:** *Nature Energy* (primary), *IEEE Transactions on Aerospace and Electronic Systems* (secondary), *Matter & Light* (secondary).
 
@@ -20,7 +20,7 @@
 
 ## Abstract
 
-Wireless power transfer between space, air, and ground nodes has been demonstrated in isolation at various technology readiness levels, but no system-level method exists to identify which architecture — which combination of node types, transmission modalities, and topology — is feasible under jointly binding physical, thermal, regulatory, and network constraints. We present CLEAR-D (Coupled-Loop Epistemic Architecture Reasoning and Discovery), a closed-loop method that couples a two-node electro-thermal receiver model to a piecewise-linear SMT encoding with a tracked approximation error, uses the unsatisfiable core of a rejected architecture to bias the next mutation of a context-free architecture grammar, operates the discovered architecture with a two-tier explanation-fidelity-preserving controller, and refines both the physics model and the formal encoding from operational data. The method's novel mechanism is the mapping from each clause of an unsatisfiable core back to the specific grammar production rule that generated the constraint. On a synthetic evaluator with the real Stage B encoder, the mechanism repairs infeasible architectures at 78.2% versus 23.8% for uniform random mutation at equal step budget (3.29×). The full A→E loop completes 100 generations without error; Stage E reduces the PWL approximation error by a factor of 8 (ratio 0.125) over 100 refinement cycles on a smooth target. All numeric results in this paper are reproduced by the test suite and notebooks committed with the manuscript; 1244 backend tests, 248 frontend tests, and twelve executable notebooks pass at the current commit. The twelve proposed hypotheses in the specification's Section 27 are audited against the repository and reported individually: four are covered by a test whose failure would falsify them, six are partially covered with named gaps, one (H4) is falsified by direct test, and one (H7) requires a capability that does not yet exist. See docs/SCIENTIFIC_CLAIMS.md for the current status of every hypothesis.
+Wireless power transfer between space, air, and ground nodes has been demonstrated in isolation at various technology readiness levels, but no system-level method exists to identify which architecture — which combination of node types, transmission modalities, and topology — is feasible under jointly binding physical, thermal, regulatory, and network constraints. We present CLEAR-D (Coupled-Loop Epistemic Architecture Reasoning and Discovery), a closed-loop method that couples a two-node electro-thermal receiver model to a piecewise-linear SMT encoding with a tracked approximation error, uses the unsatisfiable core of a rejected architecture to bias the next mutation of a context-free architecture grammar, operates the discovered architecture with a two-tier explanation-fidelity-preserving controller, and refines both the physics model and the formal encoding from operational data. The method's novel mechanism is the mapping from each clause of an unsatisfiable core back to the specific grammar production rule that generated the constraint. On a synthetic evaluator with the real Stage B encoder, the mechanism repairs infeasible architectures at 78.2% versus 23.8% for uniform random mutation at equal step budget (3.29×). The full A→E loop completes 100 generations without error; Stage E reduces the PWL approximation error by a factor of 8 (ratio 0.125) over 100 refinement cycles on a smooth target. All numeric results in this paper are reproduced by the test suite and notebooks committed with the manuscript; At commit `20e7537` (current main HEAD): 1228 backend tests pass and 64 database-backed tests are skipped in the default configuration; frontend tests and end-to-end notebook execution are verified in the `frontend` and `notebook-repro` CI workflows. Local reproduction: `python3 scripts/reproducibility.py`. The twelve proposed hypotheses in the specification's Section 27 are audited against the repository and reported individually: nine are covered by a test whose failure would falsify them, one is partially covered with named gaps, one (H4) is falsified by direct test, and one (H7) requires a capability that does not yet exist. See docs/SCIENTIFIC_CLAIMS.md for the current status of every hypothesis.
 
 ## 1. Introduction
 
@@ -136,7 +136,7 @@ The implementation uses Python 3.12, NumPy, SciPy, Skyfield for SGP4/SDP4 orbita
 
 ## 5. Results
 
-All results in this section were produced by the test suite and notebooks at commit `c29f1e4` of the public repository. Each subsection names the specific artifact that produces the number.
+All results in this section were produced by the test suite and notebooks at commit `20e7537` of the public repository. Each subsection names the specific artifact that produces the number.
 
 ### 5.1 The unsat-core-to-grammar-feature attribution mechanism improves repair rate on infeasible architectures
 
@@ -185,10 +185,10 @@ DARPA POWER (800 W over 8.6 km) yields a clear-air transmission coefficient in t
 Every numeric claim in Section 5 is produced by:
 
 - A test module in `backend/tests/` (1062 tests, all passing at the tagged commit).
-- A frontend test module in `frontend/src/**/*.test.ts(x)` (163 tests, all passing).
-- A notebook in `notebooks/` (10 notebooks, all executable end-to-end).
+- A frontend test module in `frontend/src/**/*.test.ts(x)` (test count reproducible by running `npm test` in `frontend/`).
+- A notebook in `notebooks/` (12 notebooks; end-to-end execution verified in CI by notebook-repro.yml).
 
-The repository is tagged at `c29f1e4`. A reproduction takes a single command:
+The current HEAD of the repository is commit `20e7537`. A reproduction takes a single command:
 
     conda env create -f environment.yml
     conda activate aerogrid
@@ -258,7 +258,7 @@ The status of every specification hypothesis is reported individually in §7 and
 
 ## 9. Data and code availability
 
-Code and notebooks: `https://github.com/sirkianmj/aerogrid-xai`, tag `c29f1e4`.
+Code and notebooks: `https://github.com/sirkianmj/aerogrid-xai`, commit `20e7537`.
 
 License: AGPL-3.0 (community) and a proprietary commercial EULA (enterprise), per `LICENSE-OPEN-SOURCE`, `LICENSE-COMMERCIAL`, and `docs/LICENSING_MATRIX.md`. Documentation: CC BY-NC 4.0. Research notebooks: MIT.
 
