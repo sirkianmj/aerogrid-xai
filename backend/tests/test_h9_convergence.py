@@ -143,7 +143,7 @@ def _run_loop(
 
 
 def test_h9_conflict_directed_converges_faster_than_random() -> None:
-    n_trials = 20
+    n_trials = 40
     max_steps = 15
     config = MutationConfig()
 
@@ -192,6 +192,31 @@ def test_h9_conflict_directed_converges_faster_than_random() -> None:
     mean_conflict = sum(conflict_steps) / len(conflict_steps) if conflict_steps else float("inf")
     mean_random = sum(random_steps) / len(random_steps) if random_steps else float("inf")
     assert conflict_successes >= 1, f"Conflict-directed made no progress in {n_trials} trials"
+    from scipy.stats import mannwhitneyu
+
+    conflict_array = [1] * conflict_successes + [0] * (n_trials - conflict_successes)
+    random_array = [1] * random_successes + [0] * (n_trials - random_successes)
+    u_stat, p_value = mannwhitneyu(conflict_array, random_array, alternative="greater")
+    cliff_delta = (2.0 * u_stat / (n_trials * n_trials)) - 1.0
+    print(
+        f"\n  [H9 stats] U={u_stat:.3f}  p={p_value:.4f}  "
+        f"cliff_delta={cliff_delta:.3f}  n_trials={n_trials}"
+    )
+    assert p_value < 0.05, (
+        f"Mann-Whitney p={p_value:.4f} not significant at alpha=0.05; "
+        f"conflict={conflict_successes}/{n_trials}, random={random_successes}/{n_trials}"
+    )
+    speedup_ratio = mean_conflict / mean_random if mean_random > 0 else float("inf")
+    print(
+        f"  [H9 speedup] conflict={mean_conflict:.2f} steps, "
+        f"random={mean_random:.2f} steps, ratio={speedup_ratio:.3f} "
+        f"({1.0 / speedup_ratio:.2f}x speedup)"
+    )
+    assert speedup_ratio < 0.75, (
+        f"Conflict-directed must converge at least 25% faster than random; "
+        f"got {mean_conflict:.2f} vs {mean_random:.2f} steps "
+        f"(ratio={speedup_ratio:.3f})"
+    )
     assert mean_conflict < mean_random, (
         f"Conflict-directed mean steps ({mean_conflict:.2f}) not less "
         f"than random mean steps ({mean_random:.2f})"
