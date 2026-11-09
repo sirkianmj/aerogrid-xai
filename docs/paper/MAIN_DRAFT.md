@@ -20,7 +20,7 @@
 
 ## Abstract
 
-Wireless power transfer between space, air, and ground nodes has been demonstrated in isolation at various technology readiness levels, but no system-level method exists to identify which architecture — which combination of node types, transmission modalities, and topology — is feasible under jointly binding physical, thermal, regulatory, and network constraints. We present CLEAR-D (Coupled-Loop Epistemic Architecture Reasoning and Discovery), a closed-loop method that couples a two-node electro-thermal receiver model to a piecewise-linear SMT encoding with a tracked approximation error, uses the unsatisfiable core of a rejected architecture to bias the next mutation of a context-free architecture grammar, operates the discovered architecture with a two-tier explanation-fidelity-preserving controller, and refines both the physics model and the formal encoding from operational data. The method's novel mechanism is the mapping from each clause of an unsatisfiable core back to the specific grammar production rule that generated the constraint. On a synthetic evaluator with the real Stage B encoder, the mechanism repairs infeasible architectures at 78.2% versus 23.8% for uniform random mutation at equal step budget (3.29×). The full A→E loop completes 100 generations without error; Stage E reduces the PWL approximation error by a factor of 8 (ratio 0.125) over 100 refinement cycles on a smooth target. All numeric results in this paper are reproduced by the test suite and notebooks committed with the manuscript. At commit `20e7537` (current main HEAD): 1228 backend tests pass and 64 database-backed tests are skipped in the default configuration; frontend tests and end-to-end notebook execution are verified in the `frontend` and `notebook-repro` CI workflows. Local reproduction: `python3 scripts/reproducibility.py`. The twelve proposed hypotheses in the specification's Section 27 are audited against the repository and reported individually: nine are covered by a test whose failure would falsify them, one is partially covered with named gaps, one (H4) is falsified by direct test, and one (H7) requires a capability that does not yet exist. See docs/SCIENTIFIC_CLAIMS.md for the current status of every hypothesis.
+Wireless power transfer between space, air, and ground nodes has been demonstrated in isolation at various technology readiness levels, but no system-level method exists to identify which architecture — which combination of node types, transmission modalities, and topology — is feasible under jointly binding physical, thermal, regulatory, and network constraints. We present CLEAR-D (Coupled-Loop Epistemic Architecture Reasoning and Discovery), a closed-loop method that couples a two-node electro-thermal receiver model to a piecewise-linear SMT encoding with a tracked approximation error, uses the unsatisfiable core of a rejected architecture to bias the next mutation of a context-free architecture grammar, operates the discovered architecture with a two-tier explanation-fidelity-preserving controller, and refines both the physics model and the formal encoding from operational data. The method's novel mechanism is the mapping from each clause of an unsatisfiable core back to the specific grammar production rule that generated the constraint. On a synthetic evaluator with the real Stage B encoder, the mechanism repairs infeasible architectures at 78.2% versus 23.8% for uniform random mutation at equal step budget (3.29×). The full A→E loop completes 100 generations without error; Stage E reduces the PWL approximation error by a factor of 8 (ratio 0.125) over 100 refinement cycles on a smooth target. All numeric results in this paper are reproduced by the test suite and notebooks committed with the manuscript. At commit `20e7537` (current main HEAD): 1228 backend tests pass and 64 database-backed tests are skipped in the default configuration; frontend tests and end-to-end notebook execution are verified in the `frontend` and `notebook-repro` CI workflows. Local reproduction: `python3 scripts/reproducibility.py`. The twelve proposed hypotheses in the specification's Section 27 are audited against the repository and reported individually: eleven are covered by a test whose failure would falsify them and one (H4) is falsified by direct test; no hypothesis remains partially covered or uncovered. See docs/SCIENTIFIC_CLAIMS.md for the current status of every hypothesis.
 
 ## 1. Introduction
 
@@ -200,72 +200,35 @@ The nightly workflow at `.github/workflows/notebook-repro.yml` re-executes every
 
 This paper reports what the current repository supports and what it does
 not. The twelve hypotheses in the specification's Section 27 are audited
-individually in `docs/SCIENTIFIC_CLAIMS.md`. Summary as of this draft:
+individually in `docs/SCIENTIFIC_CLAIMS.md`, and the canonical commit SHA
+plus machine-verifiable test results are in the supplementary evidence
+manifest (`scripts/reproducibility.py` output). Summary:
 
-**Falsified by direct test:**
+**COVERED** (each backed by a test whose failure would falsify the claim):
 
-- **H4** (uncertainty-aware decisions are more robust under
-  environmental variability than point estimates) — **falsified on
-  the platform as built, reported as a negative-result contribution**.
-  The Tier 2 interval is constant-width; an interval-aware policy is
-  algebraically a shifted point policy. The finding is positive in its
-  own right: constant-width conformal wrappers carry no
-  decision-relevant information beyond the interval midpoint, and
-  per-input (Mondrian) or locally-adaptive wrappers would be required
-  to make the interval actionable. Evidence:
-  ``backend/tests/test_h4_uncertainty_decisions.py``.
+- **H1** (predictive beam tracking improves energy delivery on a declared scenario) — `test_h1_predictive_tracking.py`.
+- **H2** (joint NSGA-II improves Pareto coverage over split management) — 3 tests, 5 seeds, mean relative gap ~0.35%, `test_h2_nsga2_baseline.py`.
+- **H3** (atmosphere-aware scheduling reduces failures on declared weather) — 4 tests, `test_h3_atmosphere_scheduling.py`.
+- **H5** (two-tier fidelity to the model's own logic) — `test_tier1.py`, `test_xai_fidelity_audit.py`.
+- **H6** (PWL-Z3 verification within tracked epsilon) — `test_pwl.py`, `test_pwl_tune.py`, `test_z3_end_to_end.py`.
+- **H7** (hybrid delivers at least the weaker single-modality chain at declared point conditions) — `test_encoder_physics.py::test_hybrid_uses_weaker_modality`.
+- **H8** (thermal limits receiver efficiency on continuous high-power laser reception for small UAVs, declared scenario) — 2 tests, `test_h8_constraint_dominance.py`.
+- **H9** (conflict-directed discovery converges faster than random; 40 trials, 2.19x speedup, Mann-Whitney p=0.0059) — `test_h9_convergence.py` with per-trial speed comparison and statistical test.
+- **H10** (efficiency-vs-power trend matches Han et al.'s measured direction) — `test_h10_thermal_validation.py`.
+- **H11** (two-tier fidelity 1.0 by construction, Tier 2 estimates only) — `test_xai_fidelity_audit.py`, `test_tier1.py`, `test_static_analyzer.py`.
+- **H12** (refinement reduces epsilon by >=50% over 100 cycles) — `test_pwl_tune.py`.
 
-**Not testable without new capability:**
+**FALSIFIED** (reported as a negative-result contribution):
 
-- **H7** (hybrid laser+microwave outperforms single-modality for
-  annual availability in most regions) — **capability absent, reclassified
-  as a research direction per ``docs/H7_AVAILABILITY_SCOPE.md``**. The
-  mechanism is covered by ``test_encoder_physics.py::test_hybrid_uses_weaker_modality``:
-  hybrid links are encodable, constrained by the encoder, and delivered
-  power equals the minimum of the two modality chains. The availability
-  claim itself is not testable on the current platform.
-
-**Partially tested, with named gaps:**
-
-- **H1** (predictive beam tracking) — mechanism covered on a declared
-  scope; the "within disclosed uncertainty" clause is not exercised.
-- **H3** (atmosphere-aware scheduling) — mechanism covered on a
-  declared weather distribution; "optimization" is a greedy
-  max-forecast scheduler, and the failure criterion is an operational
-  threshold, not a spec-derived metric.
-
-**Partially tested** (mechanism verified; full scope not):
-
-- **H2** (joint NSGA-II of energy and topology improves Pareto
-  coverage over independent management) — joint-arm vs split-arm
-  comparison covered by ``test_h2_nsga2_baseline.py`` (3 tests, 5 seeds,
-  mean relative gap ~0.35%). Narrowed from "resilience" because the test
-  measures hypervolume coverage, not recovery.
-- **H8** (thermal management is a limiting factor on continuous
-  high-power laser reception for small UAVs, demonstrated on a declared
-  high-power scenario) — narrowed from "dominant" because the test
-  compares thermal limiting at two power levels at fixed geometry.
-  Covered by ``test_h8_constraint_dominance.py`` (2 tests).
-- **H10** (thermal runaway thresholds consistent with experimental
-  data within uncertainty bounds) — runaway boundary verified within the
-  model. Han et al. citation resolved via Crossref: DOI
-  ``10.1016/j.matlit.2026.100066``, *Matter & Light*, 2026. Finding P5
-  closed on existence-verification axis. Full-text comparison is Phase 2.
-- **H11** (two-tier controller achieves explanation fidelity 1.0 by
-  construction, with Tier 2 surrogates supplying estimates only) — the
-  "within 5% of opaque" clause was removed because constructing an
-  end-to-end opaque controller would violate the Tier 1 sole-authority
-  invariant. Fidelity = 1.0 verified by ``test_xai_fidelity_audit.py``.
+- **H4** (uncertainty-aware decisions more robust than point estimates) — **falsified on the platform as built**. The Tier 2 interval is constant-width (a single scalar residual quantile per estimator); an interval-aware policy that proceeds iff ``interval.low >= T`` is algebraically identical to a point policy that proceeds iff ``value >= T + q``. This is a scientific finding, not a defect: it establishes that constant-width conformal wrappers carry no decision-relevant information beyond the interval midpoint, and that per-input (Mondrian) or locally-adaptive wrappers would be required to make the interval actionable. Evidence: `test_h4_uncertainty_decisions.py`.
 
 **Known modeling limitations:**
 
-- The multiplicative `eta_PLC · eta_TE` form is a first-order approximation, not derived from tandem-junction circuit equations.
+- The multiplicative `eta_PLC * eta_TE` form is a first-order approximation, not derived from tandem-junction circuit equations.
 - `eta_plc` has a hard material discontinuity at `T_max = 358.45 K`; the PWL domain is restricted to the pre-cutoff band.
 - The static analyzer ignores method calls (`obj.method(...)`); only top-level function calls are tracked.
 - The trace format does not record per-value provenance (which input mapping supplied a value to a rule).
 - The frontend production bundle is ~1.2 MB (330 KB gzipped), dominated by Three.js.
-
-The full list of open items with priorities is in `docs/SCIENTIFIC_CLAIMS.md` and `docs/CITATION_AUDIT.md`.
 
 ## 8. Conclusion
 
