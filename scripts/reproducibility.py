@@ -197,10 +197,20 @@ def audit_claims(repo: Path) -> list[dict]:
                     }
                 )
             else:
-                p = repo / ref
-                resolved.append({"ref": ref, "exists": p.exists()})
+                candidates = [repo / ref, repo / "backend" / "tests" / ref]
+                found = next((c for c in candidates if c.exists()), None)
+                resolved.append({
+                    "ref": ref,
+                    "exists": found is not None,
+                    "path": str(found.relative_to(repo)) if found else None,
+                })
         rows.append({"id": hid, "status": status, "refs": resolved})
     return rows
+
+
+def _count_phrase(n: int, singular_verb: str, plural_verb: str, rest: str) -> str:
+    verb = singular_verb if n == 1 else plural_verb
+    return f"{n} {verb} {rest}"
 
 
 def write_claims_report(rows: list[dict], path: Path) -> dict:
@@ -226,10 +236,10 @@ def write_claims_report(rows: list[dict], path: Path) -> dict:
         "",
         "```",
         "The twelve proposed hypotheses are audited against the repository and reported individually: "
-        f"{counts['COVERED']} are covered by a test whose failure would falsify them, "
-        f"{counts['PARTIAL']} are partially covered with named gaps, "
-        f"{counts['FALSIFIED']} are falsified by direct test, and "
-        f"{counts['UNCOVERED']} require a capability that does not yet exist.",
+        + _count_phrase(counts["COVERED"], "is", "are", "covered by a test whose failure would falsify them") + ", "
+        + _count_phrase(counts["PARTIAL"], "is", "are", "partially covered with named gaps") + ", "
+        + _count_phrase(counts["FALSIFIED"], "is", "are", "falsified by direct test") + ", and "
+        + _count_phrase(counts["UNCOVERED"], "requires", "require", "a capability that does not yet exist") + ".",
         "```",
         "",
         "## Per-claim audit",
@@ -252,8 +262,9 @@ def write_claims_report(rows: list[dict], path: Path) -> dict:
                 )
             else:
                 ok = "YES" if ref["exists"] else "NO"
+                shown = ref.get("path") or ref["ref"]
                 lines.append(
-                    f'| {r["id"]} | {r["status"]} | {ref["ref"]} | {ok} | |'
+                    f'| {r["id"]} | {r["status"]} | {shown} | {ok} | |'
                 )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return counts
