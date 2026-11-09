@@ -205,22 +205,25 @@ individually in `docs/SCIENTIFIC_CLAIMS.md`. Summary as of this draft:
 **Falsified by direct test:**
 
 - **H4** (uncertainty-aware decisions are more robust under
-  environmental variability than point estimates) — **falsified**. The
-  platform's Tier 2 interval is constant-width (a single scalar
-  residual quantile per estimator). An interval-aware policy that
-  proceeds iff ``interval.low >= T`` is algebraically identical to a
-  point policy that proceeds iff ``value >= T + q``. At matched
-  proceed rate there is no room for the claim to hold on this design.
-  Evidence: ``backend/tests/test_h4_uncertainty_decisions.py``.
+  environmental variability than point estimates) — **falsified on
+  the platform as built, reported as a negative-result contribution**.
+  The Tier 2 interval is constant-width; an interval-aware policy is
+  algebraically a shifted point policy. The finding is positive in its
+  own right: constant-width conformal wrappers carry no
+  decision-relevant information beyond the interval midpoint, and
+  per-input (Mondrian) or locally-adaptive wrappers would be required
+  to make the interval actionable. Evidence:
+  ``backend/tests/test_h4_uncertainty_decisions.py``.
 
 **Not testable without new capability:**
 
 - **H7** (hybrid laser+microwave outperforms single-modality for
-  annual availability in most regions) — **capability absent**. The
-  platform has no annual-availability computation and no regional
-  aggregation. ``docs/H7_AVAILABILITY_SCOPE.md`` names the six
-  components that would have to be built. No test can move H7 off
-  this status today.
+  annual availability in most regions) — **capability absent, reclassified
+  as a research direction per ``docs/H7_AVAILABILITY_SCOPE.md``**. The
+  mechanism is covered by ``test_encoder_physics.py::test_hybrid_uses_weaker_modality``:
+  hybrid links are encodable, constrained by the encoder, and delivered
+  power equals the minimum of the two modality chains. The availability
+  claim itself is not testable on the current platform.
 
 **Partially tested, with named gaps:**
 
@@ -233,10 +236,26 @@ individually in `docs/SCIENTIFIC_CLAIMS.md`. Summary as of this draft:
 
 **Partially tested** (mechanism verified; full scope not):
 
-- **H2** (joint NSGA-II of energy and topology improves resilience over independent management) — the NSGA-II primitives are verified; no matched independent-management baseline has been constructed.
-- **H8** (thermal management is the dominant limiting factor) — the thermal model is verified; dominance relative to other factors is not measured.
-- **H10** (thermal runaway thresholds consistent with experimental data within uncertainty bounds) — the runaway boundary is verified within the model; comparison against external measured data is not performed (the Han et al. citation lacks a resolvable DOI, finding P5).
-- **H11** (two-tier controller achieves fidelity 1.0 while achieving prediction accuracy within 5% of an end-to-end opaque controller) — the fidelity half is verified; the accuracy half cannot be tested because no opaque controller has been built to compare against.
+- **H2** (joint NSGA-II of energy and topology improves Pareto
+  coverage over independent management) — joint-arm vs split-arm
+  comparison covered by ``test_h2_nsga2_baseline.py`` (3 tests, 5 seeds,
+  mean relative gap ~0.35%). Narrowed from "resilience" because the test
+  measures hypervolume coverage, not recovery.
+- **H8** (thermal management is a limiting factor on continuous
+  high-power laser reception for small UAVs, demonstrated on a declared
+  high-power scenario) — narrowed from "dominant" because the test
+  compares thermal limiting at two power levels at fixed geometry.
+  Covered by ``test_h8_constraint_dominance.py`` (2 tests).
+- **H10** (thermal runaway thresholds consistent with experimental
+  data within uncertainty bounds) — runaway boundary verified within the
+  model. Han et al. citation resolved via Crossref: DOI
+  ``10.1016/j.matlit.2026.100066``, *Matter & Light*, 2026. Finding P5
+  closed on existence-verification axis. Full-text comparison is Phase 2.
+- **H11** (two-tier controller achieves explanation fidelity 1.0 by
+  construction, with Tier 2 surrogates supplying estimates only) — the
+  "within 5% of opaque" clause was removed because constructing an
+  end-to-end opaque controller would violate the Tier 1 sole-authority
+  invariant. Fidelity = 1.0 verified by ``test_xai_fidelity_audit.py``.
 
 **Known modeling limitations:**
 

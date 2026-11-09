@@ -106,6 +106,10 @@ BENCHMARKS: tuple[Benchmark, ...] = (
             "Efficiency degrades with temperature due to increased Urbach "
             "energy and stronger electron-phonon scattering."
         ),
-        citation="Han et al., Matter & Light, 2026; see spec Section 6.",
+        citation=(
+            "Han et al., Matter & Light, 2026, "
+            "DOI 10.1016/j.matlit.2026.100066; "
+            "see spec Section 6."
+        ),
     ),
 )

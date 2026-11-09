@@ -202,16 +202,15 @@ release for the s10-1 Q1 draft.
 | Property | Value |
 |---|---|
 | Cited in | `backend/app/physics/benchmarks.py`; `backend/app/physics/receiver.py`; `backend/app/physics/thermal.py`; `backend/app/physics/link_budget.py`; `notebooks/03_receiver_efficiency_surface.ipynb`; `docs/ENCODER_PHYSICS_INTEGRATION.md`; `docs/DEFENSIVE_PUBLICATION.md` |
-| WELL-FORMED | **NO.** Title and authors partially identified; **no DOI, no volume, no page number**, and the journal *Matter & Light* was not located in this audit. This is finding **P5**. |
+| WELL-FORMED | **YES (2026-11-09).** DOI `10.1016/j.matlit.2026.100066` resolved via Crossref API; journal *Matter & Light* confirmed; title matches. Finding **P5 resolved on the existence-verification axis**; full-text numeric comparison is Phase 2. |
 | INTERNAL-CONSISTENT | YES. The three-layer attribution (CsPbBr₃ / Sb₂Se₃ / Bi₂Te₃) is consistent across code, docs, and tests. |
-| EXTERNAL-UNCONFIRMED | The paper's existence has never been independently verified in this repository. |
+| EXTERNAL-UNCONFIRMED | **RESOLVED 2026-11-09.** Paper confirmed via Crossref DOI resolution (`10.1016/j.matlit.2026.100066`). |
 
-**Assessment:** **P5 remains open.** This is the highest-priority
-citation to verify because (a) the 38.49% champion efficiency and the
-80-90 °C degradation regime are attributed to it, and (b) no DOI or
-volume exists in any public record consulted by the project. Until the
-paper is resolved, the values are preserved in the benchmark table as
-*stated reference figures*, not as validated model parameters. The
+**Assessment:** **P5 resolved 2026-11-09 via Crossref DOI resolution.**
+The paper exists in *Matter & Light* with DOI `10.1016/j.matlit.2026.100066`.
+The benchmark table records the DOI in the citation field. The 38.49%
+champion efficiency and 80-90 °C degradation regime are preserved as
+*stated reference figures*; full-text numeric comparison is a Phase 2 item. The
 `docs/SCIENTIFIC_CLAIMS.md` entry for H10 marks this half explicitly
 as `PARTIAL`.
 

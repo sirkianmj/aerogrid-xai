@@ -1,5 +1,12 @@
 # H7 — Hybrid-modality availability: scope and gap analysis
 
+> **Update 2026-11-09:** The mechanism is now covered by
+> `test_encoder_physics.py::test_hybrid_uses_weaker_modality`:
+> hybrid links are encodable, constrained by the encoder, and their
+> delivered power equals the minimum of the two modality chains. **The
+> availability claim itself remains untestable on the current
+> platform**; the gap analysis below is unchanged.
+
 **Status:** UNCOVERED, and not closable by a test alone.
 **Hypothesis (spec §27):** *Hybrid laser+microwave architectures
 outperform single-modality for annual availability in most regions.*
