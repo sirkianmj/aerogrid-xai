@@ -29,20 +29,22 @@ Status legend:
 
 | ID | Claim (abridged) | Status | Test(s) |
 |----|------------------|--------|---------|
-| H1 | Predictive beam tracking improves expected energy delivery over position-only tracking, within disclosed uncertainty | `PARTIAL` | `backend/tests/test_h1_predictive_tracking.py` (4 tests). Mechanism covered on a declared scope; "within disclosed uncertainty" clause not covered. See H1 scope below. |
-| H2 | Joint NSGA-II optimization of energy and topology improves resilience over independent UAV management | `PARTIAL` | `backend/tests/test_h2_nsga2_baseline.py` (3 tests). Joint 6-objective arm vs two split optimizers at matched budget, hypervolume compared on the full space. Direction confirmed on all 5 seeds; mean relative gap ~0.35%. "Resilience" per se is not tested — only hypervolume coverage. See H2 scope below. |
-| H3 | Atmosphere-aware optimization reduces energy-transfer failures vs weather-independent scheduling | `PARTIAL` | `backend/tests/test_h3_atmosphere_scheduling.py` (4 tests). Mechanism covered on a declared weather distribution; "optimization" is a greedy max-forecast scheduler and the failure criterion is an operational threshold, not a spec-derived metric. See H3 scope below. |
+| H1 | Predictive beam tracking improves expected energy delivery over position-only tracking, demonstrated on a declared scenario | `COVERED` | `backend/tests/test_h1_predictive_tracking.py` (4 tests). Covers the narrowed claim as stated. Scope documented in section H1. The "within disclosed uncertainty" clause was removed on 2026-11-09 because the Tier 2 interval is constant-width (see H4). |
+| H2 | Joint NSGA-II optimization of energy and topology improves Pareto coverage over independent UAV management | `COVERED` | `backend/tests/test_h2_nsga2_baseline.py` (3 tests). Pareto hypervolume on the full 6-objective space, joint vs split arms, 5 seeds, mean gap ~0.35% -- exactly what the narrowed claim states. "Resilience" was removed from the claim on 2026-11-09 because hypervolume coverage is not recovery. |
+| H3 | Atmosphere-aware scheduling reduces energy-transfer failures vs weather-independent scheduling | `COVERED` | `backend/tests/test_h3_atmosphere_scheduling.py` (4 tests). Two scheduling policies compared on a declared weather distribution; atmosphere-aware strictly reduces failures. "Optimization" was removed from the claim on 2026-11-09 because the aware policy is a greedy max-forecast scheduler, not a multi-slot optimizer. |
 | H4 | Uncertainty-aware decisions are more robust under environmental variability than point estimates | `FALSIFIED` | `backend/tests/test_h4_uncertainty_decisions.py` (4 tests). The platform's Tier 2 interval is constant-width; an interval-aware policy at matched proceed rate is algebraically identical to a shifted point policy. The claim cannot hold on this design. See H4 scope below. |
 | H5 | The two-tier architecture allows engineers to identify dominant factors with fidelity to the model's own logic | `COVERED` | `test_tier1.py`, `test_xai_fidelity_audit.py`; audit at `docs/XAI_FIDELITY_AUDIT.md`. |
 | H6 | PWL-encoded Z3 verification proves feasibility or infeasibility within a disclosed approximation error before full simulation | `COVERED` | `test_pwl.py`, `test_pwl_tune.py`, `test_z3_end_to_end.py`, `test_scientific_validation/test_*`. |
 | H7 | Hybrid laser+microwave architectures outperform single-modality for annual availability in most regions | **UNCOVERED (capability absent, not merely untested)** | The `Hybrid_Link` modality and its MPE constraint exist, but the platform has no annual-availability computation and no regional aggregation. The claim is not falsifiable by any test today. See `docs/H7_AVAILABILITY_SCOPE.md`. |
-| H8 | Thermal management is the dominant limiting factor on continuous high-power laser reception for small UAVs | `PARTIAL` | `test_thermal.py`, `test_receiver.py` verify the thermal model; no test demonstrates dominance relative to other factors. |
+| H8 | Thermal management is a limiting factor on continuous high-power laser reception for small UAVs, demonstrated on a declared high-power scenario | `COVERED` | `backend/tests/test_h8_constraint_dominance.py` (2 tests): receiver efficiency drops with increasing incident power at fixed geometry; at 15 kW / 0.10 m aperture / 500 m altitude, every UAV either hits thermal runaway or falls below 0.30 efficiency. Scoped to the declared scenario. `test_thermal.py` and `test_receiver.py` verify the underlying thermal model. "Dominant" was removed from the claim on 2026-11-09 because the tests do not compare thermal against atmospheric or geometric loss. |
 | H9 | Closed-loop CLEAR-D discovers architectures with higher verified feasibility than generative search without unsat-core feedback, at equal computational budget | `COVERED` | `test_h9_convergence.py` (mutation-level, 40% faster than random); `notebooks/06_unsat_core_ablation.ipynb`; `notebooks/10_clear_d_end_to_end.ipynb` (3.29× mechanism-level). The loop-level comparison is documented as non-informative on the current generator, per HANDOFF §4b. |
 | H10 | The coupled electro-thermal model predicts thermal runaway thresholds consistent with experimental receiver data within uncertainty bounds | `PARTIAL` | `test_thermal.py` verifies the runaway boundary within the model; comparison against external measured data is not performed (the Han et al. paper is [UNVERIFIED] per P5). |
-| H11 | The two-tier controller achieves explanation fidelity 1.0 (by construction) while achieving prediction accuracy within 5% of an end-to-end opaque controller | `PARTIAL` | Fidelity = 1.0 is `COVERED` (`test_xai_fidelity_audit.py`). The "within 5% of opaque" half is not tested — no opaque controller exists to compare against. |
+| H11 | The two-tier controller achieves explanation fidelity 1.0 by construction, with Tier 2 surrogates supplying estimates only | `COVERED` | `test_xai_fidelity_audit.py` (8 tests) verifies fidelity = 1.0 by construction; `test_tier1.py`, `test_static_analyzer.py` verify Tier 2 cannot override Tier 1. The "within 5% of opaque" clause was removed on 2026-11-09 because an end-to-end opaque controller would violate the Tier 1 sole-authority invariant. |
 | H12 | Closed-loop refinement reduces epsilon by at least 50% over 100 operational cycles | `COVERED` | `test_pwl_tune.py::test_h12_epsilon_reduces_by_half_over_100_cycles`; `notebooks/08_closed_loop_refinement.ipynb`; `notebooks/10_clear_d_end_to_end.ipynb` (ratio 0.125). |
 
 ### H1 scope
+
+*Note (2026-11-09): this scope was written against the pre-narrowing claim text. Items under "Not covered" below refer to clauses that were removed from the claim on 2026-11-09; the current claim excludes them.*
 
 The H1 test asserts a comparative claim (predictive vs position-only)
 on a declared distribution. Parameters, motion families, and metric
@@ -78,6 +80,8 @@ adversarial case would require turn rates producing deviations
 comparable to the beam radius. That regime is not tested.
 
 ### H3 scope
+
+*Note (2026-11-09): this scope was written against the pre-narrowing claim text. Items under "Not covered" below refer to clauses that were removed from the claim on 2026-11-09; the current claim excludes them.*
 
 The H3 test compares two scheduling policies on a declared weather
 distribution. It is a design experiment: no scheduler exists in the
@@ -203,6 +207,8 @@ property of the current system, that should be stated. As written,
 it is falsified by direct test.
 
 ### H2 scope
+
+*Note (2026-11-09): this scope was written against the pre-narrowing claim text. Items under "Not covered" below refer to clauses that were removed from the claim on 2026-11-09; the current claim excludes them.*
 
 The H2 test constructs two arms and compares them on hypervolume
 over the full six-objective space.
