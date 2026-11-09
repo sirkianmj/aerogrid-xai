@@ -59,6 +59,12 @@ def test_scope_note_states_not_flight_tested() -> None:
     assert "not" in note and ("flight" in note or "bench" in note), han.scope_note
 
 
+def test_paper_has_resolvable_doi() -> None:
+    """Finding P5 closed 2026-11-09: DOI resolved via Crossref."""
+    han = next(b for b in BENCHMARKS if "Han" in b.name)
+    assert "10.1016/j.matlit.2026.100066" in han.citation, han.citation
+
+
 def test_38_49_is_receiver_not_link() -> None:
     """The 38.49% figure is a receiver conversion efficiency, not an
     end-to-end link efficiency. The suite classifies it accordingly and
