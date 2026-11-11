@@ -278,6 +278,7 @@ export const TEMPLATES: TemplateConfig[] = [
       "One hundred eighty independent multirotor UAVs in a single mission, exercising the platform at its largest supported fleet size. Custom 500 km LEO orbit, 100 kW transmitter, 1.0 m aperture. Empirically delivers ~4.7 kW fleet-wide (~26 W per UAV) with no thermal runaway, right at the feasible-power boundary this platform supports. No relay chain. The aggregate 'Peak received' metric is the sum across all 180 UAVs at the peak instant, which assumes ideal time-sharing across the pass. Discovery subarchitecture is capped at 30 nodes; the mission runs all 180.",
     badge: "LEO \u00b7 SWARM \u00b7 180 UAVs",
     configPatch: {
+      satellite_key: "custom",
       satellite_elements: {
         epoch_utc: "2024-01-01T00:00:00Z",
         a_km: 6878.0,
