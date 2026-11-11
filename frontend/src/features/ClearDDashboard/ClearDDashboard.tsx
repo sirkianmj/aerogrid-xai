@@ -230,7 +230,7 @@ function ResultView({ result, cfg }: { result: ClearDResponse; cfg: MissionConfi
 
       <footer className="mt-4 flex flex-wrap items-center gap-3 border-t border-current/10 pt-3 font-mono text-xs opacity-60">
         <span>
-          {`artefact: cleard_loop · seed ${cfg.seed} · population ${Math.max(4, cfg.n_uavs)}`}
+          {`artefact: cleard_loop · seed ${cfg.seed} · population ${Math.min(64, Math.max(4, cfg.n_uavs))}`}
         </span>
         <button
           type="button"
