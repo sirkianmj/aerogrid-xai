@@ -7,12 +7,13 @@ epistemic tag ``simulation_result``.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.mission.state import MissionConfig
+from app.mission.state import MissionConfig, SatelliteElements, UavHardware
 from app.simulation.timestep import run_simulation
 
 router = APIRouter(prefix="/simulation", tags=["simulation"])
@@ -25,6 +26,17 @@ class SimulationRequest(BaseModel):
     # Mission parameters -- mirror /mission/state query params.
     seed: int = 20261014
     satellite_key: str = "iss"
+    a_km: float | None = None
+    e: float | None = None
+    i_deg: float | None = None
+    raan_deg: float | None = None
+    argp_deg: float | None = None
+    m0_deg: float | None = None
+    elements_epoch_utc: datetime | None = None
+    uav_alt_m: float = 1000.0
+    transmitter_aperture_m: float = 0.5
+    uav_receiver_aperture_m2: float = 0.5
+    uav_receiver_type: str = "laser_photovoltaic"
     n_uavs: int = Field(6, ge=2, le=500)
     ground_lat_deg: float = Field(40.798, ge=-90.0, le=90.0)
     ground_lon_deg: float = Field(-77.860, ge=-180.0, le=180.0)
@@ -87,6 +99,21 @@ async def run(request: SimulationRequest) -> SimulationResponse:
     Digital Twin running validated or estimated physics models --
     not a physical measurement, not a formal verification verdict.
     """
+    sat_elements = None
+    if request.a_km is not None:
+        sat_elements = SatelliteElements(
+            epoch_utc=request.elements_epoch_utc or datetime.now(UTC),
+            a_km=request.a_km,
+            e=request.e if request.e is not None else 0.0,
+            i_deg=request.i_deg if request.i_deg is not None else 0.0,
+            raan_deg=request.raan_deg if request.raan_deg is not None else 0.0,
+            argp_deg=request.argp_deg if request.argp_deg is not None else 0.0,
+            m0_deg=request.m0_deg if request.m0_deg is not None else 0.0,
+        )
+    uav_hardware = UavHardware(
+        receiver_aperture_m2=request.uav_receiver_aperture_m2,
+        receiver_type=request.uav_receiver_type,
+    )
     cfg = MissionConfig(
         transmitter_type=request.transmitter_type,
         transmitter_min_elevation_deg=request.transmitter_min_elevation_deg,
@@ -94,7 +121,11 @@ async def run(request: SimulationRequest) -> SimulationResponse:
         relay_fraction=request.relay_fraction,
         seed=request.seed,
         satellite_key=request.satellite_key,
+        satellite_elements=sat_elements,
         n_uavs=request.n_uavs,
+        uav_alt_m=request.uav_alt_m,
+        uav_hardware=uav_hardware,
+        transmitter_aperture_m=request.transmitter_aperture_m,
         ground_lat_deg=request.ground_lat_deg,
         ground_lon_deg=request.ground_lon_deg,
         transmitter_power_w=request.transmitter_power_w,
