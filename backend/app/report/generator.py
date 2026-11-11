@@ -309,6 +309,7 @@ def _step1_section(inp: ReportInput, styles: dict[str, ParagraphStyle]) -> list[
     els = _section_header("Step 1 \u2014 Design", "estimated_model", True, styles)
     cfg = inp.mission_config
     hw_list = cfg.get("uav_hardware_list") or []
+    n_uavs_cfg = cfg.get("n_uavs", len(hw_list))
     if not hw_list:
         els.append(
             Paragraph(
@@ -319,7 +320,7 @@ def _step1_section(inp: ReportInput, styles: dict[str, ParagraphStyle]) -> list[
     else:
         els.append(
             Paragraph(
-                f"{len(hw_list)} UAV hardware configuration(s) adopted into the mission.",
+                f"{len(hw_list)} explicit UAV hardware config(s) adopted into the mission.",
                 styles["body"],
             )
         )
@@ -329,9 +330,29 @@ def _step1_section(inp: ReportInput, styles: dict[str, ParagraphStyle]) -> list[
                 els.append(Paragraph(f"<b>UAV-{i}</b>", styles["h2"]))
                 els.append(_kv_table(hw, styles))
                 els.append(Spacer(1, 4))
+        # Bug B: surface the gap when n_uavs > len(hw_list)
+        if isinstance(n_uavs_cfg, int) and n_uavs_cfg > len(hw_list):
+            gap = n_uavs_cfg - len(hw_list)
+            els.append(
+                Paragraph(
+                    f"<i>Note: {gap} additional UAV(s) "
+                    f"(UAV-{len(hw_list)} through UAV-{n_uavs_cfg - 1}) "
+                    "run with the mission's default hardware; "
+                    "their per-UAV results are in Step 2.</i>",
+                    styles["body"],
+                )
+            )
+            els.append(Spacer(1, 4))
     sat_el = cfg.get("satellite_elements")
     if isinstance(sat_el, dict):
-        els.append(Paragraph("<b>Custom orbital elements</b>", styles["h2"]))
+        # Bug C: only "Custom" when the user actually supplied custom elements
+        is_custom = cfg.get("satellite_key") == "custom"
+        heading = (
+            "Custom orbital elements"
+            if is_custom
+            else "Orbital elements (derived from TLE / propagated)"
+        )
+        els.append(Paragraph(f"<b>{heading}</b>", styles["h2"]))
         els.append(_kv_table(sat_el, styles))
     els.append(Spacer(1, 12))
     return els
