@@ -34,7 +34,7 @@ import {
  */
 function requestFor(cfg: MissionConfig): ClearDRequest {
   return {
-    population_size: Math.max(4, cfg.n_uavs),
+    population_size: Math.min(64, Math.max(4, cfg.n_uavs)),
     n_generations: 10,
     seed: cfg.seed,
     min_nodes: 4,
