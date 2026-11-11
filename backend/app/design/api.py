@@ -89,6 +89,13 @@ class DroneDesignRequest(BaseModel):
     thermal_limit_c: float = Field(80.0, gt=0.0, le=500.0)
     # Mission context.
     satellite_key: str = Field("iss")
+    a_km: float | None = None
+    e: float | None = None
+    i_deg: float | None = None
+    raan_deg: float | None = None
+    argp_deg: float | None = None
+    m0_deg: float | None = None
+    elements_epoch_utc: datetime | None = None
     ground_lat_deg: float = Field(40.798, ge=-90.0, le=90.0)
     ground_lon_deg: float = Field(-77.86, ge=-180.0, le=180.0)
     uav_alt_m: float = Field(1000.0, ge=10.0, le=20_000.0)
@@ -289,9 +296,22 @@ async def evaluate_drone(req: DroneDesignRequest) -> FeasibilityReport:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    sat_elements = None
+    if req.a_km is not None:
+        sat_elements = SatelliteElements(
+            epoch_utc=req.elements_epoch_utc or datetime.now(UTC),
+            a_km=req.a_km,
+            e=req.e if req.e is not None else 0.0,
+            i_deg=req.i_deg if req.i_deg is not None else 0.0,
+            raan_deg=req.raan_deg if req.raan_deg is not None else 0.0,
+            argp_deg=req.argp_deg if req.argp_deg is not None else 0.0,
+            m0_deg=req.m0_deg if req.m0_deg is not None else 0.0,
+        )
+
     cfg = MissionConfig(
         seed=20261014,
         satellite_key=req.satellite_key,
+        satellite_elements=sat_elements,
         n_uavs=req.n_uavs,
         ground_lat_deg=req.ground_lat_deg,
         ground_lon_deg=req.ground_lon_deg,

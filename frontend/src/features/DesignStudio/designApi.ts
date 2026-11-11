@@ -153,6 +153,13 @@ export async function evaluateSatellite(
 }
 
 export type DroneDesignRequest = {
+  a_km?: number
+  e?: number
+  i_deg?: number
+  raan_deg?: number
+  argp_deg?: number
+  m0_deg?: number
+  elements_epoch_utc?: string
   n_uavs?: number
   receiver_aperture_m2: number
   receiver_type: string
