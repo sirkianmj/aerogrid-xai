@@ -439,6 +439,7 @@ function DroneDesigner({ presets }: { presets: DronePreset[] }) {
   async function evaluateRow(row: DroneDraft) {
     try {
       const r = await evaluateDrone({
+        n_uavs: config.n_uavs,
         receiver_aperture_m2: row.receiver_aperture_m2,
         receiver_type: row.receiver_type,
         battery_efficiency: row.battery_efficiency,

@@ -153,6 +153,7 @@ export async function evaluateSatellite(
 }
 
 export type DroneDesignRequest = {
+  n_uavs?: number
   receiver_aperture_m2: number
   receiver_type: string
   battery_efficiency: number

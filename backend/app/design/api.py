@@ -79,6 +79,7 @@ class GroundDesignRequest(BaseModel):
 
 
 class DroneDesignRequest(BaseModel):
+    n_uavs: int = Field(1, ge=1, le=500)
     receiver_aperture_m2: float = Field(0.5, gt=0.0, le=100.0)
     receiver_type: str = Field("laser_photovoltaic")
     battery_efficiency: float = Field(0.92, gt=0.0, le=1.0)
@@ -291,7 +292,7 @@ async def evaluate_drone(req: DroneDesignRequest) -> FeasibilityReport:
     cfg = MissionConfig(
         seed=20261014,
         satellite_key=req.satellite_key,
-        n_uavs=1,
+        n_uavs=req.n_uavs,
         ground_lat_deg=req.ground_lat_deg,
         ground_lon_deg=req.ground_lon_deg,
         transmitter_power_w=req.transmitter_power_w,
