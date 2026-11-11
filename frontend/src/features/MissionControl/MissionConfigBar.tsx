@@ -40,8 +40,8 @@ function validate(c: MissionConfig): FieldErrors {
   if (c.transmitter_power_w <= 0) {
     e.transmitter_power_w = "power must be > 0"
   }
-  if (c.n_uavs < 2 || c.n_uavs > 20) {
-    e.n_uavs = "UAV count must be in [2, 20]"
+  if (c.n_uavs < 2 || c.n_uavs > 500) {
+    e.n_uavs = "UAV count must be in [2, 500]"
   }
   if (c.seed < 0) {
     e.seed = "seed must be >= 0"
@@ -562,7 +562,7 @@ export function MissionConfigBar() {
             type="number"
             step="1"
             min={2}
-            max={20}
+            max={500}
             value={draft.n_uavs}
             onChange={(e) => set("n_uavs", Math.round(num(e.target.value, draft.n_uavs)))}
             className="rounded border border-[var(--border-hairline)] bg-transparent px-2 py-1 font-mono text-xs"

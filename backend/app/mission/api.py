@@ -38,7 +38,7 @@ async def get_mission_state(
     argp_deg: float | None = Query(None, ge=0.0, lt=360.0),
     m0_deg: float | None = Query(None, ge=0.0, lt=360.0),
     elements_epoch_utc: datetime | None = Query(None),
-    n_uavs: int = Query(6, ge=2, le=20),
+    n_uavs: int = Query(6, ge=2, le=500),
     ground_lat_deg: float = Query(40.798, ge=-90.0, le=90.0),
     ground_lon_deg: float = Query(-77.860, ge=-180.0, le=180.0),
     transmitter_power_w: float = Query(10_000.0, gt=0.0, le=1e9),
