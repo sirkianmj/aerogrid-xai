@@ -25,7 +25,7 @@ class SimulationRequest(BaseModel):
     # Mission parameters -- mirror /mission/state query params.
     seed: int = 20261014
     satellite_key: str = "iss"
-    n_uavs: int = Field(6, ge=2, le=20)
+    n_uavs: int = Field(6, ge=2, le=500)
     ground_lat_deg: float = Field(40.798, ge=-90.0, le=90.0)
     ground_lon_deg: float = Field(-77.860, ge=-180.0, le=180.0)
     transmitter_power_w: float = Field(10000.0, gt=0.0, le=1e9)

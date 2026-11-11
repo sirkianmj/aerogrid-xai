@@ -46,7 +46,7 @@ class SatelliteDesignRequest(BaseModel):
     # Mission context where the design is evaluated.
     ground_lat_deg: float = Field(40.798, ge=-90.0, le=90.0)
     ground_lon_deg: float = Field(-77.86, ge=-180.0, le=180.0)
-    n_uavs: int = Field(1, ge=1, le=20)
+    n_uavs: int = Field(1, ge=1, le=500)
     uav_alt_m: float = Field(1000.0, ge=10.0, le=20_000.0)
     uav_receiver_aperture_m2: float = Field(0.5, gt=0.0, le=100.0)
     uav_receiver_type: str = Field("laser_photovoltaic")
@@ -69,7 +69,7 @@ class GroundDesignRequest(BaseModel):
     wavelength_nm: float = Field(1064.0, gt=0.0, le=10_000.0)
     transmitter_aperture_m: float = Field(0.5, gt=0.0, le=10.0)
     # Mission context where the design is evaluated.
-    n_uavs: int = Field(1, ge=1, le=20)
+    n_uavs: int = Field(1, ge=1, le=500)
     uav_alt_m: float = Field(1000.0, ge=10.0, le=20_000.0)
     uav_receiver_aperture_m2: float = Field(0.5, gt=0.0, le=100.0)
     uav_receiver_type: str = Field("laser_photovoltaic")
