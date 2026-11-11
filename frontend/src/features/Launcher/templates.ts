@@ -275,7 +275,7 @@ export const TEMPLATES: TemplateConfig[] = [
     id: "swarm-180",
     name: "180-UAV Swarm",
     description:
-      "One hundred eighty independent multirotor UAVs in a single mission, exercising the platform at its largest supported fleet size. Custom 500 km LEO orbit, 500 kW transmitter, 5 m aperture to keep per-UAV incident power plausible. No relay chain. The aggregate 'Peak received' metric is the sum across all 180 UAVs at the peak instant, which assumes ideal time-sharing across the pass. Discovery subarchitecture is capped at 30 nodes; the mission runs all 180.",
+      "One hundred eighty independent multirotor UAVs in a single mission, exercising the platform at its largest supported fleet size. Custom 500 km LEO orbit, 100 kW transmitter, 1.0 m aperture. Empirically delivers ~4.7 kW fleet-wide (~26 W per UAV) with no thermal runaway, right at the feasible-power boundary this platform supports. No relay chain. The aggregate 'Peak received' metric is the sum across all 180 UAVs at the peak instant, which assumes ideal time-sharing across the pass. Discovery subarchitecture is capped at 30 nodes; the mission runs all 180.",
     badge: "LEO \u00b7 SWARM \u00b7 180 UAVs",
     configPatch: {
       satellite_elements: {
@@ -297,9 +297,9 @@ export const TEMPLATES: TemplateConfig[] = [
       uav_receiver_type: "laser_photovoltaic",
       visibility_km: 15.0,
       cloud_factor: 0.0,
-      transmitter_power_w: 500000.0,
+      transmitter_power_w: 100000.0,
       wavelength_nm: 1064.0,
-      transmitter_aperture_m: 5.0,
+      transmitter_aperture_m: 1.0,
     },
   },
 ]
