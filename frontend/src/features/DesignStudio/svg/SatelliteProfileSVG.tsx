@@ -43,7 +43,6 @@
 import { useRef, type ReactElement } from "react"
 import { useDragSvg } from "./useDragSvg"
 import { ScaleBar } from "./ScaleBar"
-import { DrawingFrame } from "./DrawingFrame"
 import { Callout } from "./Callout"
 
 // --- Solar array design chain (documented) ----------------------------
@@ -95,11 +94,11 @@ const PLUME_M = 0.5
 const DISH_MARGIN_M = 0.35
 
 // --- Frame and content layout (pixels) --------------------------------
-const FRAME_W = 820
-const FRAME_H = 520
+const FRAME_W = 1000
+const FRAME_H = 700
 const ORIGIN_X = FRAME_W / 2
 const ORIGIN_Y = FRAME_H / 2 + 30
-const CONTENT_PAD_X = 60
+const CONTENT_PAD_X = 80
 const CONTENT_W = FRAME_W - 2 * CONTENT_PAD_X
 
 export type SatelliteProfileSVGProps = {
@@ -411,8 +410,8 @@ export function SatelliteProfileSVG({
     const boxH = 6
     return (
       <g>
-        <line x1={lx1} y1={ly} x2={lx2} y2={ly} stroke="var(--ink-primary)" strokeWidth={SW_MED} />
-        <line x1={rx1} y1={ly} x2={rx2} y2={ly} stroke="var(--ink-primary)" strokeWidth={SW_MED} />
+        <line x1={lx1} y1={ly} x2={lx2} y2={ly} stroke="var(--ink-primary)" strokeWidth={SW_MED * 2.5} />
+        <line x1={rx1} y1={ly} x2={rx2} y2={ly} stroke="var(--ink-primary)" strokeWidth={SW_MED * 2.5} />
         {/* SADA markers */}
         <rect
           x={lx1 + 2}
@@ -639,6 +638,7 @@ export function SatelliteProfileSVG({
     const [x1, y] = toPx(x1M, yM)
     const [x2] = toPx(x2M, yM)
     const tick = 4
+    const fontSize = 8
     return (
       <g>
         <line x1={x1} y1={y} x2={x2} y2={y} stroke="var(--ink-tertiary)" strokeWidth={SW_HAIR} />
@@ -649,8 +649,11 @@ export function SatelliteProfileSVG({
           y={y - tick - 3}
           textAnchor="middle"
           fontFamily="ui-monospace, monospace"
-          fontSize={8}
+          fontSize={fontSize}
           fill="var(--ink-tertiary)"
+          stroke="var(--bg-canvas)"
+          strokeWidth={4}
+          paintOrder="stroke"
         >
           {label}
         </text>
@@ -660,8 +663,8 @@ export function SatelliteProfileSVG({
 
   // --- Callout positions ----------------------------------------------
   // Anchor: physical position. Label: pixel position of the label text.
-  const leftLabelX = 70
-  const rightLabelX = 750
+  const leftLabelX = 140
+  const rightLabelX = FRAME_W - 140
   const callouts: Array<{
     ax: number
     ay: number
@@ -682,7 +685,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 100,
+      ly: 60,
       label: "SOLAR ARRAY",
       sublabel: `${N_PANELS_PER_SIDE} panels / wing · ${totalArrayAreaM2.toFixed(1)} m² · ${cellsTotal.toLocaleString()} cells`,
       side: "left",
@@ -695,7 +698,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 175,
+      ly: 110,
       label: "SADA",
       sublabel: "drive assembly",
       side: "left",
@@ -708,7 +711,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 220,
+      ly: 160,
       label: "BUS",
       sublabel: `${BUS_W_M.toFixed(1)} × ${BUS_H_M.toFixed(1)} m`,
       side: "left",
@@ -721,7 +724,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 260,
+      ly: 210,
       label: "RADIATOR",
       sublabel: "active thermal",
       side: "left",
@@ -734,7 +737,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: leftLabelX,
-      ly: 320,
+      ly: 260,
       label: "FEED",
       sublabel:
         transmitter_aperture_m >= 0.01
@@ -750,7 +753,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 320,
+      ly: 260,
       label: "TRANSMIT DISH",
       sublabel: `Ø ${dishDiamM.toFixed(2)} m · λ 1064 nm`,
       side: "right",
@@ -763,7 +766,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 220,
+      ly: 210,
       label: "STAR TRACKER ×2",
       sublabel: "15° sun exclusion",
       side: "right",
@@ -776,7 +779,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 175,
+      ly: 160,
       label: "THRUSTER ×2",
       sublabel: "monopropellant, 1 N",
       side: "right",
@@ -789,7 +792,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 130,
+      ly: 110,
       label: "TT&C ANTENNA",
       sublabel: "S-band, 2 W",
       side: "right",
@@ -802,7 +805,7 @@ export function SatelliteProfileSVG({
       ax,
       ay,
       lx: rightLabelX,
-      ly: 100,
+      ly: 60,
       label: "AVIONICS BAY",
       sublabel: "rad-hard, internally redundant",
       side: "right",
@@ -810,6 +813,12 @@ export function SatelliteProfileSVG({
   }
 
   // --- Main render ----------------------------------------------------
+  // Unused vars from the removed text box
+  void panelRealAreaM2
+  void totalArraySpanM
+  void feedPx
+  void feedPy
+
   return (
     <svg
       ref={svgRef}
@@ -820,18 +829,7 @@ export function SatelliteProfileSVG({
       aria-label="Satellite side profile, engineering drawing"
       data-testid="satellite-profile"
     >
-      <DrawingFrame
-        x={0}
-        y={0}
-        width={FRAME_W}
-        height={FRAME_H}
-        title="SATELLITE — SIDE PROFILE"
-        drawingNumber="AG-DRW-SAT-001"
-        scaleLabel={`SCALE 1:${Math.round(1000 / scale)}`}
-        revision="A"
-        note="units = metres · parametric"
-        footnote="dimensions derived from physical parameters; see body for equations"
-      >
+      <g>
         {/* Drawing content, positioned in the frame's pixel space */}
         {renderSolarArray(-1)}
         {renderSolarArray(1)}
@@ -844,7 +842,7 @@ export function SatelliteProfileSVG({
 
         {/* Bottom dimension: array span */}
         {renderDimH(
-          botY_M - 0.4,
+          botY_M + 1.2,
           -halfWidthM,
           halfWidthM,
           `array span ${(2 * halfWidthM).toFixed(2)} m`,
@@ -858,97 +856,8 @@ export function SatelliteProfileSVG({
           `bus ${BUS_W_M.toFixed(2)} m`,
         )}
 
-        {/* Aperture indicator below the dish */}
-        <text
-          x={feedPx}
-          y={feedPy + 30}
-          textAnchor="middle"
-          fontFamily="ui-monospace, monospace"
-          fontSize={8}
-          fill="var(--ink-tertiary)"
-        >
-          drag to widen aperture
-        </text>
 
         {/* Callouts */}
-        {/* Design chain info box. Every row is a real number from the
-            solar array design chain, not a displayed constant. */}
-        <g>
-          <rect
-            x={70}
-            y={338}
-            width={420}
-            height={118}
-            fill="var(--bg-surface)"
-            stroke="var(--ink-secondary)"
-            strokeWidth={SW_THIN}
-          />
-          <text
-            x={78}
-            y={352}
-            fontFamily="ui-monospace, monospace"
-            fontSize={9}
-            fontWeight={600}
-            fill="var(--ink-primary)"
-          >
-            SOLAR ARRAY DESIGN CHAIN
-          </text>
-          <line
-            x1={70}
-            y1={358}
-            x2={490}
-            y2={358}
-            stroke="var(--ink-tertiary)"
-            strokeWidth={SW_HAIR}
-          />
-          {(() => {
-            const rowY0 = 370
-            const rowStep = 12
-            const rows: Array<[string, string]> = [
-              ["I_AM0", `${I_AM0_W_PER_M2.toFixed(0)} W/m²`],
-              ["η_cell · packing · PSE", `${ETA_CELL.toFixed(2)} · ${PACKING_FACTOR.toFixed(2)} · ${PSE_EFFICIENCY.toFixed(2)}`],
-              ["effective", `${EFFECTIVE_SPECIFIC_POWER_W_PER_M2.toFixed(1)} W/m²`],
-              ["array area", `${totalArrayAreaM2.toFixed(1)} m² (2 wings)`],
-              ["panel", `${panelLenMReal.toFixed(2)} × ${PANEL_CHORD_M.toFixed(2)} m · ${panelRealAreaM2.toFixed(2)} m²`],
-              ["cells/panel", `${cellsAcross} × ${cellsDown} = ${cellsPerPanel.toLocaleString()}`],
-              ["span · total cells", `${totalArraySpanM.toFixed(1)} m · ${cellsTotal.toLocaleString()}`],
-            ]
-            return rows.map(([k, v], i) => (
-              <g key={k}>
-                <text
-                  x={78}
-                  y={rowY0 + i * rowStep}
-                  fontFamily="ui-monospace, monospace"
-                  fontSize={8}
-                  fill="var(--ink-tertiary)"
-                >
-                  {k}
-                </text>
-                <text
-                  x={300}
-                  y={rowY0 + i * rowStep}
-                  textAnchor="end"
-                  fontFamily="ui-monospace, monospace"
-                  fontSize={8}
-                  fill="var(--ink-primary)"
-                >
-                  {v}
-                </text>
-              </g>
-            ))
-          })()}
-          <text
-            x={484}
-            y={394}
-            textAnchor="end"
-            fontFamily="ui-monospace, monospace"
-            fontSize={7}
-            fill="var(--ink-tertiary)"
-          >
-            {`${CELL_SIZE_M * 1000}mm cell · ${CELL_GAP_M * 1000}mm gap · ${(CELL_PITCH_M * 1000).toFixed(0)}mm pitch`}
-          </text>
-        </g>
-
         {callouts.map((c, i) => (
           <Callout
             key={i}
@@ -967,7 +876,7 @@ export function SatelliteProfileSVG({
         {/* Scale bar, bottom-left of the content area */}
         <ScaleBar
           x={70}
-          y={470}
+          y={540}
           widthData={Math.min(200, CONTENT_W * 0.25)}
           label={`${(Math.min(200, CONTENT_W * 0.25) / scale).toFixed(1)} m`}
           fontSize={9}
@@ -1023,7 +932,7 @@ export function SatelliteProfileSVG({
             ⋮ dotted: internal bay outline
           </text>
         </g>
-      </DrawingFrame>
+      </g>
     </svg>
   )
 }
