@@ -615,7 +615,9 @@ def _compute_uav_link_from_ground(
         )
         if steady is None:
             receiver_efficiency = 0.0
-            thermal_runaway_flag = incident_at_aperture_w > 0.0
+            thermal_runaway_flag = (
+                incident_at_aperture_w > 1e-9  # Bug A: sub-nanowatt is not thermally meaningful
+            )
         else:
             t_plc_k, t_te_k = steady
             receiver_efficiency = _eta_total(
@@ -729,7 +731,9 @@ def _uav_to_uav_link(
         )
         if steady is None:
             receiver_efficiency = 0.0
-            thermal_runaway_flag = incident > 0.0
+            thermal_runaway_flag = (
+                incident > 1e-9  # Bug A: sub-nanowatt is not thermally meaningful
+            )
         else:
             t_plc_k, t_te_k = steady
             receiver_efficiency = _eta_total(
@@ -846,7 +850,9 @@ def _compute_uav_link(
         )
         if steady is None:
             receiver_efficiency = 0.0
-            thermal_runaway_flag = incident_at_aperture_w > 0.0
+            thermal_runaway_flag = (
+                incident_at_aperture_w > 1e-9  # Bug A: sub-nanowatt is not thermally meaningful
+            )
         else:
             t_plc_k, t_te_k = steady
             receiver_efficiency = _eta_total(
@@ -1287,7 +1293,9 @@ def compute_mission_state(
         arch = generate_architecture(
             GeneratorConfig(
                 min_nodes=4,
-                max_nodes=max(4, cfg.n_uavs + 2),
+                # Cap at 30: 180-UAV missions cannot build a 182-node Z3
+                # architecture; the API limit for max_nodes is 30.
+                max_nodes=max(4, min(30, cfg.n_uavs + 2)),
                 max_links=6,
                 seed=cfg.seed,
             )
@@ -1360,7 +1368,8 @@ def compute_mission_state(
         )
         for i in range(cfg.n_uavs)
     ]
-    loop_cfg = ClearDLoopConfig(population_size=max(4, cfg.n_uavs), n_generations=1)
+    # Cap population at 30: keep per-mission latency bounded for large fleets.
+    loop_cfg = ClearDLoopConfig(population_size=max(4, min(30, cfg.n_uavs)), n_generations=1)
     loop_result = run_clear_d_loop(
         seeds_loop,
         encode_architecture,
